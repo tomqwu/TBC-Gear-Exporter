@@ -8,6 +8,7 @@ local BANK_CONTAINER_ID = BANK_CONTAINER or -1
 local PLAYER_BAG_SLOTS = NUM_BAG_SLOTS or 4
 local BANK_BAG_SLOTS = NUM_BANKBAGSLOTS or 7
 local MINIMAP_ICON_TEXTURE = "Interface\\Icons\\INV_Misc_Bag_10_Blue"
+local WOWHEAD_TBC_ITEM_URL_PREFIX = "https://www.wowhead.com/tbc/item="
 
 local CLASS_CATEGORY = {
     [0] = "Consumables",
@@ -297,6 +298,26 @@ local function ParseItemID(link)
 
     local itemID = link:match("item:(%d+)")
     return itemID and tonumber(itemID) or nil
+end
+
+local function WowheadItemURL(itemID)
+    if type(itemID) == "string" then
+        itemID = tonumber(itemID:match("^%d+$"))
+    end
+
+    if type(itemID) == "number" and itemID > 0 then
+        return WOWHEAD_TBC_ITEM_URL_PREFIX .. tostring(itemID)
+    end
+
+    return nil
+end
+
+local function ItemWowheadURL(item)
+    if not item then
+        return nil
+    end
+
+    return item.wowheadUrl or item.wowhead_url or WowheadItemURL(item.itemID or item.item_id)
 end
 
 local function ParseItemString(link)
@@ -755,6 +776,7 @@ function Addon:BuildItem(source, bagID, slotID)
         itemID = itemID,
         itemString = ParseItemString(link),
         link = itemLinkForExport,
+        wowheadUrl = WowheadItemURL(itemID),
         name = name or ParseItemName(link) or (itemID and ("Item " .. itemID)) or "Unknown Item",
         count = count or 1,
         quality = quality,
@@ -991,11 +1013,17 @@ function Addon:BuildMarkdownExport(scope, profile, items, categories, buckets)
 
         for itemIndex = 1, #bucket do
             local item = bucket[itemIndex]
-            lines[#lines + 1] = "- **" .. tostring(item.name or "Unknown Item") .. "** x" .. tostring(item.count or 1)
+            local wowheadUrl = ItemWowheadURL(item)
+            local line = "- **" .. tostring(item.name or "Unknown Item") .. "** x" .. tostring(item.count or 1)
                 .. " | " .. tostring(item.qualityName or "Unknown")
                 .. " | " .. SourceLabel(item.source)
                 .. " | " .. tostring(item.location or "Unknown Location")
-                .. " | Stats: " .. FormatStats(item.stats)
+
+            if wowheadUrl then
+                line = line .. " | Wowhead: " .. wowheadUrl
+            end
+
+            lines[#lines + 1] = line .. " | Stats: " .. FormatStats(item.stats)
         end
 
         lines[#lines + 1] = ""
@@ -1028,11 +1056,18 @@ function Addon:BuildTextExport(scope, profile, items, categories, buckets)
 
         for itemIndex = 1, #bucket do
             local item = bucket[itemIndex]
-            lines[#lines + 1] = "- " .. tostring(item.name or "Unknown Item")
+            local wowheadUrl = ItemWowheadURL(item)
+            local line = "- " .. tostring(item.name or "Unknown Item")
                 .. " x" .. tostring(item.count or 1)
                 .. " | " .. tostring(item.qualityName or "Unknown")
                 .. " | " .. SourceLabel(item.source)
                 .. " | " .. tostring(item.location or "Unknown Location")
+
+            if wowheadUrl then
+                line = line .. " | Wowhead: " .. wowheadUrl
+            end
+
+            lines[#lines + 1] = line
                 .. " | Stats: " .. FormatStats(item.stats)
         end
 
@@ -1171,7 +1206,9 @@ function Addon:BuildExport(scope, format)
 
         for itemIndex = 1, #bucket do
             local item = bucket[itemIndex]
+            local itemID = item.itemID or item.item_id
             local statsText = FormatStats(item.stats)
+            local wowheadUrl = ItemWowheadURL(item)
             itemPosition = itemPosition + 1
 
             AppendIndented(lines, 4, "{")
@@ -1183,9 +1220,10 @@ function Addon:BuildExport(scope, format)
             AppendIndented(lines, 6, JsonField("slot", item.slot, true))
             AppendIndented(lines, 6, JsonField("count", item.count or 1, true))
             AppendIndented(lines, 6, JsonField("name", item.name or "Unknown Item", true))
-            AppendIndented(lines, 6, JsonField("item_id", item.itemID, true))
+            AppendIndented(lines, 6, JsonField("item_id", itemID, true))
             AppendIndented(lines, 6, JsonField("item_string", item.itemString, true))
             AppendIndented(lines, 6, JsonField("item_link", item.link, true))
+            AppendIndented(lines, 6, JsonField("wowhead_url", wowheadUrl, true))
             AppendIndented(lines, 6, JsonField("quality", item.qualityName or "Unknown", true))
             AppendIndented(lines, 6, JsonField("quality_id", item.quality, true))
             AppendIndented(lines, 6, JsonField("item_level", item.itemLevel, true))
@@ -1708,6 +1746,8 @@ if _G.TBCGearExporterTestMode then
         Now = Now,
         FormatTime = FormatTime,
         ParseItemID = ParseItemID,
+        WowheadItemURL = WowheadItemURL,
+        ItemWowheadURL = ItemWowheadURL,
         ParseItemString = ParseItemString,
         ParseItemName = ParseItemName,
         QualityName = QualityName,
