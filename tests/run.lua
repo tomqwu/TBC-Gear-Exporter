@@ -284,6 +284,7 @@ local function installGlobals()
     _G.BANK_CONTAINER = -1
     _G.NUM_BAG_SLOTS = 4
     _G.NUM_BANKBAGSLOTS = 7
+    _G.BackdropTemplateMixin = {}
     _G.UIParent = createMockFrame("UIParent", "UIParent")
     _G.Minimap = createMockFrame("Frame", "Minimap")
     _G.Minimap.frameLevel = 4
@@ -391,6 +392,34 @@ local function installGlobals()
         local item = entry and mock.items[entry.itemID]
         return item and item.link or nil
     end
+
+    _G.C_Container = {
+        GetContainerNumSlots = function(bagID)
+            return mock.containerSlots[bagID] or 0
+        end,
+        GetContainerItemInfo = function(bagID, slotID)
+            local bag = mock.containerItems[bagID]
+            local entry = bag and bag[slotID]
+            if not entry then
+                return nil
+            end
+
+            local item = mock.items[entry.itemID]
+            return {
+                iconFileID = item.icon,
+                stackCount = entry.count,
+                quality = item.quality,
+                hyperlink = entry.omitInfoLink and nil or item.link,
+                itemID = item.id,
+            }
+        end,
+        GetContainerItemLink = function(bagID, slotID)
+            local bag = mock.containerItems[bagID]
+            local entry = bag and bag[slotID]
+            local item = entry and mock.items[entry.itemID]
+            return item and item.link or nil
+        end,
+    }
 
     _G.GetItemInfoInstant = function(link)
         local itemID = parseItemID(link)
@@ -798,6 +827,44 @@ test("location, source, category, copy, and sizing helpers cover branches", func
     private.SafeRegister("FAIL_EVENT")
 end)
 
+test("container compatibility helpers use legacy, C_Container, and fallback paths", function()
+    assertEquals(private.BackdropTemplate(), "BackdropTemplate")
+    assertEquals(private.GetContainerNumSlotsCompat(0), 3)
+    assertContains(private.GetContainerItemLinkCompat(0, 1), "Defender Helm")
+    local texture, count, quality, link = private.ValuesFromContainerInfo({
+        iconFileID = "compat-icon",
+        stackCount = 9,
+        quality = 4,
+    }, mock.itemLinks[1002])
+    assertEquals(texture, "compat-icon")
+    assertEquals(count, 9)
+    assertEquals(quality, 4)
+    assertContains(link, "Arcane Blade")
+
+    local oldSlots = _G.GetContainerNumSlots
+    local oldLink = _G.GetContainerItemLink
+    _G.GetContainerNumSlots = nil
+    _G.GetContainerItemLink = nil
+    assertEquals(private.GetContainerNumSlotsCompat(0), 3)
+    assertContains(private.GetContainerItemLinkCompat(0, 1), "Defender Helm")
+
+    local oldContainerSlots = _G.C_Container.GetContainerNumSlots
+    local oldContainerLink = _G.C_Container.GetContainerItemLink
+    _G.C_Container.GetContainerNumSlots = nil
+    _G.C_Container.GetContainerItemLink = nil
+    assertEquals(private.GetContainerNumSlotsCompat(0), 0)
+    assertEquals(private.GetContainerItemLinkCompat(0, 1), nil)
+
+    local oldBackdrop = _G.BackdropTemplateMixin
+    _G.BackdropTemplateMixin = nil
+    assertEquals(private.BackdropTemplate(), nil)
+    _G.BackdropTemplateMixin = oldBackdrop
+    _G.C_Container.GetContainerNumSlots = oldContainerSlots
+    _G.C_Container.GetContainerItemLink = oldContainerLink
+    _G.GetContainerNumSlots = oldSlots
+    _G.GetContainerItemLink = oldLink
+end)
+
 test("profile creation uses real and fallback character names", function()
     resetRuntimeState(Addon)
     local profile = Addon:GetProfile()
@@ -819,8 +886,11 @@ end)
 
 test("container item values cover missing API, table info, tuple info, and link fallback", function()
     local oldInfo = _G.GetContainerItemInfo
+    local oldContainerInfo = _G.C_Container.GetContainerItemInfo
     _G.GetContainerItemInfo = nil
+    _G.C_Container.GetContainerItemInfo = nil
     assertEquals(Addon:GetContainerItemValues(0, 1), nil)
+    _G.C_Container.GetContainerItemInfo = oldContainerInfo
     _G.GetContainerItemInfo = oldInfo
 
     local texture, count, quality, link = Addon:GetContainerItemValues(99, 1)
@@ -834,6 +904,30 @@ test("container item values cover missing API, table info, tuple info, and link 
     assertEquals(count, 1)
     assertEquals(quality, 3)
     assertContains(link, "Defender Helm")
+end)
+
+test("container item values and scans fall back to C_Container APIs", function()
+    resetRuntimeState(Addon)
+    local oldSlots = _G.GetContainerNumSlots
+    local oldInfo = _G.GetContainerItemInfo
+    local oldLink = _G.GetContainerItemLink
+    _G.GetContainerNumSlots = nil
+    _G.GetContainerItemInfo = nil
+    _G.GetContainerItemLink = nil
+
+    local texture, count, quality, link = Addon:GetContainerItemValues(0, 1)
+    assertEquals(texture, "helm-icon")
+    assertEquals(count, 1)
+    assertEquals(quality, 3)
+    assertContains(link, "Defender Helm")
+
+    local snapshot = Addon:ScanBags()
+    assertTrue(#snapshot.items >= 3)
+    assertEquals(snapshot.items[1].name, "Defender Helm")
+
+    _G.GetContainerNumSlots = oldSlots
+    _G.GetContainerItemInfo = oldInfo
+    _G.GetContainerItemLink = oldLink
 end)
 
 test("BuildItem captures full item metadata and stats", function()
@@ -891,9 +985,12 @@ test("scans bags and bank containers into saved snapshots", function()
     assertTrue(#bankSnapshot.items >= 2)
 
     local oldSlots = _G.GetContainerNumSlots
+    local oldContainerSlots = _G.C_Container.GetContainerNumSlots
     _G.GetContainerNumSlots = nil
+    _G.C_Container.GetContainerNumSlots = nil
     local empty = Addon:ScanContainers("bags", { 0 })
     assertEquals(#empty.items, 0)
+    _G.C_Container.GetContainerNumSlots = oldContainerSlots
     _G.GetContainerNumSlots = oldSlots
 end)
 
@@ -1003,6 +1100,7 @@ test("CreateExportFrame wires UI controls and scripts", function()
     Addon:CreateExportFrame()
     local exportFrame = Addon.exportFrame
     assertEquals(exportFrame.width, 720)
+    assertEquals(exportFrame.template, "BackdropTemplate")
     assertFalse(exportFrame:IsShown())
     assertTrue(exportFrame.backdrop ~= nil)
     assertTrue(exportFrame.editBox ~= nil)
