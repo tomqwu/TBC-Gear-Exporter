@@ -590,7 +590,7 @@ addItem({
     itemSubType = "Potion",
     classID = 0,
     subClassID = 1,
-    equipSlot = "",
+    equipSlot = "INVTYPE_NON_EQUIP_IGNORE",
     maxStack = 20,
     icon = "potion-icon",
     sellPrice = 500,
@@ -806,7 +806,14 @@ test("location, source, category, copy, and sizing helpers cover branches", func
     assertEquals(private.SourceLabel(nil), "Unknown")
     assertEquals(private.SourceLabel("guild"), "guild")
 
+    assertTrue(private.IsEquippableSlot("INVTYPE_HEAD"))
+    assertFalse(private.IsEquippableSlot(""))
+    assertFalse(private.IsEquippableSlot(nil))
+    assertFalse(private.IsEquippableSlot("INVTYPE_NON_EQUIP"))
+    assertFalse(private.IsEquippableSlot("INVTYPE_NON_EQUIP_IGNORE"))
     assertEquals(private.CategoryFromInfo(nil, nil, "INVTYPE_HEAD"), "Gear")
+    assertEquals(private.CategoryFromInfo(0, "Consumable", "INVTYPE_NON_EQUIP_IGNORE"), "Consumables")
+    assertEquals(private.CategoryFromInfo(nil, "Consumable", "INVTYPE_NON_EQUIP"), "Consumables")
     assertEquals(private.CategoryFromInfo(7, nil, ""), "Trade Goods")
     assertEquals(private.CategoryFromInfo(nil, "Weapon", ""), "Gear")
     assertEquals(private.CategoryFromInfo(nil, "Armor", ""), "Gear")

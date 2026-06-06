@@ -4,6 +4,7 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+- Fix Gear Only exports so consumables/food with `INVTYPE_NON_EQUIP_IGNORE` are not misclassified as gear.
 - Add export format options for AI Text, JSON, Markdown, and plain Text in the GUI and slash commands.
 - Add `/tbcgear json`, `/tbcgear markdown`, `/tbcgear text`, and `export <format>` command support.
 - Make scan/export behavior explicit: scans persist snapshots and counts into `TBCGearExporterDB`, while export opens a popup from the saved local DB.

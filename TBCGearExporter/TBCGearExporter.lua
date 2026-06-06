@@ -546,8 +546,20 @@ local function SourceLabel(source)
     return source or "Unknown"
 end
 
+local function IsEquippableSlot(equipSlot)
+    if not equipSlot or equipSlot == "" then
+        return false
+    end
+
+    if equipSlot == "INVTYPE_NON_EQUIP" or equipSlot == "INVTYPE_NON_EQUIP_IGNORE" then
+        return false
+    end
+
+    return true
+end
+
 local function CategoryFromInfo(classID, itemType, equipSlot)
-    if equipSlot and equipSlot ~= "" then
+    if IsEquippableSlot(equipSlot) then
         return "Gear"
     end
 
@@ -1713,6 +1725,7 @@ if _G.TBCGearExporterTestMode then
         AppendIndented = AppendIndented,
         LocationLabel = LocationLabel,
         SourceLabel = SourceLabel,
+        IsEquippableSlot = IsEquippableSlot,
         CategoryFromInfo = CategoryFromInfo,
         CopyItems = CopyItems,
     }

@@ -52,7 +52,7 @@ The minimap bag icon opens the export popup on left-click. Right-click scans and
 - `/tbcgear json`, `/tbcgear markdown`, and `/tbcgear text` are shortcuts for exporting all saved data in those formats.
 - `/tbcgear bags` exports bag items only.
 - `/tbcgear bank` exports the last saved bank scan.
-- `/tbcgear gear` exports only gear from bags and bank.
+- `/tbcgear gear` exports only real equippable gear from bags and bank; consumables/food with non-equip placeholder slots are excluded.
 - `/tbcgear scan` saves visible bag data into `TBCGearExporterDB`. If your bank is open, it saves bank data too.
 - `/tbcgear debug` prints the detected bag API, visible bag slots, saved counts, and first visible item link.
 - `/tbcgear clear` clears this character's saved bag and bank snapshots.
