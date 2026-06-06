@@ -805,6 +805,14 @@ test("location, source, category, copy, and sizing helpers cover branches", func
     assertEquals(private.SourceLabel("bank"), "Bank")
     assertEquals(private.SourceLabel(nil), "Unknown")
     assertEquals(private.SourceLabel("guild"), "guild")
+    assertEquals(private.WowheadItemURL(1001), "https://www.wowhead.com/tbc/item=1001")
+    assertEquals(private.WowheadItemURL("1002"), "https://www.wowhead.com/tbc/item=1002")
+    assertEquals(private.WowheadItemURL("item:1002"), nil)
+    assertEquals(private.WowheadItemURL(0), nil)
+    assertEquals(private.ItemWowheadURL({ wowheadUrl = "https://example.test/item" }), "https://example.test/item")
+    assertEquals(private.ItemWowheadURL({ wowhead_url = "https://example.test/snake" }), "https://example.test/snake")
+    assertEquals(private.ItemWowheadURL({ item_id = 1002 }), "https://www.wowhead.com/tbc/item=1002")
+    assertEquals(private.ItemWowheadURL(nil), nil)
 
     assertTrue(private.IsEquippableSlot("INVTYPE_HEAD"))
     assertFalse(private.IsEquippableSlot(""))
@@ -1013,6 +1021,7 @@ test("BuildItem captures full item metadata and stats", function()
     assertEquals(item.category, "Gear")
     assertEquals(item.location, "Backpack slot 1")
     assertEquals(item.qualityName, "Rare")
+    assertEquals(item.wowheadUrl, "https://www.wowhead.com/tbc/item=1001")
     assertTrue(#item.stats >= 4)
     assertContains(item.itemString, "item:1001")
 end)
@@ -1149,6 +1158,7 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(allExport, "\"stats_text\": \"+27 Stamina")
     assertContains(allExport, "\"location\": \"Bank slot 1\"")
     assertContains(allExport, "\"token\": \"ITEM_MOD_STAMINA_SHORT\"")
+    assertContains(allExport, "\"wowhead_url\": \"https://www.wowhead.com/tbc/item=1001\"")
 
     local bankExport = Addon:BuildExport("bank")
     assertContains(bankExport, "Arcane Blade")
@@ -1166,17 +1176,20 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     local jsonExport = Addon:BuildExport("all", "json")
     assertContains(jsonExport, "\"format\": \"tbc_gear_exporter_json_v1\"")
     assertContains(jsonExport, "\"items\": [")
+    assertContains(jsonExport, "\"wowhead_url\": \"https://www.wowhead.com/tbc/item=1002\"")
     assertFalse(jsonExport:find("AI_READY_WOW_TBC_INVENTORY_EXPORT", 1, true), "json export should be pure JSON")
 
     local markdownExport = Addon:BuildExport("all", "markdown")
     assertContains(markdownExport, "# TBC Gear Exporter")
     assertContains(markdownExport, "## Gear")
     assertContains(markdownExport, "**Defender Helm**")
+    assertContains(markdownExport, "Wowhead: https://www.wowhead.com/tbc/item=1001")
 
     local textExport = Addon:BuildExport("all", "text")
     assertContains(textExport, "TBC Gear Exporter")
     assertContains(textExport, "[Gear]")
     assertContains(textExport, "- Defender Helm")
+    assertContains(textExport, "Wowhead: https://www.wowhead.com/tbc/item=1001")
     assertFalse(textExport:find("# TBC Gear Exporter", 1, true), "text export should be plain text")
 
     Addon:ClearProfile()
@@ -1194,7 +1207,7 @@ test("export sorting covers quality, name, location, and unknown category orderi
         { source = "bags", location = "Bag 2 slot 1", count = 1, name = "Zed", quality = 1, qualityName = "Common", itemType = "Mystery", itemID = 9001, category = "Zzz", stats = {} },
         { source = "bags", location = "Bag 1 slot 1", count = 1, name = "Alpha", quality = 1, qualityName = "Common", itemType = "Mystery", itemID = 9002, category = "Aaa", stats = {} },
         { source = "bags", location = "Bag 1 slot 2", count = 1, name = "Alpha", quality = 3, qualityName = "Rare", itemType = "Mystery", itemID = 9003, category = "Aaa", stats = {} },
-        { source = "bags", location = "Bag 1 slot 3", count = 1, name = "Alpha", quality = 3, qualityName = "Rare", itemType = "Mystery", itemID = 9004, category = "Aaa", stats = {} },
+        { source = "bags", location = "Bag 1 slot 3", count = 1, name = "Alpha", quality = 3, qualityName = "Rare", itemType = "Mystery", item_id = 9004, category = "Aaa", stats = {} },
     }
     profile.bank.items = {}
 
@@ -1203,6 +1216,7 @@ test("export sorting covers quality, name, location, and unknown category orderi
     local zzzIndex = export:find("\"name\": \"Zzz\"", 1, true)
     assertTrue(aaaIndex and zzzIndex and aaaIndex < zzzIndex)
     assertTrue(export:find("\"item_id\": 9003", 1, true) < export:find("\"item_id\": 9002", 1, true))
+    assertContains(export, "\"wowhead_url\": \"https://www.wowhead.com/tbc/item=9004\"")
 end)
 
 test("RefreshExport no-ops without frame and updates edit box with frame", function()
