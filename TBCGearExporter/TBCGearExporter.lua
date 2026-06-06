@@ -58,6 +58,17 @@ local QUALITY_LABELS = {
     [7] = "Heirloom",
 }
 
+local QUALITY_COLOR_HEX = {
+    [0] = "9D9D9D",
+    [1] = "FFFFFF",
+    [2] = "1EFF00",
+    [3] = "0070DD",
+    [4] = "A335EE",
+    [5] = "FF8000",
+    [6] = "E6CC80",
+    [7] = "00CCFF",
+}
+
 local EXPORT_FORMAT_LABELS = {
     ai = "AI Text",
     json = "JSON",
@@ -334,6 +345,164 @@ local function ParseItemName(link)
     end
 
     return link:match("%[(.-)%]")
+end
+
+local function NormalizeQualityColorHex(color)
+    if not color then
+        return nil
+    end
+
+    color = tostring(color)
+
+    if color:sub(1, 4):lower() == "|cff" then
+        color = color:sub(5)
+    end
+
+    color = color:gsub("^#", "")
+    color = color:gsub("|r$", "")
+
+    if #color == 8 and color:match("^%x+$") then
+        color = color:sub(3)
+    end
+
+    if #color == 6 and color:match("^%x+$") then
+        return "#" .. color:upper()
+    end
+
+    return nil
+end
+
+local function ColorChannelToByte(channel)
+    if type(channel) ~= "number" then
+        return nil
+    end
+
+    channel = math.floor((channel * 255) + 0.5)
+
+    if channel < 0 then
+        return 0
+    end
+
+    if channel > 255 then
+        return 255
+    end
+
+    return channel
+end
+
+local function QualityColorHex(quality)
+    local qualityColor = _G and _G.ITEM_QUALITY_COLORS and _G.ITEM_QUALITY_COLORS[quality]
+
+    if type(qualityColor) == "table" then
+        local normalized = NormalizeQualityColorHex(qualityColor.hex)
+        if normalized then
+            return normalized
+        end
+
+        local red = ColorChannelToByte(qualityColor.r)
+        local green = ColorChannelToByte(qualityColor.g)
+        local blue = ColorChannelToByte(qualityColor.b)
+
+        if red and green and blue then
+            return string.format("#%02X%02X%02X", red, green, blue)
+        end
+    elseif type(qualityColor) == "string" then
+        local normalized = NormalizeQualityColorHex(qualityColor)
+        if normalized then
+            return normalized
+        end
+    end
+
+    return NormalizeQualityColorHex(QUALITY_COLOR_HEX[quality])
+end
+
+local function ParseItemLinkColorHex(link)
+    if not link then
+        return nil
+    end
+
+    return NormalizeQualityColorHex(tostring(link):match("|c(%x%x%x%x%x%x%x%x)"))
+end
+
+local function ItemQualityColorHex(item)
+    if not item then
+        return nil
+    end
+
+    return NormalizeQualityColorHex(item.qualityColor or item.quality_color)
+        or QualityColorHex(item.quality or item.quality_id)
+        or ParseItemLinkColorHex(item.link or item.item_link)
+end
+
+local function ColorizeItemName(name, colorHex)
+    local normalized = NormalizeQualityColorHex(colorHex)
+    name = tostring(name or "Unknown Item")
+
+    if normalized then
+        return "|cff" .. normalized:sub(2):lower() .. name .. "|r"
+    end
+
+    return name
+end
+
+local function ItemColoredName(item)
+    if not item then
+        return ColorizeItemName(nil, nil)
+    end
+
+    return item.nameColored or item.name_colored or ColorizeItemName(item.name or "Unknown Item", ItemQualityColorHex(item))
+end
+
+local HTML_ESCAPE_CHARS = {
+    ["&"] = "&amp;",
+    ["<"] = "&lt;",
+    [">"] = "&gt;",
+    ["\""] = "&quot;",
+}
+
+local function HtmlEscape(value)
+    return tostring(value or ""):gsub("[&<>\"]", HTML_ESCAPE_CHARS)
+end
+
+local function MarkdownItemName(item)
+    local name = item and item.name or "Unknown Item"
+    local colorHex = ItemQualityColorHex(item)
+
+    if colorHex then
+        return "<span style=\"color:" .. colorHex .. "\"><strong>" .. HtmlEscape(name) .. "</strong></span>"
+    end
+
+    return "**" .. tostring(name) .. "**"
+end
+
+local function QualityDisplay(item)
+    local label = tostring(item and item.qualityName or "Unknown")
+    local colorHex = ItemQualityColorHex(item)
+
+    if colorHex then
+        return label .. " (" .. colorHex .. ")"
+    end
+
+    return label
+end
+
+local function ItemLevelDisplay(item)
+    if item and item.itemLevel then
+        return tostring(item.itemLevel)
+    end
+
+    return "unknown"
+end
+
+local function ItemTypeDisplay(item)
+    local itemType = item and item.itemType or "Unknown"
+    local itemSubType = item and item.itemSubType
+
+    if itemSubType and itemSubType ~= "" then
+        return tostring(itemType) .. " / " .. tostring(itemSubType)
+    end
+
+    return tostring(itemType)
 end
 
 local function QualityName(quality)
@@ -767,6 +936,8 @@ function Addon:BuildItem(source, bagID, slotID)
     quality = quality or containerQuality
 
     local itemLinkForExport = resolvedLink or link
+    local itemName = name or ParseItemName(link) or (itemID and ("Item " .. itemID)) or "Unknown Item"
+    local qualityColor = QualityColorHex(quality) or ParseItemLinkColorHex(itemLinkForExport)
 
     return {
         source = source,
@@ -777,10 +948,12 @@ function Addon:BuildItem(source, bagID, slotID)
         itemString = ParseItemString(link),
         link = itemLinkForExport,
         wowheadUrl = WowheadItemURL(itemID),
-        name = name or ParseItemName(link) or (itemID and ("Item " .. itemID)) or "Unknown Item",
+        name = itemName,
+        nameColored = ColorizeItemName(itemName, qualityColor),
         count = count or 1,
         quality = quality,
         qualityName = QualityName(quality),
+        qualityColor = qualityColor,
         itemLevel = itemLevel,
         requiredLevel = requiredLevel,
         itemType = itemType,
@@ -1014,8 +1187,10 @@ function Addon:BuildMarkdownExport(scope, profile, items, categories, buckets)
         for itemIndex = 1, #bucket do
             local item = bucket[itemIndex]
             local wowheadUrl = ItemWowheadURL(item)
-            local line = "- **" .. tostring(item.name or "Unknown Item") .. "** x" .. tostring(item.count or 1)
-                .. " | " .. tostring(item.qualityName or "Unknown")
+            local line = "- " .. MarkdownItemName(item) .. " x" .. tostring(item.count or 1)
+                .. " | " .. QualityDisplay(item)
+                .. " | iLvl: " .. ItemLevelDisplay(item)
+                .. " | Type: " .. ItemTypeDisplay(item)
                 .. " | " .. SourceLabel(item.source)
                 .. " | " .. tostring(item.location or "Unknown Location")
 
@@ -1057,9 +1232,11 @@ function Addon:BuildTextExport(scope, profile, items, categories, buckets)
         for itemIndex = 1, #bucket do
             local item = bucket[itemIndex]
             local wowheadUrl = ItemWowheadURL(item)
-            local line = "- " .. tostring(item.name or "Unknown Item")
+            local line = "- " .. ItemColoredName(item)
                 .. " x" .. tostring(item.count or 1)
-                .. " | " .. tostring(item.qualityName or "Unknown")
+                .. " | " .. QualityDisplay(item)
+                .. " | iLvl: " .. ItemLevelDisplay(item)
+                .. " | Type: " .. ItemTypeDisplay(item)
                 .. " | " .. SourceLabel(item.source)
                 .. " | " .. tostring(item.location or "Unknown Location")
 
@@ -1209,6 +1386,7 @@ function Addon:BuildExport(scope, format)
             local itemID = item.itemID or item.item_id
             local statsText = FormatStats(item.stats)
             local wowheadUrl = ItemWowheadURL(item)
+            local qualityColor = ItemQualityColorHex(item)
             itemPosition = itemPosition + 1
 
             AppendIndented(lines, 4, "{")
@@ -1220,11 +1398,13 @@ function Addon:BuildExport(scope, format)
             AppendIndented(lines, 6, JsonField("slot", item.slot, true))
             AppendIndented(lines, 6, JsonField("count", item.count or 1, true))
             AppendIndented(lines, 6, JsonField("name", item.name or "Unknown Item", true))
+            AppendIndented(lines, 6, JsonField("name_colored", ItemColoredName(item), true))
             AppendIndented(lines, 6, JsonField("item_id", itemID, true))
             AppendIndented(lines, 6, JsonField("item_string", item.itemString, true))
             AppendIndented(lines, 6, JsonField("item_link", item.link, true))
             AppendIndented(lines, 6, JsonField("wowhead_url", wowheadUrl, true))
             AppendIndented(lines, 6, JsonField("quality", item.qualityName or "Unknown", true))
+            AppendIndented(lines, 6, JsonField("quality_color", qualityColor, true))
             AppendIndented(lines, 6, JsonField("quality_id", item.quality, true))
             AppendIndented(lines, 6, JsonField("item_level", item.itemLevel, true))
             AppendIndented(lines, 6, JsonField("required_level", item.requiredLevel, true))
@@ -1750,6 +1930,18 @@ if _G.TBCGearExporterTestMode then
         ItemWowheadURL = ItemWowheadURL,
         ParseItemString = ParseItemString,
         ParseItemName = ParseItemName,
+        NormalizeQualityColorHex = NormalizeQualityColorHex,
+        ColorChannelToByte = ColorChannelToByte,
+        QualityColorHex = QualityColorHex,
+        ParseItemLinkColorHex = ParseItemLinkColorHex,
+        ItemQualityColorHex = ItemQualityColorHex,
+        ColorizeItemName = ColorizeItemName,
+        ItemColoredName = ItemColoredName,
+        HtmlEscape = HtmlEscape,
+        MarkdownItemName = MarkdownItemName,
+        QualityDisplay = QualityDisplay,
+        ItemLevelDisplay = ItemLevelDisplay,
+        ItemTypeDisplay = ItemTypeDisplay,
         QualityName = QualityName,
         TitleCase = TitleCase,
         CleanStatLabel = CleanStatLabel,

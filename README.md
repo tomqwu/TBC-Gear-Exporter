@@ -5,11 +5,11 @@
 ![WoW AddOn](https://img.shields.io/badge/WoW-TBC%20Classic-C69B6D)
 ![TBC Anniversary](https://img.shields.io/badge/client-Anniversary-0E8A16)
 ![Tests](https://img.shields.io/badge/tests-30%20passing-brightgreen)
-![Coverage](https://img.shields.io/badge/coverage-99.44%25-brightgreen)
+![Coverage](https://img.shields.io/badge/coverage-99.42%25-brightgreen)
 ![Coverage Gate](https://img.shields.io/badge/coverage%20gate-99%25-blue)
 ![Local Install](https://img.shields.io/badge/local%20install-PowerShell-5391FE?logo=powershell&logoColor=white)
 
-A small World of Warcraft TBC Classic addon that saves the current character's bag and bank items, groups them into categories, lists item stats, adds TBC Wowhead links for every item, and shows a GUI with an auto-selected AI-ready text export.
+A small World of Warcraft TBC Classic addon that saves the current character's bag and bank items, groups them into categories, lists item stats, adds TBC Wowhead links and quality colors for every item, and shows a GUI with an auto-selected AI-ready text export.
 
 ## Install
 
@@ -57,7 +57,9 @@ The minimap bag icon opens the export popup on left-click. Right-click scans and
 - `/tbcgear debug` prints the detected bag API, visible bag slots, saved counts, and first visible item link.
 - `/tbcgear clear` clears this character's saved bag and bank snapshots.
 
-The export panel pops up from saved `TBCGearExporterDB` data. It shows saved bag/bank counts, scan/debug controls, an `Export` action, format buttons for **AI**, **JSON**, **Markdown**, and **Text**, and an auto-selected text box containing character info, local DB metadata, scan timestamps, categories, items, item links, TBC Wowhead URLs, and stat arrays.
+The export panel pops up from saved `TBCGearExporterDB` data. It shows saved bag/bank counts, scan/debug controls, an `Export` action, format buttons for **AI**, **JSON**, **Markdown**, and **Text**, and an auto-selected text box containing character info, local DB metadata, scan timestamps, categories, items, item links, TBC Wowhead URLs, item level, quality color, colored item names, and stat arrays.
+
+Item names use WoW quality colors, such as rare blue and epic purple. Item level remains a numeric field, while item type/category remains a separate classification for AI analysis.
 
 On login, the addon prints a loaded message with item and slot counts. Opening a bag scans bag contents and prints a debug line in chat. Opening the bank scans bank contents and prints a matching debug line.
 
