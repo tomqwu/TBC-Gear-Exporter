@@ -4,8 +4,8 @@
 ![Lua 5.1](https://img.shields.io/badge/Lua-5.1-2C2D72?logo=lua&logoColor=white)
 ![WoW AddOn](https://img.shields.io/badge/WoW-TBC%20Classic-C69B6D)
 ![TBC Anniversary](https://img.shields.io/badge/client-Anniversary-0E8A16)
-![Tests](https://img.shields.io/badge/tests-30%20passing-brightgreen)
-![Coverage](https://img.shields.io/badge/coverage-99.42%25-brightgreen)
+![Tests](https://img.shields.io/badge/tests-31%20passing-brightgreen)
+![Coverage](https://img.shields.io/badge/coverage-99.31%25-brightgreen)
 ![Coverage Gate](https://img.shields.io/badge/coverage%20gate-99%25-blue)
 ![Local Install](https://img.shields.io/badge/local%20install-PowerShell-5391FE?logo=powershell&logoColor=white)
 
@@ -38,6 +38,8 @@ When I create a GitHub release or tag from this workspace, I also run that local
 /tbcgear text    -- open the export popup in plain text format
 /tbcgear debug   -- print bag API, slot, and first item-link diagnostics
 /tbcgear gear    -- export only gear from bags and saved bank snapshot
+/tbcgear gear epic -- export only epic-quality gear
+/tbcgear rare+ text -- export rare-or-better items in plain text
 ```
 
 Open the bank once and scan while it is open so the addon can save the bank snapshot. WoW only exposes bank contents to addons while the bank is open.
@@ -53,11 +55,13 @@ The minimap bag icon opens the export popup on left-click. Right-click scans and
 - `/tbcgear bags` exports bag items only.
 - `/tbcgear bank` exports the last saved bank scan.
 - `/tbcgear gear` exports only real equippable gear from bags and bank; consumables/food with non-equip placeholder slots are excluded.
+- `/tbcgear gear epic` exports only epic-quality gear.
+- `/tbcgear rare+`, `/tbcgear epic`, and `/tbcgear export gear epic json` apply quality filters before export.
 - `/tbcgear scan` saves visible bag data into `TBCGearExporterDB`. If your bank is open, it saves bank data too.
 - `/tbcgear debug` prints the detected bag API, visible bag slots, saved counts, and first visible item link.
 - `/tbcgear clear` clears this character's saved bag and bank snapshots.
 
-The export panel pops up from saved `TBCGearExporterDB` data. It shows saved bag/bank counts, scan/debug controls, an `Export` action, format buttons for **AI**, **JSON**, **Markdown**, and **Text**, and an auto-selected text box containing character info, local DB metadata, scan timestamps, categories, items, item links, TBC Wowhead URLs, item level, quality color, colored item names, and stat arrays.
+The export panel pops up from saved `TBCGearExporterDB` data. It shows saved bag/bank counts, scan/debug controls, an `Export` action, format buttons for **AI**, **JSON**, **Markdown**, and **Text**, filter buttons for **All Q**, **Rare+**, **Epic**, and **Gear Epic**, and an auto-selected text box containing character info, local DB metadata, scan timestamps, categories, export filters, items, item links, TBC Wowhead URLs, item level, quality color, colored item names, and stat arrays.
 
 Item names use WoW quality colors, such as rare blue and epic purple. Item level remains a numeric field, while item type/category remains a separate classification for AI analysis.
 
