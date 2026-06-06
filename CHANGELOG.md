@@ -4,6 +4,8 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+- Make scan/export behavior explicit: scans persist snapshots and counts into `TBCGearExporterDB`, while export opens a popup from the saved local DB.
+- Add a dedicated `Export` GUI action for opening/selecting saved AI-ready text without doing another hidden scan.
 - Prefer `C_Container` over legacy bag APIs, fixing clients where legacy calls exist but report zero slots.
 - Add visible scan count messages and `/tbcgear debug` diagnostics for API, slot, and item-link visibility.
 - Rework the export GUI into a compact opaque panel with item counts, clearer controls, debug, and select actions.

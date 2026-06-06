@@ -1037,6 +1037,8 @@ test("scans bags and bank containers into saved snapshots", function()
     resetRuntimeState(Addon)
     local bagSnapshot = Addon:ScanBags()
     assertTrue(#bagSnapshot.items >= 3)
+    assertEquals(Addon:GetProfile().localDB.bagItemCount, #bagSnapshot.items)
+    assertEquals(Addon:GetProfile().localDB.name, "TBCGearExporterDB")
     assertEquals(Addon:GetBagContainers()[1], 0)
 
     local bankContainers = Addon:GetBankContainers()
@@ -1045,6 +1047,7 @@ test("scans bags and bank containers into saved snapshots", function()
 
     local bankSnapshot = Addon:ScanBank()
     assertTrue(#bankSnapshot.items >= 2)
+    assertEquals(Addon:GetProfile().localDB.bankItemCount, #bankSnapshot.items)
 
     local oldSlots = _G.GetContainerNumSlots
     local oldContainerSlots = _G.C_Container.GetContainerNumSlots
@@ -1125,6 +1128,9 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(allExport, "\"character\": {")
     assertContains(allExport, "\"name\": \"Tester\"")
     assertContains(allExport, "\"realm\": \"Test Realm\"")
+    assertContains(allExport, "\"local_db\": {")
+    assertContains(allExport, "\"name\": \"TBCGearExporterDB\"")
+    assertContains(allExport, "\"bag_item_count\":")
     assertContains(allExport, "\"name\": \"Gear\"")
     assertContains(allExport, "\"name\": \"Consumables\"")
     assertContains(allExport, "\"stats_text\": \"+27 Stamina")
@@ -1179,7 +1185,7 @@ test("RefreshExport no-ops without frame and updates edit box with frame", funct
     assertContains(Addon.exportFrame.editBox.text, "Super Mana Potion")
     assertTrue(Addon.exportFrame.editBox.highlighted)
     assertTrue(Addon.exportFrame.editBox.focused)
-    assertEquals(Addon.exportFrame.status.text, "Selected export text is ready. Press Ctrl+C to copy. Use Debug if counts stay at zero.")
+    assertEquals(Addon.exportFrame.status.text, "Export generated from saved local DB. Press Ctrl+C to copy. Use Debug if counts stay at zero.")
     assertContains(Addon.exportFrame.summary.text, "Bags:")
 end)
 
@@ -1243,9 +1249,11 @@ test("minimap button opens export, scans on right click, and shows tooltip", fun
     button.scripts.OnLeave(button)
     assertFalse(GameTooltip.shown)
 
+    Addon:ScanBags()
     button.scripts.OnClick(button, "LeftButton")
     assertTrue(Addon.exportFrame:IsShown())
     assertEquals(Addon.exportScope, "all")
+    assertAnyMessageContains("Export opened from local DB")
 
     button.scripts.OnClick(button, "RightButton")
     assertAnyMessageContains("Bags scanned")
@@ -1278,23 +1286,26 @@ test("export frame buttons scan and change scopes", function()
     findButtonByText("Scan Bags").scripts.OnClick()
     assertAnyMessageContains("Bags scanned")
 
-    findButtonByText("All").scripts.OnClick()
+    findButtonByText("Export").scripts.OnClick()
     assertEquals(Addon.exportScope, "all")
+    assertAnyMessageContains("Export opened from local DB")
 
     findButtonByText("Bags").scripts.OnClick()
     assertEquals(Addon.exportScope, "bags")
+    assertAnyMessageContains("Export opened from local DB")
 
     findButtonByText("Bank").scripts.OnClick()
     assertEquals(Addon.exportScope, "bank")
-    assertContains(mock.messages[#mock.messages], "last saved bank scan")
+    assertAnyMessageContains("Export opened from local DB")
 
     Addon.bankOpen = true
     findButtonByText("Bank").scripts.OnClick()
     assertEquals(Addon.exportScope, "bank")
-    assertAnyMessageContains("Bank scanned")
+    assertAnyMessageContains("Export opened from local DB")
 
     findButtonByText("Gear").scripts.OnClick()
     assertEquals(Addon.exportScope, "gear")
+    assertAnyMessageContains("Export opened from local DB")
 
     findButtonByText("Debug").scripts.OnClick()
     assertAnyMessageContains("API=")
@@ -1317,6 +1328,7 @@ test("slash commands cover export modes, scan modes, clear, help, and aliases", 
 
     Addon:HandleSlash("")
     assertEquals(Addon.exportScope, "all")
+    assertAnyMessageContains("Export opened from local DB")
     Addon:HandleSlash("gui")
     assertEquals(Addon.exportScope, "all")
     Addon:HandleSlash("show")

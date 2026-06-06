@@ -609,6 +609,15 @@ function Addon:GetProfile()
     profile.realm = realm
     profile.bags = profile.bags or { updatedAt = 0, items = {} }
     profile.bank = profile.bank or { updatedAt = 0, items = {} }
+    profile.localDB = profile.localDB or {
+        name = DB_NAME,
+        version = 1,
+        savedAt = 0,
+        bagItemCount = #(profile.bags.items or {}),
+        bankItemCount = #(profile.bank.items or {}),
+    }
+    profile.localDB.name = DB_NAME
+    profile.localDB.version = 1
 
     return profile
 end
@@ -765,21 +774,39 @@ function Addon:GetBankContainers()
     return containers
 end
 
-function Addon:ScanBags()
+function Addon:SaveSnapshot(source, snapshot)
     local profile = self:GetProfile()
-    profile.bags = self:ScanContainers("bags", self:GetBagContainers())
-    return profile.bags
+    profile.localDB = profile.localDB or { name = DB_NAME, version = 1 }
+    profile.localDB.name = DB_NAME
+    profile.localDB.version = 1
+    profile.localDB.savedAt = Now()
+
+    if source == "bags" then
+        profile.bags = snapshot
+        profile.localDB.bagSavedAt = snapshot.updatedAt
+        profile.localDB.bagItemCount = #(snapshot.items or {})
+    elseif source == "bank" then
+        profile.bank = snapshot
+        profile.localDB.bankSavedAt = snapshot.updatedAt
+        profile.localDB.bankItemCount = #(snapshot.items or {})
+    end
+
+    return snapshot
+end
+
+function Addon:ScanBags()
+    local snapshot = self:ScanContainers("bags", self:GetBagContainers())
+    return self:SaveSnapshot("bags", snapshot)
 end
 
 function Addon:ScanBank()
-    local profile = self:GetProfile()
-    profile.bank = self:ScanContainers("bank", self:GetBankContainers())
-    return profile.bank
+    local snapshot = self:ScanContainers("bank", self:GetBankContainers())
+    return self:SaveSnapshot("bank", snapshot)
 end
 
 function Addon:FormatScanSummary(label, snapshot)
     snapshot = snapshot or { items = {}, totalSlots = 0, api = ContainerApiName() }
-    return label .. ": " .. #(snapshot.items or {}) .. " items, " .. tostring(snapshot.totalSlots or 0) .. " slots via " .. tostring(snapshot.api or "unknown")
+    return label .. ": " .. #(snapshot.items or {}) .. " items, " .. tostring(snapshot.totalSlots or 0) .. " slots via " .. tostring(snapshot.api or "unknown") .. ", saved to local DB"
 end
 
 function Addon:ScanBagsAndReport(label)
@@ -982,6 +1009,12 @@ function Addon:BuildExport(scope)
     AppendIndented(lines, 4, JsonField("name", profile.player or "Unknown Player", true))
     AppendIndented(lines, 4, JsonField("realm", profile.realm or "Unknown Realm", false))
     AppendIndented(lines, 2, "},")
+    AppendIndented(lines, 2, "\"local_db\": {")
+    AppendIndented(lines, 4, JsonField("name", DB_NAME, true))
+    AppendIndented(lines, 4, JsonField("saved_at", FormatTime(profile.localDB and profile.localDB.savedAt), true))
+    AppendIndented(lines, 4, JsonField("bag_item_count", profile.localDB and profile.localDB.bagItemCount, true))
+    AppendIndented(lines, 4, JsonField("bank_item_count", profile.localDB and profile.localDB.bankItemCount, false))
+    AppendIndented(lines, 2, "},")
     AppendIndented(lines, 2, "\"export\": {")
     AppendIndented(lines, 4, JsonField("scope", scope, true))
     AppendIndented(lines, 4, JsonField("scope_title", ScopeTitle(scope), true))
@@ -1091,7 +1124,7 @@ function Addon:RefreshExport(scope)
         self.exportFrame.summary:SetText("Bags: " .. bagCount .. " items   Bank: " .. bankCount .. " items   Scope: " .. ScopeTitle(self.exportScope))
     end
 
-    self.exportFrame.status:SetText("Selected export text is ready. Press Ctrl+C to copy. Use Debug if counts stay at zero.")
+    self.exportFrame.status:SetText("Export generated from saved local DB. Press Ctrl+C to copy. Use Debug if counts stay at zero.")
 end
 
 function Addon:CreateExportFrame()
@@ -1152,21 +1185,20 @@ function Addon:CreateExportFrame()
         Addon:RefreshExport()
     end)
 
-    local all = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
-    SetFrameSize(all, 62, 24)
-    all:SetPoint("LEFT", scan, "RIGHT", 8, 0)
-    all:SetText("All")
-    all:SetScript("OnClick", function()
-        Addon:RefreshExport("all")
+    local export = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
+    SetFrameSize(export, 78, 24)
+    export:SetPoint("LEFT", scan, "RIGHT", 8, 0)
+    export:SetText("Export")
+    export:SetScript("OnClick", function()
+        Addon:ExportSaved("all")
     end)
 
     local bags = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
     SetFrameSize(bags, 62, 24)
-    bags:SetPoint("LEFT", all, "RIGHT", 8, 0)
+    bags:SetPoint("LEFT", export, "RIGHT", 8, 0)
     bags:SetText("Bags")
     bags:SetScript("OnClick", function()
-        Addon:ScanBagsAndReport("Bags scanned")
-        Addon:RefreshExport("bags")
+        Addon:ExportSaved("bags")
     end)
 
     local bank = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
@@ -1174,12 +1206,7 @@ function Addon:CreateExportFrame()
     bank:SetPoint("LEFT", bags, "RIGHT", 8, 0)
     bank:SetText("Bank")
     bank:SetScript("OnClick", function()
-        if Addon.bankOpen then
-            Addon:ScanBankAndReport("Bank scanned")
-        else
-            Addon:Print("Showing the last saved bank scan. Open your bank to refresh it.")
-        end
-        Addon:RefreshExport("bank")
+        Addon:ExportSaved("bank")
     end)
 
     local gear = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
@@ -1187,7 +1214,7 @@ function Addon:CreateExportFrame()
     gear:SetPoint("LEFT", bank, "RIGHT", 8, 0)
     gear:SetText("Gear")
     gear:SetScript("OnClick", function()
-        Addon:RefreshExport("gear")
+        Addon:ExportSaved("gear")
     end)
 
     local debugButton = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
@@ -1250,6 +1277,12 @@ function Addon:ShowExport(scope)
     self:RefreshExport(scope)
 end
 
+function Addon:ExportSaved(scope)
+    self:ShowExport(scope or "all")
+    local bagCount, bankCount = self:SavedItemCounts()
+    self:Print("Export opened from local DB: " .. bagCount .. " bag items, " .. bankCount .. " bank items.")
+end
+
 function Addon:CreateMinimapButton()
     if self.minimapButton then
         return self.minimapButton
@@ -1294,16 +1327,15 @@ function Addon:CreateMinimapButton()
             return
         end
 
-        Addon:ScanBagsAndReport("Bags scanned")
-        Addon:ShowExport("all")
+        Addon:ExportSaved("all")
     end)
 
     button:SetScript("OnEnter", function(self)
         if GameTooltip then
             GameTooltip:SetOwner(self, "ANCHOR_LEFT")
             GameTooltip:SetText("TBC Gear Exporter")
-            GameTooltip:AddLine("Left-click: open AI export", 1, 1, 1)
-            GameTooltip:AddLine("Right-click: scan bags and bank if open", 0.8, 0.8, 0.8)
+            GameTooltip:AddLine("Left-click: export saved local DB", 1, 1, 1)
+            GameTooltip:AddLine("Right-click: scan and save bags/bank", 0.8, 0.8, 0.8)
             GameTooltip:Show()
         end
     end)
@@ -1324,43 +1356,41 @@ function Addon:ClearProfile()
     local profile = self:GetProfile()
     profile.bags = { updatedAt = 0, items = {} }
     profile.bank = { updatedAt = 0, items = {} }
+    profile.localDB = {
+        name = DB_NAME,
+        version = 1,
+        savedAt = 0,
+        bagSavedAt = 0,
+        bankSavedAt = 0,
+        bagItemCount = 0,
+        bankItemCount = 0,
+    }
 end
 
 function Addon:ShowHelp()
-    self:Print("Commands: /tbcgear gui, /tbcgear bags, /tbcgear bank, /tbcgear gear, /tbcgear scan, /tbcgear debug, /tbcgear clear")
+    self:Print("Commands: /tbcgear export, /tbcgear scan, /tbcgear bags, /tbcgear bank, /tbcgear gear, /tbcgear debug, /tbcgear clear")
 end
 
 function Addon:HandleSlash(message)
     local command = Trim(message):lower()
 
     if command == "" or command == "gui" or command == "export" or command == "show" then
-        self:ScanBagsAndReport("Bags scanned")
-        self:ShowExport("all")
+        self:ExportSaved("all")
         return
     end
 
     if command == "bags" then
-        self:ScanBagsAndReport("Bags scanned")
-        self:ShowExport("bags")
+        self:ExportSaved("bags")
         return
     end
 
     if command == "bank" then
-        if self.bankOpen then
-            self:ScanBankAndReport("Bank scanned")
-        else
-            self:Print("Showing the last saved bank scan. Open your bank to refresh it.")
-        end
-        self:ShowExport("bank")
+        self:ExportSaved("bank")
         return
     end
 
     if command == "gear" then
-        self:ScanBagsAndReport("Bags scanned")
-        if self.bankOpen then
-            self:ScanBankAndReport("Bank scanned")
-        end
-        self:ShowExport("gear")
+        self:ExportSaved("gear")
         return
     end
 
