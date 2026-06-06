@@ -7,6 +7,7 @@ local DB_NAME = "TBCGearExporterDB"
 local BANK_CONTAINER_ID = BANK_CONTAINER or -1
 local PLAYER_BAG_SLOTS = NUM_BAG_SLOTS or 4
 local BANK_BAG_SLOTS = NUM_BANKBAGSLOTS or 7
+local MINIMAP_ICON_TEXTURE = "Interface\\Icons\\INV_Misc_Bag_10_Blue"
 
 local CLASS_CATEGORY = {
     [0] = "Consumables",
@@ -1055,6 +1056,77 @@ function Addon:ShowExport(scope)
     self:RefreshExport(scope)
 end
 
+function Addon:CreateMinimapButton()
+    if self.minimapButton then
+        return self.minimapButton
+    end
+
+    if not Minimap then
+        return nil
+    end
+
+    local button = CreateFrame("Button", "TBCGearExporterMinimapButton", Minimap)
+    SetFrameSize(button, 32, 32)
+    button:SetPoint("TOPLEFT", Minimap, "TOPLEFT", 52, -4)
+    button:SetFrameStrata("MEDIUM")
+    button:EnableMouse(true)
+
+    if button.RegisterForClicks then
+        button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    end
+
+    if button.SetFrameLevel and Minimap.GetFrameLevel then
+        button:SetFrameLevel(Minimap:GetFrameLevel() + 8)
+    end
+
+    local icon = button:CreateTexture(nil, "BACKGROUND")
+    SetFrameSize(icon, 20, 20)
+    icon:SetPoint("CENTER", 0, 0)
+    icon:SetTexture(MINIMAP_ICON_TEXTURE)
+
+    local border = button:CreateTexture(nil, "OVERLAY")
+    SetFrameSize(border, 53, 53)
+    border:SetPoint("TOPLEFT", 0, 0)
+    border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
+
+    button:SetScript("OnClick", function(_, mouseButton)
+        if mouseButton == "RightButton" then
+            Addon:ScanBags()
+            if Addon.bankOpen then
+                Addon:ScanBank()
+                Addon:Print("Bags and bank scanned.")
+            else
+                Addon:Print("Bags scanned. Open your bank and scan again to update bank items.")
+            end
+            return
+        end
+
+        Addon:ScanBags()
+        Addon:ShowExport("all")
+    end)
+
+    button:SetScript("OnEnter", function(self)
+        if GameTooltip then
+            GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+            GameTooltip:SetText("TBC Gear Exporter")
+            GameTooltip:AddLine("Left-click: open AI export", 1, 1, 1)
+            GameTooltip:AddLine("Right-click: scan bags and bank if open", 0.8, 0.8, 0.8)
+            GameTooltip:Show()
+        end
+    end)
+
+    button:SetScript("OnLeave", function()
+        if GameTooltip then
+            GameTooltip:Hide()
+        end
+    end)
+
+    button.icon = icon
+    button.border = border
+    self.minimapButton = button
+    return button
+end
+
 function Addon:ClearProfile()
     local profile = self:GetProfile()
     profile.bags = { updatedAt = 0, items = {} }
@@ -1154,8 +1226,9 @@ function Addon:OnEvent(eventName, ...)
     end
 
     if eventName == "PLAYER_LOGIN" then
+        self:CreateMinimapButton()
         self:ScanBags()
-        self:Print("Loaded. Use /tbcgear export to copy your saved bags and bank.")
+        self:Print("Loaded. Click the minimap bag icon or use /tbcgear export to copy your saved bags and bank.")
         return
     end
 

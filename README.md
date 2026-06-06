@@ -4,8 +4,8 @@
 ![Lua 5.1](https://img.shields.io/badge/Lua-5.1-2C2D72?logo=lua&logoColor=white)
 ![WoW AddOn](https://img.shields.io/badge/WoW-TBC%20Classic-C69B6D)
 ![TBC Anniversary](https://img.shields.io/badge/client-Anniversary-0E8A16)
-![Tests](https://img.shields.io/badge/tests-24%20passing-brightgreen)
-![Coverage](https://img.shields.io/badge/coverage-99.54%25-brightgreen)
+![Tests](https://img.shields.io/badge/tests-26%20passing-brightgreen)
+![Coverage](https://img.shields.io/badge/coverage-99.57%25-brightgreen)
 ![Coverage Gate](https://img.shields.io/badge/coverage%20gate-99%25-blue)
 ![Local Install](https://img.shields.io/badge/local%20install-PowerShell-5391FE?logo=powershell&logoColor=white)
 
@@ -18,7 +18,7 @@ A small World of Warcraft TBC Classic addon that saves the current character's b
    - **TBC Classic / Anniversary**: `<WoW install>/_anniversary_/Interface/AddOns/`
    - **Windows example**: `F:\World of Warcraft\_anniversary_\Interface\AddOns\TBCGearExporter`
 3. Restart the game or run `/reload`.
-4. Enable **Load out of date AddOns** if your TBC Anniversary client uses a newer interface number than the one in `TBCGearExporter.toc`.
+4. Look for the small bag icon on the minimap, or run `/tbcgear gui`.
 
 For this local machine, install or refresh the Anniversary client copy with:
 
@@ -38,6 +38,8 @@ When I create a GitHub release or tag from this workspace, I also run that local
 
 Open the bank once after installing so the addon can capture the bank snapshot. WoW only exposes bank contents to addons while the bank is open.
 
+The minimap bag icon opens the export GUI on left-click. Right-click scans bags, and also scans bank contents if the bank is currently open.
+
 ## Commands
 
 - `/tbcgear gui` opens the export GUI.
@@ -50,7 +52,7 @@ Open the bank once after installing so the addon can capture the bank snapshot. 
 
 The export box auto-selects text formatted for AI tools: a short instruction header followed by structured `DATA_JSON` containing character info, scan timestamps, categories, items, and stat arrays.
 
-Opening a bag scans bag contents and prints a debug line in chat. Opening the bank scans bank contents and prints a matching debug line.
+On login, the addon prints a loaded message in chat. Opening a bag scans bag contents and prints a debug line in chat. Opening the bank scans bank contents and prints a matching debug line.
 
 ## Tests
 
