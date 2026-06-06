@@ -173,6 +173,82 @@ local AI_OUTPUT_REQUESTS = {
     "Ask concise follow-up questions only when the exported data cannot determine the answer.",
 }
 
+local CLASS_ROLE_CONTEXT_ZHCN = {
+    DRUID = {
+        "熊形态野性坦克：重点评估护甲、耐力、防御/韧性、躲闪/敏捷、仇恨属性、命中/精准、野性攻击强度武器、坦克饰品，以及生存和仇恨之间的取舍。",
+        "猎豹野性输出：重点评估敏捷、力量、攻击强度、暴击、命中/精准、武器的野性攻击强度、套装协同，以及这些装备是否会和熊坦减伤装冲突。",
+        "恢复治疗：重点评估治疗效果、精神、智力、5 秒回蓝、急速、续航，以及治疗武器、副手、戒指、饰品选择。",
+        "平衡法系输出：重点评估法术伤害、法术命中、法术暴击、急速、智力、法力续航，并判断法系装备更适合治疗还是输出套装。",
+    },
+    WARRIOR = {
+        "防护坦克：重点评估护甲、耐力、防御、盾牌/格挡值、躲闪招架、命中/精准，以及仇恨和减伤之间的取舍。",
+        "武器/狂暴输出：重点评估力量、攻击强度、暴击、命中/精准、武器速度/类型，以及套装加成。",
+    },
+    PALADIN = {
+        "防护坦克：重点评估法术伤害/仇恨、耐力、防御、格挡值、躲闪招架和整体减伤。",
+        "神圣治疗：重点评估治疗效果、智力、5 秒回蓝、暴击和法力续航。",
+        "惩戒输出：重点评估力量、攻击强度、暴击、命中/精准、武器质量和套装协同。",
+    },
+    PRIEST = {
+        "治疗：重点评估治疗效果、精神、智力、5 秒回蓝、急速和法力续航。",
+        "暗影输出：重点评估法术伤害、暗影伤害、法术命中、法术暴击、急速和法力续航。",
+    },
+    SHAMAN = {
+        "恢复治疗：重点评估治疗效果、5 秒回蓝、智力、暴击、急速和法力续航。",
+        "元素输出：重点评估法术伤害、法术命中、法术暴击、急速和法力续航。",
+        "增强输出：重点评估攻击强度、敏捷、力量、暴击、命中/精准、武器选择和套装协同。",
+    },
+    HUNTER = {
+        "远程输出：重点评估敏捷、攻击强度、暴击、命中、远程武器质量、弹药/箭袋支持和套装加成。",
+    },
+    ROGUE = {
+        "近战输出：重点评估敏捷、攻击强度、暴击、命中/精准、武器速度/类型和套装加成。",
+    },
+    MAGE = {
+        "法系输出：重点评估法术伤害、法术命中、法术暴击、急速、智力、法力续航和特定法术系别加成。",
+    },
+    WARLOCK = {
+        "法系输出：重点评估法术伤害、法术命中、法术暴击、急速、耐力、智力，以及暗影/火焰伤害优先级。",
+    },
+}
+
+local DEFAULT_ROLE_CONTEXT_ZHCN = {
+    "主职责：根据属性、物品类型、装备栏位、品质、物品等级和分类，判断每件可装备物品最可能的用途。",
+    "副天赋/备用套装：指出哪些物品更可能属于副天赋或备用套装，而不是主套装。",
+}
+
+local AI_OUTPUT_REQUESTS_ZHCN = {
+    "总结这些已保存物品最可能对应的职业天赋/职责。",
+    "针对每个可能职责，列出值得保留的强力装备、薄弱部位和升级优先级。",
+    "在相关时分别分析减伤、仇恨、输出、治疗、法系和功能性价值。",
+    "标记重复物品、副天赋装备、消耗品、材料，或可能适合出售、存银行、分解、保留的物品。",
+    "提到具体物品时使用 wowhead_url 字段，方便用户快速查看。",
+    "只有当导出数据无法判断时，才提出简短的追问。",
+}
+
+local CLASS_ROLE_CONTEXT_ZHTW = {
+    DRUID = {
+        "熊形態野性坦克：重點評估護甲、耐力、防禦/韌性、閃躲/敏捷、仇恨屬性、命中/熟練、野性攻擊強度武器、坦克飾品，以及生存和仇恨之間的取捨。",
+        "獵豹野性輸出：重點評估敏捷、力量、攻擊強度、致命一擊、命中/熟練、武器的野性攻擊強度、套裝協同，以及這些裝備是否會和熊坦減傷裝衝突。",
+        "恢復治療：重點評估治療效果、精神、智力、每 5 秒回魔、加速、續航，以及治療武器、副手、戒指、飾品選擇。",
+        "平衡法系輸出：重點評估法術傷害、法術命中、法術致命、加速、智力、法力續航，並判斷法系裝備更適合治療還是輸出套裝。",
+    },
+}
+
+local DEFAULT_ROLE_CONTEXT_ZHTW = {
+    "主職責：根據屬性、物品類型、裝備欄位、品質、物品等級和分類，判斷每件可裝備物品最可能的用途。",
+    "副天賦/備用套裝：指出哪些物品更可能屬於副天賦或備用套裝，而不是主套裝。",
+}
+
+local AI_OUTPUT_REQUESTS_ZHTW = {
+    "總結這些已儲存物品最可能對應的職業天賦/職責。",
+    "針對每個可能職責，列出值得保留的強力裝備、薄弱部位和升級優先順序。",
+    "在相關時分別分析減傷、仇恨、輸出、治療、法系和功能性價值。",
+    "標記重複物品、副天賦裝備、消耗品、材料，或可能適合出售、存銀行、分解、保留的物品。",
+    "提到具體物品時使用 wowhead_url 欄位，方便使用者快速查看。",
+    "只有當匯出資料無法判斷時，才提出簡短的追問。",
+}
+
 local EXPORT_FORMAT_LABELS = {
     ai = "AI Text",
     json = "JSON",
@@ -774,12 +850,47 @@ local function JsonField(key, value, comma)
     return JsonString(key) .. ": " .. JsonValue(value) .. (comma and "," or "")
 end
 
+local ClientLocale
+local PromptLocale
+
 local function ScopeTitle(scope)
     if scope == "gear" then
         return "Gear Only"
     end
 
     return (scope or "all"):gsub("^%l", string.upper)
+end
+
+local function LocalizedScopeTitle(scope, locale)
+    locale = Trim(locale or "")
+
+    if locale == "zhCN" then
+        if scope == "bags" then
+            return "背包"
+        end
+        if scope == "bank" then
+            return "银行"
+        end
+        if scope == "gear" then
+            return "仅装备"
+        end
+        return "全部"
+    end
+
+    if locale == "zhTW" then
+        if scope == "bags" then
+            return "背包"
+        end
+        if scope == "bank" then
+            return "銀行"
+        end
+        if scope == "gear" then
+            return "僅裝備"
+        end
+        return "全部"
+    end
+
+    return ScopeTitle(scope)
 end
 
 local function NormalizeExportFormat(format)
@@ -918,6 +1029,33 @@ local function ExportFilterTitle(filter)
     return "All qualities"
 end
 
+local function LocalizedExportFilterTitle(filter, locale)
+    filter = NormalizeExportFilter(filter)
+    locale = PromptLocale(locale)
+
+    if locale == "zhCN" then
+        if filter.qualityID ~= nil then
+            return "仅" .. QualityName(filter.qualityID)
+        end
+        if filter.qualityMin ~= nil then
+            return QualityName(filter.qualityMin) .. "及以上"
+        end
+        return "全部品质"
+    end
+
+    if locale == "zhTW" then
+        if filter.qualityID ~= nil then
+            return "僅" .. QualityName(filter.qualityID)
+        end
+        if filter.qualityMin ~= nil then
+            return QualityName(filter.qualityMin) .. "以上"
+        end
+        return "全部品質"
+    end
+
+    return ExportFilterTitle(filter)
+end
+
 local function ItemQualityID(item)
     if not item then
         return nil
@@ -1022,6 +1160,31 @@ local function SourceLabel(source)
     return source or "Unknown"
 end
 
+function ClientLocale()
+    if type(GetLocale) == "function" then
+        local ok, locale = pcall(GetLocale)
+        if ok and type(locale) == "string" and locale ~= "" then
+            return locale
+        end
+    end
+
+    return "enUS"
+end
+
+function PromptLocale(locale)
+    locale = Trim(locale or ClientLocale())
+
+    if locale == "zhCN" then
+        return "zhCN"
+    end
+
+    if locale == "zhTW" then
+        return "zhTW"
+    end
+
+    return "enUS"
+end
+
 local function ClassToken(value)
     value = Trim(value or ""):upper()
     value = value:gsub("%s+", "_")
@@ -1059,38 +1222,103 @@ local function ClassRoleContext(classToken)
     return CLASS_ROLE_CONTEXT[classToken] or DEFAULT_ROLE_CONTEXT
 end
 
+local function LocalizedRoleContext(classToken, locale)
+    local promptLocale = PromptLocale(locale)
+    classToken = ClassToken(classToken)
+
+    if promptLocale == "zhCN" then
+        return CLASS_ROLE_CONTEXT_ZHCN[classToken] or DEFAULT_ROLE_CONTEXT_ZHCN
+    end
+
+    if promptLocale == "zhTW" then
+        return CLASS_ROLE_CONTEXT_ZHTW[classToken] or CLASS_ROLE_CONTEXT_ZHCN[classToken] or DEFAULT_ROLE_CONTEXT_ZHTW
+    end
+
+    return ClassRoleContext(classToken)
+end
+
+local function LocalizedOutputRequests(locale)
+    local promptLocale = PromptLocale(locale)
+
+    if promptLocale == "zhCN" then
+        return AI_OUTPUT_REQUESTS_ZHCN
+    end
+
+    if promptLocale == "zhTW" then
+        return AI_OUTPUT_REQUESTS_ZHTW
+    end
+
+    return AI_OUTPUT_REQUESTS
+end
+
 local function BuildAIPrompt(profile, scope, filter, itemCount)
     local classToken = ClassToken(profile.classEnglish or profile.class or "UNKNOWN")
     local classDisplay = profile.classLocalized or profile.classEnglish or "Unknown Class"
-    local roleContext = ClassRoleContext(classToken)
-    local lines = {
-        "You are an expert World of Warcraft: The Burning Crusade Classic gearing assistant.",
-        "Analyze the structured item export below for this character and produce practical, role-aware gearing advice.",
-        "Character: " .. tostring(profile.player or "Unknown Player") .. " - " .. tostring(profile.realm or "Unknown Realm") .. " (" .. tostring(classDisplay) .. ").",
-        "Export scope: " .. ScopeTitle(scope) .. "; filter: " .. ExportFilterTitle(filter) .. "; item count: " .. tostring(itemCount or 0) .. ".",
-        "Bank contents are the last saved snapshot. Treat bag and bank source labels as inventory location, not proof that an item is equipped.",
-        "Use item stats, item level, quality, equip slot, category, source location, and wowhead_url fields. Do not invent missing stats or assume hidden enchants/gems.",
-        "Consider plausible class talents/specs instead of assuming one role.",
-        "",
-        "Class role lenses:",
-    }
+    local locale = profile.locale or ClientLocale()
+    local promptLocale = PromptLocale(locale)
+    local roleContext = LocalizedRoleContext(classToken, promptLocale)
+    local outputRequests = LocalizedOutputRequests(promptLocale)
+    local lines
+
+    if promptLocale == "zhCN" then
+        lines = {
+            "你是一名精通《魔兽世界：燃烧的远征》经典版配装分析的助手。",
+            "请分析下面的结构化物品导出，并给出实用、按职责区分的配装建议。",
+            "角色：" .. tostring(profile.player or "Unknown Player") .. " - " .. tostring(profile.realm or "Unknown Realm") .. "（" .. tostring(classDisplay) .. "）。",
+            "客户端语言：" .. tostring(locale) .. "；请使用与客户端一致的语言回答，并保留物品原始本地化名称。",
+            "导出范围：" .. LocalizedScopeTitle(scope, promptLocale) .. "；过滤器：" .. LocalizedExportFilterTitle(filter, promptLocale) .. "；物品数量：" .. tostring(itemCount or 0) .. "。",
+            "银行内容是最后一次保存的快照。背包/银行来源只代表库存位置，不代表物品已经装备。",
+            "请使用物品属性、物品等级、品质、装备栏位、分类、来源位置和 wowhead_url 字段。不要编造缺失属性，也不要假设隐藏附魔或宝石。",
+            "请考虑该职业可能的天赋/职责，不要只假设一个专精。",
+            "",
+            "职业职责分析视角：",
+        }
+    elseif promptLocale == "zhTW" then
+        lines = {
+            "你是一名精通《魔獸世界：燃燒的遠征》經典版配裝分析的助手。",
+            "請分析下面的結構化物品匯出，並給出實用、按職責區分的配裝建議。",
+            "角色：" .. tostring(profile.player or "Unknown Player") .. " - " .. tostring(profile.realm or "Unknown Realm") .. "（" .. tostring(classDisplay) .. "）。",
+            "客戶端語言：" .. tostring(locale) .. "；請使用與客戶端一致的語言回答，並保留物品原始在地化名稱。",
+            "匯出範圍：" .. LocalizedScopeTitle(scope, promptLocale) .. "；過濾器：" .. LocalizedExportFilterTitle(filter, promptLocale) .. "；物品數量：" .. tostring(itemCount or 0) .. "。",
+            "銀行內容是最後一次儲存的快照。背包/銀行來源只代表庫存位置，不代表物品已經裝備。",
+            "請使用物品屬性、物品等級、品質、裝備欄位、分類、來源位置和 wowhead_url 欄位。不要編造缺失屬性，也不要假設隱藏附魔或寶石。",
+            "請考慮該職業可能的天賦/職責，不要只假設一個專精。",
+            "",
+            "職業職責分析視角：",
+        }
+    else
+        lines = {
+            "You are an expert World of Warcraft: The Burning Crusade Classic gearing assistant.",
+            "Analyze the structured item export below for this character and produce practical, role-aware gearing advice.",
+            "Character: " .. tostring(profile.player or "Unknown Player") .. " - " .. tostring(profile.realm or "Unknown Realm") .. " (" .. tostring(classDisplay) .. ").",
+            "Client locale: " .. tostring(locale) .. ". Answer in the client locale when possible and preserve localized item names.",
+            "Export scope: " .. LocalizedScopeTitle(scope, promptLocale) .. "; filter: " .. LocalizedExportFilterTitle(filter, promptLocale) .. "; item count: " .. tostring(itemCount or 0) .. ".",
+            "Bank contents are the last saved snapshot. Treat bag and bank source labels as inventory location, not proof that an item is equipped.",
+            "Use item stats, item level, quality, equip slot, category, source location, and wowhead_url fields. Do not invent missing stats or assume hidden enchants/gems.",
+            "Consider plausible class talents/specs instead of assuming one role.",
+            "",
+            "Class role lenses:",
+        }
+    end
 
     for index = 1, #roleContext do
         lines[#lines + 1] = "- " .. roleContext[index]
     end
 
     lines[#lines + 1] = ""
-    lines[#lines + 1] = "Output requirements:"
+    lines[#lines + 1] = (promptLocale == "zhCN" or promptLocale == "zhTW") and "输出要求：" or "Output requirements:"
 
-    for index = 1, #AI_OUTPUT_REQUESTS do
-        lines[#lines + 1] = tostring(index) .. ". " .. AI_OUTPUT_REQUESTS[index]
+    for index = 1, #outputRequests do
+        lines[#lines + 1] = tostring(index) .. ". " .. outputRequests[index]
     end
 
     return {
         text = table.concat(lines, "\n"),
         classToken = classToken,
+        locale = locale,
+        promptLocale = promptLocale,
         roleContext = roleContext,
-        outputRequests = AI_OUTPUT_REQUESTS,
+        outputRequests = outputRequests,
     }
 end
 
@@ -1190,10 +1418,12 @@ function Addon:GetProfile()
     local player = UnitName and UnitName("player") or "Unknown Player"
     local key = player .. " - " .. realm
     local classInfo = GetPlayerClassInfo()
+    local locale = ClientLocale()
 
     self.db.profiles[key] = self.db.profiles[key] or {
         player = player,
         realm = realm,
+        locale = locale,
         classLocalized = classInfo.localized,
         classEnglish = classInfo.english,
         classID = classInfo.id,
@@ -1204,6 +1434,7 @@ function Addon:GetProfile()
     local profile = self.db.profiles[key]
     profile.player = player
     profile.realm = realm
+    profile.locale = locale
     profile.classLocalized = classInfo.localized
     profile.classEnglish = classInfo.english
     profile.classID = classInfo.id
@@ -1543,6 +1774,7 @@ function Addon:BuildMarkdownExport(scope, profile, items, categories, buckets, f
         "",
         "- Character: " .. tostring(profile.player or "Unknown Player") .. " - " .. tostring(profile.realm or "Unknown Realm"),
         "- Class: " .. tostring(profile.classLocalized or profile.classEnglish or "Unknown Class"),
+        "- Client locale: " .. tostring(profile.locale or "enUS"),
         "- Local DB: " .. DB_NAME .. " saved at " .. FormatTime(profile.localDB and profile.localDB.savedAt),
         "- Scope: " .. ScopeTitle(scope),
         "- Filter: " .. ExportFilterTitle(filter),
@@ -1595,6 +1827,7 @@ function Addon:BuildTextExport(scope, profile, items, categories, buckets, filte
         "EXPORT METADATA",
         "Character: " .. tostring(profile.player or "Unknown Player") .. " - " .. tostring(profile.realm or "Unknown Realm"),
         "Class: " .. tostring(profile.classLocalized or profile.classEnglish or "Unknown Class"),
+        "Client locale: " .. tostring(profile.locale or "enUS"),
         "Local DB: " .. DB_NAME .. " saved at " .. FormatTime(profile.localDB and profile.localDB.savedAt),
         "Scope: " .. ScopeTitle(scope),
         "Filter: " .. ExportFilterTitle(filter),
@@ -1732,12 +1965,15 @@ function Addon:BuildExport(scope, format, filter)
     AppendIndented(lines, 2, "\"ai_prompt\": {")
     AppendIndented(lines, 4, JsonField("text", prompt.text, true))
     AppendIndented(lines, 4, JsonField("class_token", prompt.classToken, true))
+    AppendIndented(lines, 4, JsonField("client_locale", prompt.locale, true))
+    AppendIndented(lines, 4, JsonField("prompt_locale", prompt.promptLocale, true))
     AppendJsonStringArray(lines, 4, "role_context", prompt.roleContext, true)
     AppendJsonStringArray(lines, 4, "output_requests", prompt.outputRequests, false)
     AppendIndented(lines, 2, "},")
     AppendIndented(lines, 2, "\"character\": {")
     AppendIndented(lines, 4, JsonField("name", profile.player or "Unknown Player", true))
     AppendIndented(lines, 4, JsonField("realm", profile.realm or "Unknown Realm", true))
+    AppendIndented(lines, 4, JsonField("client_locale", profile.locale or "enUS", true))
     AppendIndented(lines, 4, JsonField("class", profile.classLocalized or profile.classEnglish or "Unknown Class", true))
     AppendIndented(lines, 4, JsonField("class_token", profile.classEnglish or "UNKNOWN", true))
     AppendIndented(lines, 4, JsonField("class_id", profile.classID, false))
@@ -2411,6 +2647,7 @@ if _G.TBCGearExporterTestMode then
         JsonValue = JsonValue,
         JsonField = JsonField,
         ScopeTitle = ScopeTitle,
+        LocalizedScopeTitle = LocalizedScopeTitle,
         NormalizeExportFormat = NormalizeExportFormat,
         IsExportFormatToken = IsExportFormatToken,
         ExportFormatTitle = ExportFormatTitle,
@@ -2420,6 +2657,7 @@ if _G.TBCGearExporterTestMode then
         NormalizeExportFilter = NormalizeExportFilter,
         ExportFilterHasCriteria = ExportFilterHasCriteria,
         ExportFilterTitle = ExportFilterTitle,
+        LocalizedExportFilterTitle = LocalizedExportFilterTitle,
         ItemQualityID = ItemQualityID,
         ExportFilterMatchesItem = ExportFilterMatchesItem,
         NormalizeExportScope = NormalizeExportScope,
@@ -2428,9 +2666,13 @@ if _G.TBCGearExporterTestMode then
         AppendJsonStringArray = AppendJsonStringArray,
         LocationLabel = LocationLabel,
         SourceLabel = SourceLabel,
+        ClientLocale = ClientLocale,
+        PromptLocale = PromptLocale,
         ClassToken = ClassToken,
         GetPlayerClassInfo = GetPlayerClassInfo,
         ClassRoleContext = ClassRoleContext,
+        LocalizedRoleContext = LocalizedRoleContext,
+        LocalizedOutputRequests = LocalizedOutputRequests,
         BuildAIPrompt = BuildAIPrompt,
         IsEquippableSlot = IsEquippableSlot,
         CategoryFromInfo = CategoryFromInfo,

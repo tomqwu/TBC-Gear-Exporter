@@ -4,6 +4,7 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+- Localize the generated AI prompt from the WoW client locale, including Chinese prompt wording for Chinese clients.
 - Add a class-aware AI prompt block to exports, including Druid bear/cat/healing/caster role lenses.
 - Add export quality filters, including rare-or-better, epic-only, and gear epic-only GUI/slash options.
 - Add item quality colors and colored item names to saved snapshots and exports.
