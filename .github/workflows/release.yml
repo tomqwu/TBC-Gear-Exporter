@@ -1,0 +1,111 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build + publish
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/') || !contains(github.ref_name, '-dev.') }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version and tag
+        id: version
+        run: |
+          set -euo pipefail
+          base="$(grep '^## Version:' TBCGearExporter/TBCGearExporter.toc | awk '{print $3}')"
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            tag="${GITHUB_REF#refs/tags/}"
+            kind="release"
+            prerelease="false"
+          else
+            tag="v${base}-dev.${GITHUB_RUN_NUMBER}"
+            kind="dev"
+            prerelease="true"
+          fi
+          {
+            echo "tag=$tag"
+            echo "kind=$kind"
+            echo "prerelease=$prerelease"
+          } >> "$GITHUB_OUTPUT"
+          echo "Resolved tag=$tag kind=$kind prerelease=$prerelease"
+
+      - name: Extract release notes from CHANGELOG.md
+        run: |
+          set -euo pipefail
+          if [[ "${{ steps.version.outputs.kind }}" == "release" ]]; then
+            version_no_v="${{ steps.version.outputs.tag }}"
+            version_no_v="${version_no_v#v}"
+            awk -v ver="$version_no_v" '
+              $0 ~ "^## \\[" ver "\\]" { flag = 1; next }
+              flag && /^## \[/         { flag = 0 }
+              flag                     { print }
+            ' CHANGELOG.md > /tmp/notes.md
+          else
+            awk '
+              /^## \[Unreleased\]/ { flag = 1; next }
+              flag && /^## \[/     { flag = 0 }
+              flag                 { print }
+            ' CHANGELOG.md > /tmp/notes.md
+          fi
+          if [[ ! -s /tmp/notes.md ]]; then
+            printf '_No notes found in CHANGELOG.md. Commit summary:_\n\n%s\n' \
+              "$(git log -1 --pretty=format:'%s%n%n%b')" > /tmp/notes.md
+          fi
+          {
+            echo ""
+            echo "### How to test"
+            echo ""
+            echo "1. Download \`TBCGearExporter-${{ steps.version.outputs.tag }}.zip\` below."
+            echo "2. Extract so \`TBCGearExporter.toc\` lives at \`<WoW>/_anniversary_/Interface/AddOns/TBCGearExporter/TBCGearExporter.toc\`."
+            echo "3. Restart WoW or run \`/reload\`."
+            echo "4. Use \`/tbcgear gui\` to open the AI-ready export window."
+          } >> /tmp/notes.md
+          cat /tmp/notes.md
+
+      - name: Create and push dev tag
+        if: steps.version.outputs.kind == 'dev'
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag "${{ steps.version.outputs.tag }}" "$GITHUB_SHA" 2>/dev/null || echo "Tag already exists locally."
+          git push origin "${{ steps.version.outputs.tag }}" 2>&1 || echo "Tag push failed or tag already exists; continuing."
+
+      - name: Build addon zip
+        id: zip
+        run: |
+          set -euo pipefail
+          mkdir -p .release
+          out=".release/TBCGearExporter-${{ steps.version.outputs.tag }}.zip"
+          zip -r "$out" TBCGearExporter \
+            -x 'TBCGearExporter/Tests/*' \
+            -x 'TBCGearExporter/.*' \
+            -x '*.luacov.*'
+          echo "path=$out" >> "$GITHUB_OUTPUT"
+          unzip -l "$out"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: TBCGearExporter ${{ steps.version.outputs.tag }}
+          body_path: /tmp/notes.md
+          prerelease: ${{ steps.version.outputs.prerelease == 'true' }}
+          files: ${{ steps.zip.outputs.path }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,9 +1,9 @@
-name: Tests
+name: tests
 
 on:
   push:
     branches:
-      - "**"
+      - main
   pull_request:
     branches:
       - main
@@ -22,10 +22,18 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y lua5.1
 
-      - name: Validate addon syntax
-        run: luac5.1 -p TBCGearExporter/TBCGearExporter.lua
+      - name: Syntax-check every Lua file
+        run: |
+          fail=0
+          while IFS= read -r -d '' file; do
+            if ! luac5.1 -p "$file"; then
+              echo "SYNTAX FAIL: $file"
+              fail=1
+            fi
+          done < <(find . -name '*.lua' -print0)
+          exit "$fail"
 
-      - name: Run test suite
+      - name: Run test suite with coverage gate
         env:
           LUAC: luac5.1
         run: lua5.1 tests/run.lua

@@ -1,0 +1,15 @@
+package-as: TBCGearExporter
+
+manual-changelog:
+  filename: CHANGELOG.md
+  markup-type: markdown
+
+enable-nolib-creation: no
+
+ignore:
+  - .gitignore
+  - .github
+  - tests
+  - scripts
+  - luacov.report.out
+  - luacov.stats.out
