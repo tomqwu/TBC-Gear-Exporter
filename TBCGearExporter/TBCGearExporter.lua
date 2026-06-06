@@ -1132,6 +1132,7 @@ function Addon:OnAddonLoaded(loadedName)
     self:GetProfile()
 
     SafeRegister("PLAYER_LOGIN")
+    SafeRegister("BAG_OPEN")
     SafeRegister("BAG_UPDATE")
     SafeRegister("BAG_UPDATE_DELAYED")
     SafeRegister("BANKFRAME_OPENED")
@@ -1158,6 +1159,17 @@ function Addon:OnEvent(eventName, ...)
         return
     end
 
+    if eventName == "BAG_OPEN" then
+        local bagID = ...
+        self:ScanBags()
+        if bagID ~= nil then
+            self:Print("Debug: bag " .. bagID .. " opened; bags scanned.")
+        else
+            self:Print("Debug: bag opened; bags scanned.")
+        end
+        return
+    end
+
     if eventName == "BAG_UPDATE_DELAYED" or eventName == "BAG_UPDATE" then
         self:ScheduleBagScan()
         if self.bankOpen then
@@ -1169,7 +1181,7 @@ function Addon:OnEvent(eventName, ...)
     if eventName == "BANKFRAME_OPENED" then
         self.bankOpen = true
         self:ScanBank()
-        self:Print("Bank scanned.")
+        self:Print("Debug: bank opened; bank scanned.")
         return
     end
 

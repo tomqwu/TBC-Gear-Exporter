@@ -430,6 +430,9 @@ local function resetRuntimeState(Addon)
     Addon.bankOpen = nil
     Addon.exportFrame = nil
     Addon.exportScope = nil
+    SlashCmdList.TBCGEAREXPORTER = nil
+    SLASH_TBCGEAREXPORTER1 = nil
+    SLASH_TBCGEAREXPORTER2 = nil
 end
 
 installGlobals()
@@ -573,6 +576,13 @@ local private = assert(Addon._testing, "test helpers missing")
 
 test("addon registers ADDON_LOADED on load", function()
     assertTrue(mock.frames[2].events.ADDON_LOADED, "root addon frame should register ADDON_LOADED")
+end)
+
+test("addon registers bag and bank scan events after load", function()
+    resetRuntimeState(Addon)
+    Addon:OnAddonLoaded("TBCGearExporter")
+    assertTrue(mock.frames[2].events.BAG_OPEN, "bag open should be registered")
+    assertTrue(mock.frames[2].events.BANKFRAME_OPENED, "bank open should be registered")
 end)
 
 test("private parsers handle links and nils", function()
@@ -1058,6 +1068,12 @@ test("event dispatcher covers addon, login, bags, bank, and bank slot events", f
     Addon:OnEvent("PLAYER_LOGIN")
     assertContains(mock.messages[#mock.messages], "Loaded")
 
+    Addon:OnEvent("BAG_OPEN", 0)
+    assertContains(mock.messages[#mock.messages], "Debug: bag 0 opened; bags scanned.")
+
+    Addon:OnEvent("BAG_OPEN")
+    assertContains(mock.messages[#mock.messages], "Debug: bag opened; bags scanned.")
+
     Addon.bankOpen = false
     Addon:OnEvent("BAG_UPDATE")
     flushTimers()
@@ -1068,7 +1084,7 @@ test("event dispatcher covers addon, login, bags, bank, and bank slot events", f
 
     Addon:OnEvent("BANKFRAME_OPENED")
     assertTrue(Addon.bankOpen)
-    assertContains(mock.messages[#mock.messages], "Bank scanned")
+    assertContains(mock.messages[#mock.messages], "Debug: bank opened; bank scanned.")
 
     Addon:OnEvent("PLAYERBANKSLOTS_CHANGED")
     flushTimers()
