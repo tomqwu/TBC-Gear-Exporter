@@ -4,6 +4,7 @@ local COVERAGE_MINIMUM = 99.0
 local tests = {}
 local coveredLines = {}
 local executableLines = {}
+local mock
 
 local function shellQuote(value)
     return "'" .. tostring(value):gsub("'", "'\\''") .. "'"
@@ -82,11 +83,20 @@ local function assertContains(text, needle, message)
     end
 end
 
+local function assertAnyMessageContains(needle)
+    for index = #mock.messages, 1, -1 do
+        if tostring(mock.messages[index]):find(needle, 1, true) then
+            return
+        end
+    end
+    error("missing chat message: " .. tostring(needle), 2)
+end
+
 local function test(name, fn)
     tests[#tests + 1] = { name = name, fn = fn }
 end
 
-local mock = {
+mock = {
     frames = {},
     namedFrames = {},
     timers = {},
@@ -194,6 +204,12 @@ local function createMockFrame(frameType, name, parent, template)
     end
     frame.SetBackdrop = frameMethod("SetBackdrop", function(self, backdrop)
         self.backdrop = backdrop
+    end)
+    frame.SetBackdropColor = frameMethod("SetBackdropColor", function(self, ...)
+        self.backdropColor = { ... }
+    end)
+    frame.SetBackdropBorderColor = frameMethod("SetBackdropBorderColor", function(self, ...)
+        self.backdropBorderColor = { ... }
     end)
     frame.CreateFontString = frameMethod("CreateFontString", function(self)
         local fontString = createMockFrame("FontString", nil, self, nil)
@@ -829,6 +845,11 @@ end)
 
 test("container compatibility helpers use legacy, C_Container, and fallback paths", function()
     assertEquals(private.BackdropTemplate(), "BackdropTemplate")
+    assertTrue(private.HasCContainer())
+    assertTrue(private.HasLegacyContainer())
+    assertEquals(private.ContainerApiName(), "C_Container")
+    assertEquals(private.YesNo(true), "yes")
+    assertEquals(private.YesNo(false), "no")
     assertEquals(private.GetContainerNumSlotsCompat(0), 3)
     assertContains(private.GetContainerItemLinkCompat(0, 1), "Defender Helm")
     local texture, count, quality, link = private.ValuesFromContainerInfo({
@@ -840,18 +861,40 @@ test("container compatibility helpers use legacy, C_Container, and fallback path
     assertEquals(count, 9)
     assertEquals(quality, 4)
     assertContains(link, "Arcane Blade")
+    local _, _, _, itemIDLink = private.ValuesFromContainerInfo({ itemID = 7777 }, nil)
+    assertEquals(itemIDLink, "item:7777")
+
+    local oldLegacySlots = _G.GetContainerNumSlots
+    _G.GetContainerNumSlots = function()
+        return 0
+    end
+    assertEquals(private.GetContainerNumSlotsCompat(0), 3)
+    _G.GetContainerNumSlots = oldLegacySlots
 
     local oldSlots = _G.GetContainerNumSlots
     local oldLink = _G.GetContainerItemLink
+    local oldInfo = _G.GetContainerItemInfo
     _G.GetContainerNumSlots = nil
     _G.GetContainerItemLink = nil
     assertEquals(private.GetContainerNumSlotsCompat(0), 3)
     assertContains(private.GetContainerItemLinkCompat(0, 1), "Defender Helm")
+    _G.GetContainerNumSlots = oldSlots
+    _G.GetContainerItemLink = oldLink
 
     local oldContainerSlots = _G.C_Container.GetContainerNumSlots
     local oldContainerLink = _G.C_Container.GetContainerItemLink
+    local oldContainerInfo = _G.C_Container.GetContainerItemInfo
     _G.C_Container.GetContainerNumSlots = nil
     _G.C_Container.GetContainerItemLink = nil
+    _G.C_Container.GetContainerItemInfo = nil
+    assertEquals(private.ContainerApiName(), "legacy")
+    assertEquals(private.GetContainerNumSlotsCompat(0), 3)
+    assertContains(private.GetContainerItemLinkCompat(0, 1), "Defender Helm")
+
+    _G.GetContainerNumSlots = nil
+    _G.GetContainerItemLink = nil
+    _G.GetContainerItemInfo = nil
+    assertEquals(private.ContainerApiName(), "none")
     assertEquals(private.GetContainerNumSlotsCompat(0), 0)
     assertEquals(private.GetContainerItemLinkCompat(0, 1), nil)
 
@@ -861,8 +904,10 @@ test("container compatibility helpers use legacy, C_Container, and fallback path
     _G.BackdropTemplateMixin = oldBackdrop
     _G.C_Container.GetContainerNumSlots = oldContainerSlots
     _G.C_Container.GetContainerItemLink = oldContainerLink
+    _G.C_Container.GetContainerItemInfo = oldContainerInfo
     _G.GetContainerNumSlots = oldSlots
     _G.GetContainerItemLink = oldLink
+    _G.GetContainerItemInfo = oldInfo
 end)
 
 test("profile creation uses real and fallback character names", function()
@@ -928,6 +973,23 @@ test("container item values and scans fall back to C_Container APIs", function()
     _G.GetContainerNumSlots = oldSlots
     _G.GetContainerItemInfo = oldInfo
     _G.GetContainerItemLink = oldLink
+end)
+
+test("container item values fall back to legacy APIs when C_Container errors", function()
+    resetRuntimeState(Addon)
+    local oldContainerInfo = _G.C_Container.GetContainerItemInfo
+    _G.C_Container.GetContainerItemInfo = function()
+        error("container failure")
+    end
+
+    local texture, count, quality, link = Addon:GetContainerItemValues(0, 1)
+    assertEquals(texture, "helm-icon")
+    assertEquals(count, 1)
+    assertEquals(quality, 3)
+    assertContains(link, "Defender Helm")
+    assertContains(Addon.lastContainerError, "container failure")
+
+    _G.C_Container.GetContainerItemInfo = oldContainerInfo
 end)
 
 test("BuildItem captures full item metadata and stats", function()
@@ -1027,6 +1089,31 @@ test("scheduled scans handle pending guards, timers, no timers, and bank state",
     _G.C_Timer = oldTimer
 end)
 
+test("scan reports, saved counts, debug output, and text selection are visible", function()
+    resetRuntimeState(Addon)
+    Addon:SelectExportText()
+
+    local bags = Addon:ScanBagsAndReport("Bags scanned")
+    assertTrue(#bags.items >= 3)
+    assertAnyMessageContains("Bags scanned:")
+    assertAnyMessageContains("via C_Container")
+
+    local bank = Addon:ScanBankAndReport("Bank scanned")
+    assertTrue(#bank.items >= 2)
+    assertAnyMessageContains("Bank scanned:")
+
+    local bagCount, bankCount = Addon:SavedItemCounts()
+    assertEquals(bagCount, #bags.items)
+    assertEquals(bankCount, #bank.items)
+    assertContains(Addon:FormatScanSummary("Bags", bags), "items")
+
+    Addon.lastContainerError = "synthetic failure"
+    Addon:DebugContainers()
+    assertAnyMessageContains("API=C_Container")
+    assertAnyMessageContains("first visible bag link=")
+    assertAnyMessageContains("last container error=synthetic failure")
+end)
+
 test("exports include categories, bank data, gear filters, stats, and empty messages", function()
     resetRuntimeState(Addon)
     Addon:ScanBags()
@@ -1092,18 +1179,22 @@ test("RefreshExport no-ops without frame and updates edit box with frame", funct
     assertContains(Addon.exportFrame.editBox.text, "Super Mana Potion")
     assertTrue(Addon.exportFrame.editBox.highlighted)
     assertTrue(Addon.exportFrame.editBox.focused)
-    assertEquals(Addon.exportFrame.status.text, "AI-ready export is selected. Press Ctrl+C to copy.")
+    assertEquals(Addon.exportFrame.status.text, "Selected export text is ready. Press Ctrl+C to copy. Use Debug if counts stay at zero.")
+    assertContains(Addon.exportFrame.summary.text, "Bags:")
 end)
 
 test("CreateExportFrame wires UI controls and scripts", function()
     resetRuntimeState(Addon)
     Addon:CreateExportFrame()
     local exportFrame = Addon.exportFrame
-    assertEquals(exportFrame.width, 720)
+    assertEquals(exportFrame.width, 680)
     assertEquals(exportFrame.template, "BackdropTemplate")
     assertFalse(exportFrame:IsShown())
     assertTrue(exportFrame.backdrop ~= nil)
+    assertTrue(exportFrame.backdropColor ~= nil)
+    assertTrue(exportFrame.backdropBorderColor ~= nil)
     assertTrue(exportFrame.editBox ~= nil)
+    assertTrue(exportFrame.summary ~= nil)
     assertTrue(exportFrame.status ~= nil)
 
     exportFrame.scripts.OnDragStart(exportFrame)
@@ -1116,7 +1207,7 @@ test("CreateExportFrame wires UI controls and scripts", function()
 
     exportFrame.editBox.text = "one\ntwo\nthree"
     exportFrame.editBox.scripts.OnTextChanged(exportFrame.editBox)
-    assertTrue(exportFrame.editBox.height >= 380)
+    assertTrue(exportFrame.editBox.height >= 340)
 
     exportFrame.editBox.scripts.OnTextChanged({ GetNumLines = function() return 1 end })
 end)
@@ -1157,11 +1248,11 @@ test("minimap button opens export, scans on right click, and shows tooltip", fun
     assertEquals(Addon.exportScope, "all")
 
     button.scripts.OnClick(button, "RightButton")
-    assertContains(mock.messages[#mock.messages], "Bags scanned")
+    assertAnyMessageContains("Bags scanned")
 
     Addon.bankOpen = true
     button.scripts.OnClick(button, "RightButton")
-    assertContains(mock.messages[#mock.messages], "Bags and bank scanned")
+    assertAnyMessageContains("Bank scanned")
 
     local oldMinimap = _G.Minimap
     _G.Minimap = nil
@@ -1184,8 +1275,8 @@ test("export frame buttons scan and change scopes", function()
     resetRuntimeState(Addon)
     Addon:CreateExportFrame()
     Addon.bankOpen = false
-    findButtonByText("Scan").scripts.OnClick()
-    assertContains(mock.messages[#mock.messages], "Bags scanned")
+    findButtonByText("Scan Bags").scripts.OnClick()
+    assertAnyMessageContains("Bags scanned")
 
     findButtonByText("All").scripts.OnClick()
     assertEquals(Addon.exportScope, "all")
@@ -1200,11 +1291,18 @@ test("export frame buttons scan and change scopes", function()
     Addon.bankOpen = true
     findButtonByText("Bank").scripts.OnClick()
     assertEquals(Addon.exportScope, "bank")
+    assertAnyMessageContains("Bank scanned")
 
-    findButtonByText("Gear Only").scripts.OnClick()
+    findButtonByText("Gear").scripts.OnClick()
     assertEquals(Addon.exportScope, "gear")
 
-    findButtonByText("Scan").scripts.OnClick()
+    findButtonByText("Debug").scripts.OnClick()
+    assertAnyMessageContains("API=")
+
+    findButtonByText("Select").scripts.OnClick()
+    assertEquals(Addon.exportFrame.status.text, "Export text selected. Press Ctrl+C to copy.")
+
+    findButtonByText("Scan Bags").scripts.OnClick()
     assertEquals(Addon.exportScope, "gear")
 end)
 
@@ -1230,13 +1328,16 @@ test("slash commands cover export modes, scan modes, clear, help, and aliases", 
     Addon:HandleSlash("gear")
     assertEquals(Addon.exportScope, "gear")
     Addon:HandleSlash("scan")
-    assertContains(mock.messages[#mock.messages], "Bags scanned")
+    assertAnyMessageContains("Bags scanned")
 
     Addon.bankOpen = true
     Addon:HandleSlash("bank")
     Addon:HandleSlash("gear")
     Addon:HandleSlash("scan")
-    assertContains(mock.messages[#mock.messages], "Bags and bank scanned")
+    assertAnyMessageContains("Bank scanned")
+
+    Addon:HandleSlash("debug")
+    assertAnyMessageContains("API=")
 
     Addon:HandleSlash("clear")
     assertContains(mock.messages[#mock.messages], "cleared")
@@ -1272,10 +1373,10 @@ test("event dispatcher covers addon, login, bags, bank, and bank slot events", f
     assertContains(mock.messages[#mock.messages], "Loaded")
 
     Addon:OnEvent("BAG_OPEN", 0)
-    assertContains(mock.messages[#mock.messages], "Debug: bag 0 opened; bags scanned.")
+    assertContains(mock.messages[#mock.messages], "Debug: bag 0 opened; bags:")
 
     Addon:OnEvent("BAG_OPEN")
-    assertContains(mock.messages[#mock.messages], "Debug: bag opened; bags scanned.")
+    assertContains(mock.messages[#mock.messages], "Debug: bag opened; bags:")
 
     Addon.bankOpen = false
     Addon:OnEvent("BAG_UPDATE")
@@ -1287,7 +1388,7 @@ test("event dispatcher covers addon, login, bags, bank, and bank slot events", f
 
     Addon:OnEvent("BANKFRAME_OPENED")
     assertTrue(Addon.bankOpen)
-    assertContains(mock.messages[#mock.messages], "Debug: bank opened; bank scanned.")
+    assertContains(mock.messages[#mock.messages], "Debug: bank opened; bank:")
 
     Addon:OnEvent("PLAYERBANKSLOTS_CHANGED")
     flushTimers()
