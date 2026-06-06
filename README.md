@@ -4,8 +4,8 @@
 ![Lua 5.1](https://img.shields.io/badge/Lua-5.1-2C2D72?logo=lua&logoColor=white)
 ![WoW AddOn](https://img.shields.io/badge/WoW-TBC%20Classic-C69B6D)
 ![TBC Anniversary](https://img.shields.io/badge/client-Anniversary-0E8A16)
-![Tests](https://img.shields.io/badge/tests-26%20passing-brightgreen)
-![Coverage](https://img.shields.io/badge/coverage-99.57%25-brightgreen)
+![Tests](https://img.shields.io/badge/tests-28%20passing-brightgreen)
+![Coverage](https://img.shields.io/badge/coverage-99.58%25-brightgreen)
 ![Coverage Gate](https://img.shields.io/badge/coverage%20gate-99%25-blue)
 ![Local Install](https://img.shields.io/badge/local%20install-PowerShell-5391FE?logo=powershell&logoColor=white)
 

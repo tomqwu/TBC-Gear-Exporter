@@ -172,6 +172,57 @@ local function SetFrameSize(target, width, height)
     end
 end
 
+local function BackdropTemplate()
+    if BackdropTemplateMixin then
+        return "BackdropTemplate"
+    end
+
+    return nil
+end
+
+local function GetContainerNumSlotsCompat(bagID)
+    if type(GetContainerNumSlots) == "function" then
+        local ok, slots = pcall(GetContainerNumSlots, bagID)
+        if ok and slots then
+            return slots
+        end
+    end
+
+    if C_Container and type(C_Container.GetContainerNumSlots) == "function" then
+        local ok, slots = pcall(C_Container.GetContainerNumSlots, bagID)
+        if ok and slots then
+            return slots
+        end
+    end
+
+    return 0
+end
+
+local function GetContainerItemLinkCompat(bagID, slotID)
+    if type(GetContainerItemLink) == "function" then
+        local ok, link = pcall(GetContainerItemLink, bagID, slotID)
+        if ok and link then
+            return link
+        end
+    end
+
+    if C_Container and type(C_Container.GetContainerItemLink) == "function" then
+        local ok, link = pcall(C_Container.GetContainerItemLink, bagID, slotID)
+        if ok and link then
+            return link
+        end
+    end
+
+    return nil
+end
+
+local function ValuesFromContainerInfo(info, fallbackLink)
+    return info.iconFileID or info.texture or info.icon,
+        info.stackCount or info.count,
+        info.quality or info.itemQuality,
+        info.hyperlink or info.link or fallbackLink
+end
+
 local function Trim(value)
     return (value or ""):match("^%s*(.-)%s*$")
 end
@@ -531,25 +582,29 @@ function Addon:GetProfile()
 end
 
 function Addon:GetContainerItemValues(bagID, slotID)
-    if type(GetContainerItemInfo) ~= "function" then
-        return nil
+    if type(GetContainerItemInfo) == "function" then
+        local ok, texture, count, locked, quality, readable, lootable, link = pcall(GetContainerItemInfo, bagID, slotID)
+        if ok then
+            if type(texture) == "table" then
+                return ValuesFromContainerInfo(texture, GetContainerItemLinkCompat(bagID, slotID))
+            end
+
+            return texture, count, quality, link or GetContainerItemLinkCompat(bagID, slotID)
+        end
     end
 
-    local info = GetContainerItemInfo(bagID, slotID)
-    if type(info) == "table" then
-        return info.iconFileID or info.texture,
-            info.stackCount or info.count,
-            info.quality or info.itemQuality,
-            info.hyperlink or info.link
+    if C_Container and type(C_Container.GetContainerItemInfo) == "function" then
+        local ok, info = pcall(C_Container.GetContainerItemInfo, bagID, slotID)
+        if ok and type(info) == "table" then
+            return ValuesFromContainerInfo(info, GetContainerItemLinkCompat(bagID, slotID))
+        end
+
+        if ok then
+            return nil
+        end
     end
 
-    local texture, count, locked, quality, readable, lootable, link = GetContainerItemInfo(bagID, slotID)
-
-    if not link and type(GetContainerItemLink) == "function" then
-        link = GetContainerItemLink(bagID, slotID)
-    end
-
-    return texture, count, quality, link
+    return nil
 end
 
 function Addon:BuildItem(source, bagID, slotID)
@@ -636,13 +691,9 @@ function Addon:ScanContainers(source, containers)
         items = {},
     }
 
-    if type(GetContainerNumSlots) ~= "function" then
-        return snapshot
-    end
-
     for index = 1, #containers do
         local bagID = containers[index]
-        local slots = GetContainerNumSlots(bagID) or 0
+        local slots = GetContainerNumSlotsCompat(bagID)
 
         for slotID = 1, slots do
             local item = self:BuildItem(source, bagID, slotID)
@@ -933,7 +984,7 @@ function Addon:RefreshExport(scope)
 end
 
 function Addon:CreateExportFrame()
-    local exportFrame = CreateFrame("Frame", "TBCGearExporterExportFrame", UIParent)
+    local exportFrame = CreateFrame("Frame", "TBCGearExporterExportFrame", UIParent, BackdropTemplate())
     SetFrameSize(exportFrame, 720, 540)
     exportFrame:SetPoint("CENTER")
     exportFrame:SetFrameStrata("DIALOG")
@@ -1276,6 +1327,10 @@ if _G.TBCGearExporterTestMode then
     Addon._testing = {
         SafeRegister = SafeRegister,
         SetFrameSize = SetFrameSize,
+        BackdropTemplate = BackdropTemplate,
+        GetContainerNumSlotsCompat = GetContainerNumSlotsCompat,
+        GetContainerItemLinkCompat = GetContainerItemLinkCompat,
+        ValuesFromContainerInfo = ValuesFromContainerInfo,
         Trim = Trim,
         Now = Now,
         FormatTime = FormatTime,

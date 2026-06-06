@@ -4,6 +4,8 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+- Add `C_Container` bag API compatibility for TBC Anniversary clients that no longer expose legacy `GetContainer*` globals.
+- Use `BackdropTemplate` when available so the export window has a readable background on current clients.
 - Bump TBC Anniversary addon interface metadata to `20505`.
 - Add a minimap button that opens the AI export GUI on left-click and scans bags/bank on right-click.
 - Add GitHub release packaging that builds a WoW-ready addon zip from `TBCGearExporter/`.
