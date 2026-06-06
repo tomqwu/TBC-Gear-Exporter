@@ -1,0 +1,8 @@
+## Interface: 20504
+## Title: TBC Gear Exporter
+## Notes: Saves bag and bank items by category and exports a copyable text list.
+## Author: Codex
+## Version: 0.1.0
+## SavedVariables: TBCGearExporterDB
+
+TBCGearExporter.lua

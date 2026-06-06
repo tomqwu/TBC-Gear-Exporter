@@ -1,0 +1,31 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  lua:
+    name: Lua addon tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Lua 5.1
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lua5.1
+
+      - name: Validate addon syntax
+        run: luac5.1 -p TBCGearExporter/TBCGearExporter.lua
+
+      - name: Run test suite
+        env:
+          LUAC: luac5.1
+        run: lua5.1 tests/run.lua
