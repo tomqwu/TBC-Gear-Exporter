@@ -651,6 +651,22 @@ test("stat list handles missing API, errors, table returns, sorting, and formatt
     assertContains(formatted, "+3 Blank")
 end)
 
+test("json helpers create AI-safe values and fields", function()
+    assertEquals(private.JsonString("A \"quote\"\nline"), "\"A \\\"quote\\\"\\nline\"")
+    assertEquals(private.JsonValue(nil), "null")
+    assertEquals(private.JsonValue(42), "42")
+    assertEquals(private.JsonValue(true), "true")
+    assertEquals(private.JsonValue(false), "false")
+    assertEquals(private.JsonValue("gear"), "\"gear\"")
+    assertEquals(private.JsonField("scope", "all", true), "\"scope\": \"all\",")
+    assertEquals(private.ScopeTitle("gear"), "Gear Only")
+    assertEquals(private.ScopeTitle("bags"), "Bags")
+
+    local lines = {}
+    private.AppendIndented(lines, 2, "text")
+    assertEquals(lines[1], "  text")
+end)
+
 test("location, source, category, copy, and sizing helpers cover branches", function()
     assertEquals(private.LocationLabel("bags", 0, 2), "Backpack slot 2")
     assertEquals(private.LocationLabel("bags", 3, 4), "Bag 3 slot 4")
@@ -842,11 +858,16 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     Addon:ScanBank()
 
     local allExport = Addon:BuildExport("all")
-    assertContains(allExport, "Character: Tester - Test Realm")
-    assertContains(allExport, "[Gear]")
-    assertContains(allExport, "[Consumables]")
-    assertContains(allExport, "stats: +27 Stamina")
-    assertContains(allExport, "Bank slot 1")
+    assertContains(allExport, "AI_READY_WOW_TBC_INVENTORY_EXPORT v1")
+    assertContains(allExport, "DATA_JSON:")
+    assertContains(allExport, "\"character\": {")
+    assertContains(allExport, "\"name\": \"Tester\"")
+    assertContains(allExport, "\"realm\": \"Test Realm\"")
+    assertContains(allExport, "\"name\": \"Gear\"")
+    assertContains(allExport, "\"name\": \"Consumables\"")
+    assertContains(allExport, "\"stats_text\": \"+27 Stamina")
+    assertContains(allExport, "\"location\": \"Bank slot 1\"")
+    assertContains(allExport, "\"token\": \"ITEM_MOD_STAMINA_SHORT\"")
 
     local bankExport = Addon:BuildExport("bank")
     assertContains(bankExport, "Arcane Blade")
@@ -863,7 +884,8 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
 
     Addon:ClearProfile()
     local empty = Addon:BuildExport("all")
-    assertContains(empty, "No saved items")
+    assertContains(empty, "\"item_count\": 0")
+    assertContains(empty, "No saved items are available")
 end)
 
 test("export sorting covers quality, name, location, and unknown category ordering", function()
@@ -878,10 +900,10 @@ test("export sorting covers quality, name, location, and unknown category orderi
     profile.bank.items = {}
 
     local export = Addon:BuildExport("all")
-    local aaaIndex = export:find("%[Aaa%]")
-    local zzzIndex = export:find("%[Zzz%]")
+    local aaaIndex = export:find("\"name\": \"Aaa\"", 1, true)
+    local zzzIndex = export:find("\"name\": \"Zzz\"", 1, true)
     assertTrue(aaaIndex and zzzIndex and aaaIndex < zzzIndex)
-    assertTrue(export:find("id:9003", 1, true) < export:find("id:9002", 1, true))
+    assertTrue(export:find("\"item_id\": 9003", 1, true) < export:find("\"item_id\": 9002", 1, true))
 end)
 
 test("RefreshExport no-ops without frame and updates edit box with frame", function()
@@ -895,7 +917,7 @@ test("RefreshExport no-ops without frame and updates edit box with frame", funct
     assertContains(Addon.exportFrame.editBox.text, "Super Mana Potion")
     assertTrue(Addon.exportFrame.editBox.highlighted)
     assertTrue(Addon.exportFrame.editBox.focused)
-    assertEquals(Addon.exportFrame.status.text, "Export text is selected. Press Ctrl+C to copy.")
+    assertEquals(Addon.exportFrame.status.text, "AI-ready export is selected. Press Ctrl+C to copy.")
 end)
 
 test("CreateExportFrame wires UI controls and scripts", function()
@@ -929,10 +951,10 @@ test("ShowExport creates once and refreshes selected scope", function()
     Addon:ShowExport("bags")
     local firstFrame = Addon.exportFrame
     assertTrue(firstFrame:IsShown())
-    assertContains(firstFrame.editBox.text, "Export: Bags")
+    assertContains(firstFrame.editBox.text, "\"scope_title\": \"Bags\"")
     Addon:ShowExport("gear")
     assertEquals(Addon.exportFrame, firstFrame)
-    assertContains(firstFrame.editBox.text, "Export: Gear Only")
+    assertContains(firstFrame.editBox.text, "\"scope_title\": \"Gear Only\"")
 end)
 
 local function findButtonByText(text)
@@ -983,6 +1005,8 @@ test("slash commands cover export modes, scan modes, clear, help, and aliases", 
     assertTrue(type(SlashCmdList.TBCGEAREXPORTER) == "function")
 
     Addon:HandleSlash("")
+    assertEquals(Addon.exportScope, "all")
+    Addon:HandleSlash("gui")
     assertEquals(Addon.exportScope, "all")
     Addon:HandleSlash("show")
     assertEquals(Addon.exportScope, "all")
