@@ -180,17 +180,44 @@ local function BackdropTemplate()
     return nil
 end
 
+local function HasCContainer()
+    return C_Container
+        and type(C_Container.GetContainerNumSlots) == "function"
+        and type(C_Container.GetContainerItemInfo) == "function"
+end
+
+local function HasLegacyContainer()
+    return type(GetContainerNumSlots) == "function"
+        and type(GetContainerItemInfo) == "function"
+end
+
+local function ContainerApiName()
+    if HasCContainer() then
+        return "C_Container"
+    end
+
+    if HasLegacyContainer() then
+        return "legacy"
+    end
+
+    return "none"
+end
+
+local function YesNo(value)
+    return value and "yes" or "no"
+end
+
 local function GetContainerNumSlotsCompat(bagID)
-    if type(GetContainerNumSlots) == "function" then
-        local ok, slots = pcall(GetContainerNumSlots, bagID)
-        if ok and slots then
+    if C_Container and type(C_Container.GetContainerNumSlots) == "function" then
+        local ok, slots = pcall(C_Container.GetContainerNumSlots, bagID)
+        if ok and type(slots) == "number" and slots > 0 then
             return slots
         end
     end
 
-    if C_Container and type(C_Container.GetContainerNumSlots) == "function" then
-        local ok, slots = pcall(C_Container.GetContainerNumSlots, bagID)
-        if ok and slots then
+    if type(GetContainerNumSlots) == "function" then
+        local ok, slots = pcall(GetContainerNumSlots, bagID)
+        if ok and type(slots) == "number" then
             return slots
         end
     end
@@ -199,15 +226,15 @@ local function GetContainerNumSlotsCompat(bagID)
 end
 
 local function GetContainerItemLinkCompat(bagID, slotID)
-    if type(GetContainerItemLink) == "function" then
-        local ok, link = pcall(GetContainerItemLink, bagID, slotID)
+    if C_Container and type(C_Container.GetContainerItemLink) == "function" then
+        local ok, link = pcall(C_Container.GetContainerItemLink, bagID, slotID)
         if ok and link then
             return link
         end
     end
 
-    if C_Container and type(C_Container.GetContainerItemLink) == "function" then
-        local ok, link = pcall(C_Container.GetContainerItemLink, bagID, slotID)
+    if type(GetContainerItemLink) == "function" then
+        local ok, link = pcall(GetContainerItemLink, bagID, slotID)
         if ok and link then
             return link
         end
@@ -217,10 +244,15 @@ local function GetContainerItemLinkCompat(bagID, slotID)
 end
 
 local function ValuesFromContainerInfo(info, fallbackLink)
+    local link = info.hyperlink or info.link or fallbackLink
+    if not link and info.itemID then
+        link = "item:" .. tostring(info.itemID)
+    end
+
     return info.iconFileID or info.texture or info.icon,
         info.stackCount or info.count,
         info.quality or info.itemQuality,
-        info.hyperlink or info.link or fallbackLink
+        link
 end
 
 local function Trim(value)
@@ -582,6 +614,17 @@ function Addon:GetProfile()
 end
 
 function Addon:GetContainerItemValues(bagID, slotID)
+    if C_Container and type(C_Container.GetContainerItemInfo) == "function" then
+        local ok, info = pcall(C_Container.GetContainerItemInfo, bagID, slotID)
+        if ok and type(info) == "table" then
+            return ValuesFromContainerInfo(info, GetContainerItemLinkCompat(bagID, slotID))
+        end
+
+        if not ok then
+            self.lastContainerError = tostring(info)
+        end
+    end
+
     if type(GetContainerItemInfo) == "function" then
         local ok, texture, count, locked, quality, readable, lootable, link = pcall(GetContainerItemInfo, bagID, slotID)
         if ok then
@@ -589,18 +632,11 @@ function Addon:GetContainerItemValues(bagID, slotID)
                 return ValuesFromContainerInfo(texture, GetContainerItemLinkCompat(bagID, slotID))
             end
 
-            return texture, count, quality, link or GetContainerItemLinkCompat(bagID, slotID)
-        end
-    end
-
-    if C_Container and type(C_Container.GetContainerItemInfo) == "function" then
-        local ok, info = pcall(C_Container.GetContainerItemInfo, bagID, slotID)
-        if ok and type(info) == "table" then
-            return ValuesFromContainerInfo(info, GetContainerItemLinkCompat(bagID, slotID))
-        end
-
-        if ok then
-            return nil
+            if texture or count or quality or link then
+                return texture, count, quality, link or GetContainerItemLinkCompat(bagID, slotID)
+            end
+        else
+            self.lastContainerError = tostring(texture)
         end
     end
 
@@ -689,11 +725,14 @@ function Addon:ScanContainers(source, containers)
     local snapshot = {
         updatedAt = Now(),
         items = {},
+        totalSlots = 0,
+        api = ContainerApiName(),
     }
 
     for index = 1, #containers do
         local bagID = containers[index]
         local slots = GetContainerNumSlotsCompat(bagID)
+        snapshot.totalSlots = snapshot.totalSlots + slots
 
         for slotID = 1, slots do
             local item = self:BuildItem(source, bagID, slotID)
@@ -736,6 +775,57 @@ function Addon:ScanBank()
     local profile = self:GetProfile()
     profile.bank = self:ScanContainers("bank", self:GetBankContainers())
     return profile.bank
+end
+
+function Addon:FormatScanSummary(label, snapshot)
+    snapshot = snapshot or { items = {}, totalSlots = 0, api = ContainerApiName() }
+    return label .. ": " .. #(snapshot.items or {}) .. " items, " .. tostring(snapshot.totalSlots or 0) .. " slots via " .. tostring(snapshot.api or "unknown")
+end
+
+function Addon:ScanBagsAndReport(label)
+    local snapshot = self:ScanBags()
+    self:Print(self:FormatScanSummary(label or "Bags scanned", snapshot) .. ".")
+    return snapshot
+end
+
+function Addon:ScanBankAndReport(label)
+    local snapshot = self:ScanBank()
+    self:Print(self:FormatScanSummary(label or "Bank scanned", snapshot) .. ".")
+    return snapshot
+end
+
+function Addon:DebugContainers()
+    local bagContainers = self:GetBagContainers()
+    local bagSlots = 0
+    local firstLink
+
+    for index = 1, #bagContainers do
+        local bagID = bagContainers[index]
+        local slots = GetContainerNumSlotsCompat(bagID)
+        bagSlots = bagSlots + slots
+
+        if not firstLink then
+            for slotID = 1, slots do
+                firstLink = GetContainerItemLinkCompat(bagID, slotID)
+                if firstLink then
+                    break
+                end
+            end
+        end
+    end
+
+    local profile = self:GetProfile()
+    local bagItems = profile.bags and profile.bags.items or {}
+    local bankItems = profile.bank and profile.bank.items or {}
+
+    self:Print("Debug: API=" .. ContainerApiName()
+        .. ", C_Container=" .. YesNo(HasCContainer())
+        .. ", legacy=" .. YesNo(HasLegacyContainer())
+        .. ", bagSlots=" .. bagSlots
+        .. ", savedBags=" .. #bagItems
+        .. ", savedBank=" .. #bankItems .. ".")
+    self:Print("Debug: first visible bag link=" .. tostring(firstLink or "none")
+        .. (self.lastContainerError and (", last container error=" .. self.lastContainerError) or "") .. ".")
 end
 
 function Addon:ScheduleBagScan()
@@ -968,6 +1058,23 @@ function Addon:BuildExport(scope)
     return table.concat(lines, "\n")
 end
 
+function Addon:SavedItemCounts()
+    local profile = self:GetProfile()
+    local bagItems = profile.bags and profile.bags.items or {}
+    local bankItems = profile.bank and profile.bank.items or {}
+    return #bagItems, #bankItems
+end
+
+function Addon:SelectExportText()
+    if not self.exportFrame or not self.exportFrame.editBox then
+        return
+    end
+
+    self.exportFrame.editBox:SetCursorPosition(0)
+    self.exportFrame.editBox:HighlightText()
+    self.exportFrame.editBox:SetFocus()
+end
+
 function Addon:RefreshExport(scope)
     self.exportScope = scope or self.exportScope or "all"
 
@@ -976,16 +1083,20 @@ function Addon:RefreshExport(scope)
     end
 
     local text = self:BuildExport(self.exportScope)
+    local bagCount, bankCount = self:SavedItemCounts()
     self.exportFrame.editBox:SetText(text)
-    self.exportFrame.editBox:SetCursorPosition(0)
-    self.exportFrame.editBox:HighlightText()
-    self.exportFrame.editBox:SetFocus()
-    self.exportFrame.status:SetText("AI-ready export is selected. Press Ctrl+C to copy.")
+    self:SelectExportText()
+
+    if self.exportFrame.summary then
+        self.exportFrame.summary:SetText("Bags: " .. bagCount .. " items   Bank: " .. bankCount .. " items   Scope: " .. ScopeTitle(self.exportScope))
+    end
+
+    self.exportFrame.status:SetText("Selected export text is ready. Press Ctrl+C to copy. Use Debug if counts stay at zero.")
 end
 
 function Addon:CreateExportFrame()
     local exportFrame = CreateFrame("Frame", "TBCGearExporterExportFrame", UIParent, BackdropTemplate())
-    SetFrameSize(exportFrame, 720, 540)
+    SetFrameSize(exportFrame, 680, 520)
     exportFrame:SetPoint("CENTER")
     exportFrame:SetFrameStrata("DIALOG")
     exportFrame:SetMovable(true)
@@ -1004,31 +1115,45 @@ function Addon:CreateExportFrame()
             edgeSize = 32,
             insets = { left = 11, right = 12, top = 12, bottom = 11 },
         })
+
+        if exportFrame.SetBackdropColor then
+            exportFrame:SetBackdropColor(0, 0, 0, 0.92)
+        end
+
+        if exportFrame.SetBackdropBorderColor then
+            exportFrame:SetBackdropBorderColor(0.7, 0.55, 0.25, 1)
+        end
     end
 
     local title = exportFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     title:SetPoint("TOPLEFT", 20, -18)
-    title:SetText("TBC Gear Exporter - AI Export")
+    title:SetText("TBC Gear Exporter")
 
     local close = CreateFrame("Button", nil, exportFrame, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", -5, -5)
 
+    local summary = exportFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    summary:SetPoint("TOPLEFT", 20, -42)
+    summary:SetPoint("TOPRIGHT", -20, -42)
+    summary:SetJustifyH("LEFT")
+    summary:SetText("Bags: 0 items   Bank: 0 items   Scope: All")
+
     local scan = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
-    SetFrameSize(scan, 80, 24)
-    scan:SetPoint("TOPLEFT", 20, -46)
-    scan:SetText("Scan")
+    SetFrameSize(scan, 100, 24)
+    scan:SetPoint("TOPLEFT", 20, -64)
+    scan:SetText("Scan Bags")
     scan:SetScript("OnClick", function()
-        Addon:ScanBags()
+        Addon:ScanBagsAndReport("Bags scanned")
         if Addon.bankOpen then
-            Addon:ScanBank()
+            Addon:ScanBankAndReport("Bank scanned")
         else
-            Addon:Print("Bags scanned. Open your bank and scan again to update bank items.")
+            Addon:Print("Open your bank and scan again to update bank items.")
         end
         Addon:RefreshExport()
     end)
 
     local all = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
-    SetFrameSize(all, 80, 24)
+    SetFrameSize(all, 62, 24)
     all:SetPoint("LEFT", scan, "RIGHT", 8, 0)
     all:SetText("All")
     all:SetScript("OnClick", function()
@@ -1036,21 +1161,21 @@ function Addon:CreateExportFrame()
     end)
 
     local bags = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
-    SetFrameSize(bags, 80, 24)
+    SetFrameSize(bags, 62, 24)
     bags:SetPoint("LEFT", all, "RIGHT", 8, 0)
     bags:SetText("Bags")
     bags:SetScript("OnClick", function()
-        Addon:ScanBags()
+        Addon:ScanBagsAndReport("Bags scanned")
         Addon:RefreshExport("bags")
     end)
 
     local bank = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
-    SetFrameSize(bank, 80, 24)
+    SetFrameSize(bank, 62, 24)
     bank:SetPoint("LEFT", bags, "RIGHT", 8, 0)
     bank:SetText("Bank")
     bank:SetScript("OnClick", function()
         if Addon.bankOpen then
-            Addon:ScanBank()
+            Addon:ScanBankAndReport("Bank scanned")
         else
             Addon:Print("Showing the last saved bank scan. Open your bank to refresh it.")
         end
@@ -1058,19 +1183,36 @@ function Addon:CreateExportFrame()
     end)
 
     local gear = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
-    SetFrameSize(gear, 90, 24)
+    SetFrameSize(gear, 70, 24)
     gear:SetPoint("LEFT", bank, "RIGHT", 8, 0)
-    gear:SetText("Gear Only")
+    gear:SetText("Gear")
     gear:SetScript("OnClick", function()
         Addon:RefreshExport("gear")
     end)
 
+    local debugButton = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
+    SetFrameSize(debugButton, 70, 24)
+    debugButton:SetPoint("LEFT", gear, "RIGHT", 8, 0)
+    debugButton:SetText("Debug")
+    debugButton:SetScript("OnClick", function()
+        Addon:DebugContainers()
+    end)
+
+    local selectButton = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
+    SetFrameSize(selectButton, 86, 24)
+    selectButton:SetPoint("LEFT", debugButton, "RIGHT", 8, 0)
+    selectButton:SetText("Select")
+    selectButton:SetScript("OnClick", function()
+        Addon:SelectExportText()
+        Addon.exportFrame.status:SetText("Export text selected. Press Ctrl+C to copy.")
+    end)
+
     local scroll = CreateFrame("ScrollFrame", "TBCGearExporterScrollFrame", exportFrame, "UIPanelScrollFrameTemplate")
-    scroll:SetPoint("TOPLEFT", 20, -82)
+    scroll:SetPoint("TOPLEFT", 20, -98)
     scroll:SetPoint("BOTTOMRIGHT", -38, 48)
 
     local editBox = CreateFrame("EditBox", nil, scroll)
-    SetFrameSize(editBox, 640, 380)
+    SetFrameSize(editBox, 600, 340)
     editBox:SetMultiLine(true)
     editBox:SetAutoFocus(false)
     editBox:EnableMouse(true)
@@ -1080,7 +1222,7 @@ function Addon:CreateExportFrame()
     end)
     editBox:SetScript("OnTextChanged", function(self)
         local lineCount = self.GetNumLines and self:GetNumLines() or 1
-        local height = math.max(380, (lineCount * 14) + 20)
+        local height = math.max(340, (lineCount * 14) + 20)
         if self.SetHeight then
             self:SetHeight(height)
         end
@@ -1094,6 +1236,7 @@ function Addon:CreateExportFrame()
     status:SetText("AI-ready export is selected. Press Ctrl+C to copy.")
 
     exportFrame.editBox = editBox
+    exportFrame.summary = summary
     exportFrame.status = status
     self.exportFrame = exportFrame
 end
@@ -1142,17 +1285,16 @@ function Addon:CreateMinimapButton()
 
     button:SetScript("OnClick", function(_, mouseButton)
         if mouseButton == "RightButton" then
-            Addon:ScanBags()
+            Addon:ScanBagsAndReport("Bags scanned")
             if Addon.bankOpen then
-                Addon:ScanBank()
-                Addon:Print("Bags and bank scanned.")
+                Addon:ScanBankAndReport("Bank scanned")
             else
-                Addon:Print("Bags scanned. Open your bank and scan again to update bank items.")
+                Addon:Print("Open your bank and scan again to update bank items.")
             end
             return
         end
 
-        Addon:ScanBags()
+        Addon:ScanBagsAndReport("Bags scanned")
         Addon:ShowExport("all")
     end)
 
@@ -1185,27 +1327,27 @@ function Addon:ClearProfile()
 end
 
 function Addon:ShowHelp()
-    self:Print("Commands: /tbcgear gui, /tbcgear export, /tbcgear bags, /tbcgear bank, /tbcgear gear, /tbcgear scan, /tbcgear clear")
+    self:Print("Commands: /tbcgear gui, /tbcgear bags, /tbcgear bank, /tbcgear gear, /tbcgear scan, /tbcgear debug, /tbcgear clear")
 end
 
 function Addon:HandleSlash(message)
     local command = Trim(message):lower()
 
     if command == "" or command == "gui" or command == "export" or command == "show" then
-        self:ScanBags()
+        self:ScanBagsAndReport("Bags scanned")
         self:ShowExport("all")
         return
     end
 
     if command == "bags" then
-        self:ScanBags()
+        self:ScanBagsAndReport("Bags scanned")
         self:ShowExport("bags")
         return
     end
 
     if command == "bank" then
         if self.bankOpen then
-            self:ScanBank()
+            self:ScanBankAndReport("Bank scanned")
         else
             self:Print("Showing the last saved bank scan. Open your bank to refresh it.")
         end
@@ -1214,22 +1356,26 @@ function Addon:HandleSlash(message)
     end
 
     if command == "gear" then
-        self:ScanBags()
+        self:ScanBagsAndReport("Bags scanned")
         if self.bankOpen then
-            self:ScanBank()
+            self:ScanBankAndReport("Bank scanned")
         end
         self:ShowExport("gear")
         return
     end
 
     if command == "scan" then
-        self:ScanBags()
+        self:ScanBagsAndReport("Bags scanned")
         if self.bankOpen then
-            self:ScanBank()
-            self:Print("Bags and bank scanned.")
+            self:ScanBankAndReport("Bank scanned")
         else
-            self:Print("Bags scanned. Open your bank and scan again to update bank items.")
+            self:Print("Open your bank and scan again to update bank items.")
         end
+        return
+    end
+
+    if command == "debug" then
+        self:DebugContainers()
         return
     end
 
@@ -1278,18 +1424,18 @@ function Addon:OnEvent(eventName, ...)
 
     if eventName == "PLAYER_LOGIN" then
         self:CreateMinimapButton()
-        self:ScanBags()
-        self:Print("Loaded. Click the minimap bag icon or use /tbcgear export to copy your saved bags and bank.")
+        local snapshot = self:ScanBags()
+        self:Print("Loaded. " .. self:FormatScanSummary("Bags", snapshot) .. ". Click the minimap bag icon or use /tbcgear gui.")
         return
     end
 
     if eventName == "BAG_OPEN" then
         local bagID = ...
-        self:ScanBags()
+        local snapshot = self:ScanBags()
         if bagID ~= nil then
-            self:Print("Debug: bag " .. bagID .. " opened; bags scanned.")
+            self:Print("Debug: bag " .. bagID .. " opened; " .. self:FormatScanSummary("bags", snapshot) .. ".")
         else
-            self:Print("Debug: bag opened; bags scanned.")
+            self:Print("Debug: bag opened; " .. self:FormatScanSummary("bags", snapshot) .. ".")
         end
         return
     end
@@ -1304,8 +1450,8 @@ function Addon:OnEvent(eventName, ...)
 
     if eventName == "BANKFRAME_OPENED" then
         self.bankOpen = true
-        self:ScanBank()
-        self:Print("Debug: bank opened; bank scanned.")
+        local snapshot = self:ScanBank()
+        self:Print("Debug: bank opened; " .. self:FormatScanSummary("bank", snapshot) .. ".")
         return
     end
 
@@ -1328,6 +1474,10 @@ if _G.TBCGearExporterTestMode then
         SafeRegister = SafeRegister,
         SetFrameSize = SetFrameSize,
         BackdropTemplate = BackdropTemplate,
+        HasCContainer = HasCContainer,
+        HasLegacyContainer = HasLegacyContainer,
+        ContainerApiName = ContainerApiName,
+        YesNo = YesNo,
         GetContainerNumSlotsCompat = GetContainerNumSlotsCompat,
         GetContainerItemLinkCompat = GetContainerItemLinkCompat,
         ValuesFromContainerInfo = ValuesFromContainerInfo,

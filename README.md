@@ -4,8 +4,8 @@
 ![Lua 5.1](https://img.shields.io/badge/Lua-5.1-2C2D72?logo=lua&logoColor=white)
 ![WoW AddOn](https://img.shields.io/badge/WoW-TBC%20Classic-C69B6D)
 ![TBC Anniversary](https://img.shields.io/badge/client-Anniversary-0E8A16)
-![Tests](https://img.shields.io/badge/tests-28%20passing-brightgreen)
-![Coverage](https://img.shields.io/badge/coverage-99.58%25-brightgreen)
+![Tests](https://img.shields.io/badge/tests-30%20passing-brightgreen)
+![Coverage](https://img.shields.io/badge/coverage-99.34%25-brightgreen)
 ![Coverage Gate](https://img.shields.io/badge/coverage%20gate-99%25-blue)
 ![Local Install](https://img.shields.io/badge/local%20install-PowerShell-5391FE?logo=powershell&logoColor=white)
 
@@ -33,6 +33,7 @@ When I create a GitHub release or tag from this workspace, I also run that local
 ```text
 /tbcgear gui     -- open the AI-ready export GUI
 /tbcgear scan    -- refresh bag data; refreshes bank too if bank is open
+/tbcgear debug   -- print bag API, slot, and first item-link diagnostics
 /tbcgear gear    -- export only gear from bags and saved bank snapshot
 ```
 
@@ -48,11 +49,12 @@ The minimap bag icon opens the export GUI on left-click. Right-click scans bags,
 - `/tbcgear bank` exports the last saved bank scan.
 - `/tbcgear gear` exports only gear from bags and bank.
 - `/tbcgear scan` refreshes bag data. If your bank is open, it refreshes bank data too.
+- `/tbcgear debug` prints the detected bag API, visible bag slots, saved counts, and first visible item link.
 - `/tbcgear clear` clears this character's saved bag and bank snapshots.
 
-The export box auto-selects text formatted for AI tools: a short instruction header followed by structured `DATA_JSON` containing character info, scan timestamps, categories, items, and stat arrays.
+The export panel shows saved bag/bank counts, scan/debug controls, and an auto-selected text box formatted for AI tools: a short instruction header followed by structured `DATA_JSON` containing character info, scan timestamps, categories, items, and stat arrays.
 
-On login, the addon prints a loaded message in chat. Opening a bag scans bag contents and prints a debug line in chat. Opening the bank scans bank contents and prints a matching debug line.
+On login, the addon prints a loaded message with item and slot counts. Opening a bag scans bag contents and prints a debug line in chat. Opening the bank scans bank contents and prints a matching debug line.
 
 ## Tests
 
