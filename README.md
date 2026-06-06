@@ -5,7 +5,7 @@
 ![WoW AddOn](https://img.shields.io/badge/WoW-TBC%20Classic-C69B6D)
 ![TBC Anniversary](https://img.shields.io/badge/client-Anniversary-0E8A16)
 ![Tests](https://img.shields.io/badge/tests-30%20passing-brightgreen)
-![Coverage](https://img.shields.io/badge/coverage-99.36%25-brightgreen)
+![Coverage](https://img.shields.io/badge/coverage-99.43%25-brightgreen)
 ![Coverage Gate](https://img.shields.io/badge/coverage%20gate-99%25-blue)
 ![Local Install](https://img.shields.io/badge/local%20install-PowerShell-5391FE?logo=powershell&logoColor=white)
 
@@ -33,6 +33,9 @@ When I create a GitHub release or tag from this workspace, I also run that local
 ```text
 /tbcgear scan    -- scan visible bags and save the snapshot to TBCGearExporterDB
 /tbcgear export  -- open the export popup from the saved local DB
+/tbcgear json    -- open the export popup in JSON format
+/tbcgear markdown -- open the export popup in Markdown format
+/tbcgear text    -- open the export popup in plain text format
 /tbcgear debug   -- print bag API, slot, and first item-link diagnostics
 /tbcgear gear    -- export only gear from bags and saved bank snapshot
 ```
@@ -44,7 +47,9 @@ The minimap bag icon opens the export popup on left-click. Right-click scans and
 ## Commands
 
 - `/tbcgear gui` opens the export popup from the saved local DB.
-- `/tbcgear export` opens the export popup with bags and the last saved bank scan.
+- `/tbcgear export` opens the export popup with bags and the last saved bank scan in AI Text format.
+- `/tbcgear export json`, `/tbcgear export markdown`, and `/tbcgear export text` open the same saved data in that format.
+- `/tbcgear json`, `/tbcgear markdown`, and `/tbcgear text` are shortcuts for exporting all saved data in those formats.
 - `/tbcgear bags` exports bag items only.
 - `/tbcgear bank` exports the last saved bank scan.
 - `/tbcgear gear` exports only gear from bags and bank.
@@ -52,7 +57,7 @@ The minimap bag icon opens the export popup on left-click. Right-click scans and
 - `/tbcgear debug` prints the detected bag API, visible bag slots, saved counts, and first visible item link.
 - `/tbcgear clear` clears this character's saved bag and bank snapshots.
 
-The export panel pops up from saved `TBCGearExporterDB` data. It shows saved bag/bank counts, scan/debug controls, an `Export` action, and an auto-selected text box formatted for AI tools: a short instruction header followed by structured `DATA_JSON` containing character info, local DB metadata, scan timestamps, categories, items, and stat arrays.
+The export panel pops up from saved `TBCGearExporterDB` data. It shows saved bag/bank counts, scan/debug controls, an `Export` action, format buttons for **AI**, **JSON**, **Markdown**, and **Text**, and an auto-selected text box containing character info, local DB metadata, scan timestamps, categories, items, and stat arrays.
 
 On login, the addon prints a loaded message with item and slot counts. Opening a bag scans bag contents and prints a debug line in chat. Opening the bank scans bank contents and prints a matching debug line.
 

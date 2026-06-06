@@ -57,6 +57,13 @@ local QUALITY_LABELS = {
     [7] = "Heirloom",
 }
 
+local EXPORT_FORMAT_LABELS = {
+    ai = "AI Text",
+    json = "JSON",
+    markdown = "Markdown",
+    text = "Text",
+}
+
 local STAT_LABELS = {
     ITEM_MOD_MANA = "Mana",
     ITEM_MOD_HEALTH = "Health",
@@ -479,6 +486,32 @@ local function ScopeTitle(scope)
     end
 
     return (scope or "all"):gsub("^%l", string.upper)
+end
+
+local function NormalizeExportFormat(format)
+    format = Trim(format):lower()
+
+    if format == "" or format == "ai" or format == "chatgpt" or format == "gpt" then
+        return "ai"
+    end
+
+    if format == "json" or format == "raw" then
+        return "json"
+    end
+
+    if format == "markdown" or format == "md" then
+        return "markdown"
+    end
+
+    if format == "text" or format == "txt" or format == "plain" then
+        return "text"
+    end
+
+    return "ai"
+end
+
+local function ExportFormatTitle(format)
+    return EXPORT_FORMAT_LABELS[NormalizeExportFormat(format)] or EXPORT_FORMAT_LABELS.ai
 end
 
 local function AppendIndented(lines, indent, text)
@@ -921,8 +954,85 @@ function Addon:CollectExportItems(scope)
     return items
 end
 
-function Addon:BuildExport(scope)
+function Addon:BuildMarkdownExport(scope, profile, items, categories, buckets)
+    local lines = {
+        "# TBC Gear Exporter",
+        "",
+        "- Character: " .. tostring(profile.player or "Unknown Player") .. " - " .. tostring(profile.realm or "Unknown Realm"),
+        "- Local DB: " .. DB_NAME .. " saved at " .. FormatTime(profile.localDB and profile.localDB.savedAt),
+        "- Scope: " .. ScopeTitle(scope),
+        "- Items: " .. #items,
+        "- Bag scan: " .. FormatTime(profile.bags and profile.bags.updatedAt),
+        "- Bank scan: " .. FormatTime(profile.bank and profile.bank.updatedAt),
+        "",
+    }
+
+    if #items == 0 then
+        lines[#lines + 1] = "_No saved items are available. Use `/tbcgear scan` to save bags, and open the bank while scanning to save bank items._"
+        return table.concat(lines, "\n")
+    end
+
+    for categoryIndex = 1, #categories do
+        local category = categories[categoryIndex]
+        local bucket = buckets[category] or {}
+        lines[#lines + 1] = "## " .. category .. " (" .. #bucket .. ")"
+
+        for itemIndex = 1, #bucket do
+            local item = bucket[itemIndex]
+            lines[#lines + 1] = "- **" .. tostring(item.name or "Unknown Item") .. "** x" .. tostring(item.count or 1)
+                .. " | " .. tostring(item.qualityName or "Unknown")
+                .. " | " .. SourceLabel(item.source)
+                .. " | " .. tostring(item.location or "Unknown Location")
+                .. " | Stats: " .. FormatStats(item.stats)
+        end
+
+        lines[#lines + 1] = ""
+    end
+
+    return table.concat(lines, "\n")
+end
+
+function Addon:BuildTextExport(scope, profile, items, categories, buckets)
+    local lines = {
+        "TBC Gear Exporter",
+        "Character: " .. tostring(profile.player or "Unknown Player") .. " - " .. tostring(profile.realm or "Unknown Realm"),
+        "Local DB: " .. DB_NAME .. " saved at " .. FormatTime(profile.localDB and profile.localDB.savedAt),
+        "Scope: " .. ScopeTitle(scope),
+        "Items: " .. #items,
+        "Bag scan: " .. FormatTime(profile.bags and profile.bags.updatedAt),
+        "Bank scan: " .. FormatTime(profile.bank and profile.bank.updatedAt),
+        "",
+    }
+
+    if #items == 0 then
+        lines[#lines + 1] = "No saved items are available. Use /tbcgear scan to save bags."
+        return table.concat(lines, "\n")
+    end
+
+    for categoryIndex = 1, #categories do
+        local category = categories[categoryIndex]
+        local bucket = buckets[category] or {}
+        lines[#lines + 1] = "[" .. category .. "]"
+
+        for itemIndex = 1, #bucket do
+            local item = bucket[itemIndex]
+            lines[#lines + 1] = "- " .. tostring(item.name or "Unknown Item")
+                .. " x" .. tostring(item.count or 1)
+                .. " | " .. tostring(item.qualityName or "Unknown")
+                .. " | " .. SourceLabel(item.source)
+                .. " | " .. tostring(item.location or "Unknown Location")
+                .. " | Stats: " .. FormatStats(item.stats)
+        end
+
+        lines[#lines + 1] = ""
+    end
+
+    return table.concat(lines, "\n")
+end
+
+function Addon:BuildExport(scope, format)
     scope = scope or "all"
+    format = NormalizeExportFormat(format or self.exportFormat or "ai")
 
     local profile = self:GetProfile()
     local items = self:CollectExportItems(scope)
@@ -1004,7 +1114,7 @@ function Addon:BuildExport(scope)
     }
 
     AppendIndented(lines, 0, "{")
-    AppendIndented(lines, 2, JsonField("format", "tbc_gear_exporter_ai_v1", true))
+    AppendIndented(lines, 2, JsonField("format", format == "json" and "tbc_gear_exporter_json_v1" or "tbc_gear_exporter_ai_v1", true))
     AppendIndented(lines, 2, "\"character\": {")
     AppendIndented(lines, 4, JsonField("name", profile.player or "Unknown Player", true))
     AppendIndented(lines, 4, JsonField("realm", profile.realm or "Unknown Realm", false))
@@ -1088,7 +1198,22 @@ function Addon:BuildExport(scope)
     AppendIndented(lines, 2, "]")
     AppendIndented(lines, 0, "}")
 
-    return table.concat(lines, "\n")
+    local aiText = table.concat(lines, "\n")
+    local jsonText = aiText:match("DATA_JSON:\n(.+)$") or aiText
+
+    if format == "json" then
+        return jsonText
+    end
+
+    if format == "markdown" then
+        return self:BuildMarkdownExport(scope, profile, items, categories, buckets)
+    end
+
+    if format == "text" then
+        return self:BuildTextExport(scope, profile, items, categories, buckets)
+    end
+
+    return aiText
 end
 
 function Addon:SavedItemCounts()
@@ -1108,23 +1233,24 @@ function Addon:SelectExportText()
     self.exportFrame.editBox:SetFocus()
 end
 
-function Addon:RefreshExport(scope)
+function Addon:RefreshExport(scope, format)
     self.exportScope = scope or self.exportScope or "all"
+    self.exportFormat = NormalizeExportFormat(format or self.exportFormat or "ai")
 
     if not self.exportFrame then
         return
     end
 
-    local text = self:BuildExport(self.exportScope)
+    local text = self:BuildExport(self.exportScope, self.exportFormat)
     local bagCount, bankCount = self:SavedItemCounts()
     self.exportFrame.editBox:SetText(text)
     self:SelectExportText()
 
     if self.exportFrame.summary then
-        self.exportFrame.summary:SetText("Bags: " .. bagCount .. " items   Bank: " .. bankCount .. " items   Scope: " .. ScopeTitle(self.exportScope))
+        self.exportFrame.summary:SetText("Bags: " .. bagCount .. " items   Bank: " .. bankCount .. " items   Scope: " .. ScopeTitle(self.exportScope) .. "   Format: " .. ExportFormatTitle(self.exportFormat))
     end
 
-    self.exportFrame.status:SetText("Export generated from saved local DB. Press Ctrl+C to copy. Use Debug if counts stay at zero.")
+    self.exportFrame.status:SetText(ExportFormatTitle(self.exportFormat) .. " export generated from saved local DB. Press Ctrl+C to copy.")
 end
 
 function Addon:CreateExportFrame()
@@ -1234,12 +1360,48 @@ function Addon:CreateExportFrame()
         Addon.exportFrame.status:SetText("Export text selected. Press Ctrl+C to copy.")
     end)
 
+    local formatLabel = exportFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    formatLabel:SetPoint("TOPLEFT", 20, -96)
+    formatLabel:SetText("Format:")
+
+    local aiFormat = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
+    SetFrameSize(aiFormat, 52, 22)
+    aiFormat:SetPoint("LEFT", formatLabel, "RIGHT", 8, 0)
+    aiFormat:SetText("AI")
+    aiFormat:SetScript("OnClick", function()
+        Addon:ExportSaved(nil, "ai")
+    end)
+
+    local jsonFormat = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
+    SetFrameSize(jsonFormat, 60, 22)
+    jsonFormat:SetPoint("LEFT", aiFormat, "RIGHT", 6, 0)
+    jsonFormat:SetText("JSON")
+    jsonFormat:SetScript("OnClick", function()
+        Addon:ExportSaved(nil, "json")
+    end)
+
+    local markdownFormat = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
+    SetFrameSize(markdownFormat, 90, 22)
+    markdownFormat:SetPoint("LEFT", jsonFormat, "RIGHT", 6, 0)
+    markdownFormat:SetText("Markdown")
+    markdownFormat:SetScript("OnClick", function()
+        Addon:ExportSaved(nil, "markdown")
+    end)
+
+    local textFormat = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
+    SetFrameSize(textFormat, 60, 22)
+    textFormat:SetPoint("LEFT", markdownFormat, "RIGHT", 6, 0)
+    textFormat:SetText("Text")
+    textFormat:SetScript("OnClick", function()
+        Addon:ExportSaved(nil, "text")
+    end)
+
     local scroll = CreateFrame("ScrollFrame", "TBCGearExporterScrollFrame", exportFrame, "UIPanelScrollFrameTemplate")
-    scroll:SetPoint("TOPLEFT", 20, -98)
+    scroll:SetPoint("TOPLEFT", 20, -126)
     scroll:SetPoint("BOTTOMRIGHT", -38, 48)
 
     local editBox = CreateFrame("EditBox", nil, scroll)
-    SetFrameSize(editBox, 600, 340)
+    SetFrameSize(editBox, 600, 300)
     editBox:SetMultiLine(true)
     editBox:SetAutoFocus(false)
     editBox:EnableMouse(true)
@@ -1249,7 +1411,7 @@ function Addon:CreateExportFrame()
     end)
     editBox:SetScript("OnTextChanged", function(self)
         local lineCount = self.GetNumLines and self:GetNumLines() or 1
-        local height = math.max(340, (lineCount * 14) + 20)
+        local height = math.max(300, (lineCount * 14) + 20)
         if self.SetHeight then
             self:SetHeight(height)
         end
@@ -1265,22 +1427,28 @@ function Addon:CreateExportFrame()
     exportFrame.editBox = editBox
     exportFrame.summary = summary
     exportFrame.status = status
+    exportFrame.formatLabel = formatLabel
     self.exportFrame = exportFrame
 end
 
-function Addon:ShowExport(scope)
+function Addon:ShowExport(scope, format)
     if not self.exportFrame then
         self:CreateExportFrame()
     end
 
     self.exportFrame:Show()
-    self:RefreshExport(scope)
+    self:RefreshExport(scope, format)
 end
 
-function Addon:ExportSaved(scope)
-    self:ShowExport(scope or "all")
+function Addon:ExportSaved(scope, format)
+    local selectedFormat = format
+    if selectedFormat and Trim(selectedFormat) == "" then
+        selectedFormat = nil
+    end
+
+    self:ShowExport(scope or self.exportScope or "all", selectedFormat)
     local bagCount, bankCount = self:SavedItemCounts()
-    self:Print("Export opened from local DB: " .. bagCount .. " bag items, " .. bankCount .. " bank items.")
+    self:Print(ExportFormatTitle(self.exportFormat) .. " export opened from local DB: " .. bagCount .. " bag items, " .. bankCount .. " bank items.")
 end
 
 function Addon:CreateMinimapButton()
@@ -1368,29 +1536,42 @@ function Addon:ClearProfile()
 end
 
 function Addon:ShowHelp()
-    self:Print("Commands: /tbcgear export, /tbcgear scan, /tbcgear bags, /tbcgear bank, /tbcgear gear, /tbcgear debug, /tbcgear clear")
+    self:Print("Commands: /tbcgear export [ai|json|markdown|text], /tbcgear bags [format], /tbcgear bank [format], /tbcgear gear [format], /tbcgear scan, /tbcgear debug, /tbcgear clear")
 end
 
 function Addon:HandleSlash(message)
-    local command = Trim(message):lower()
+    local input = Trim(message):lower()
+    local command, argument = input:match("^(%S+)%s*(.-)$")
+    command = command or ""
+    argument = argument or ""
 
-    if command == "" or command == "gui" or command == "export" or command == "show" then
+    if command == "" or command == "gui" or command == "show" then
         self:ExportSaved("all")
         return
     end
 
+    if command == "export" then
+        self:ExportSaved("all", argument)
+        return
+    end
+
+    if command == "ai" or command == "json" or command == "markdown" or command == "md" or command == "text" or command == "txt" then
+        self:ExportSaved("all", command)
+        return
+    end
+
     if command == "bags" then
-        self:ExportSaved("bags")
+        self:ExportSaved("bags", argument)
         return
     end
 
     if command == "bank" then
-        self:ExportSaved("bank")
+        self:ExportSaved("bank", argument)
         return
     end
 
     if command == "gear" then
-        self:ExportSaved("gear")
+        self:ExportSaved("gear", argument)
         return
     end
 
@@ -1527,6 +1708,8 @@ if _G.TBCGearExporterTestMode then
         JsonValue = JsonValue,
         JsonField = JsonField,
         ScopeTitle = ScopeTitle,
+        NormalizeExportFormat = NormalizeExportFormat,
+        ExportFormatTitle = ExportFormatTitle,
         AppendIndented = AppendIndented,
         LocationLabel = LocationLabel,
         SourceLabel = SourceLabel,

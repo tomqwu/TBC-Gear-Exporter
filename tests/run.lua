@@ -784,6 +784,12 @@ test("json helpers create AI-safe values and fields", function()
     assertEquals(private.JsonField("scope", "all", true), "\"scope\": \"all\",")
     assertEquals(private.ScopeTitle("gear"), "Gear Only")
     assertEquals(private.ScopeTitle("bags"), "Bags")
+    assertEquals(private.NormalizeExportFormat(""), "ai")
+    assertEquals(private.NormalizeExportFormat("md"), "markdown")
+    assertEquals(private.NormalizeExportFormat("txt"), "text")
+    assertEquals(private.NormalizeExportFormat("raw"), "json")
+    assertEquals(private.NormalizeExportFormat("wat"), "ai")
+    assertEquals(private.ExportFormatTitle("json"), "JSON")
 
     local lines = {}
     private.AppendIndented(lines, 2, "text")
@@ -1150,10 +1156,28 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(gearExport, "Arcane Blade")
     assertFalse(gearExport:find("Super Mana Potion", 1, true), "gear export should omit non-gear")
 
+    local jsonExport = Addon:BuildExport("all", "json")
+    assertContains(jsonExport, "\"format\": \"tbc_gear_exporter_json_v1\"")
+    assertContains(jsonExport, "\"items\": [")
+    assertFalse(jsonExport:find("AI_READY_WOW_TBC_INVENTORY_EXPORT", 1, true), "json export should be pure JSON")
+
+    local markdownExport = Addon:BuildExport("all", "markdown")
+    assertContains(markdownExport, "# TBC Gear Exporter")
+    assertContains(markdownExport, "## Gear")
+    assertContains(markdownExport, "**Defender Helm**")
+
+    local textExport = Addon:BuildExport("all", "text")
+    assertContains(textExport, "TBC Gear Exporter")
+    assertContains(textExport, "[Gear]")
+    assertContains(textExport, "- Defender Helm")
+    assertFalse(textExport:find("# TBC Gear Exporter", 1, true), "text export should be plain text")
+
     Addon:ClearProfile()
     local empty = Addon:BuildExport("all")
     assertContains(empty, "\"item_count\": 0")
     assertContains(empty, "No saved items are available")
+    assertContains(Addon:BuildExport("all", "markdown"), "No saved items are available")
+    assertContains(Addon:BuildExport("all", "text"), "No saved items are available")
 end)
 
 test("export sorting covers quality, name, location, and unknown category ordering", function()
@@ -1185,7 +1209,7 @@ test("RefreshExport no-ops without frame and updates edit box with frame", funct
     assertContains(Addon.exportFrame.editBox.text, "Super Mana Potion")
     assertTrue(Addon.exportFrame.editBox.highlighted)
     assertTrue(Addon.exportFrame.editBox.focused)
-    assertEquals(Addon.exportFrame.status.text, "Export generated from saved local DB. Press Ctrl+C to copy. Use Debug if counts stay at zero.")
+    assertEquals(Addon.exportFrame.status.text, "AI Text export generated from saved local DB. Press Ctrl+C to copy.")
     assertContains(Addon.exportFrame.summary.text, "Bags:")
 end)
 
@@ -1213,7 +1237,7 @@ test("CreateExportFrame wires UI controls and scripts", function()
 
     exportFrame.editBox.text = "one\ntwo\nthree"
     exportFrame.editBox.scripts.OnTextChanged(exportFrame.editBox)
-    assertTrue(exportFrame.editBox.height >= 340)
+    assertTrue(exportFrame.editBox.height >= 300)
 
     exportFrame.editBox.scripts.OnTextChanged({ GetNumLines = function() return 1 end })
 end)
@@ -1253,7 +1277,7 @@ test("minimap button opens export, scans on right click, and shows tooltip", fun
     button.scripts.OnClick(button, "LeftButton")
     assertTrue(Addon.exportFrame:IsShown())
     assertEquals(Addon.exportScope, "all")
-    assertAnyMessageContains("Export opened from local DB")
+    assertAnyMessageContains("export opened from local DB")
 
     button.scripts.OnClick(button, "RightButton")
     assertAnyMessageContains("Bags scanned")
@@ -1288,30 +1312,46 @@ test("export frame buttons scan and change scopes", function()
 
     findButtonByText("Export").scripts.OnClick()
     assertEquals(Addon.exportScope, "all")
-    assertAnyMessageContains("Export opened from local DB")
+    assertAnyMessageContains("export opened from local DB")
 
     findButtonByText("Bags").scripts.OnClick()
     assertEquals(Addon.exportScope, "bags")
-    assertAnyMessageContains("Export opened from local DB")
+    assertAnyMessageContains("export opened from local DB")
 
     findButtonByText("Bank").scripts.OnClick()
     assertEquals(Addon.exportScope, "bank")
-    assertAnyMessageContains("Export opened from local DB")
+    assertAnyMessageContains("export opened from local DB")
 
     Addon.bankOpen = true
     findButtonByText("Bank").scripts.OnClick()
     assertEquals(Addon.exportScope, "bank")
-    assertAnyMessageContains("Export opened from local DB")
+    assertAnyMessageContains("export opened from local DB")
 
     findButtonByText("Gear").scripts.OnClick()
     assertEquals(Addon.exportScope, "gear")
-    assertAnyMessageContains("Export opened from local DB")
+    assertAnyMessageContains("export opened from local DB")
 
     findButtonByText("Debug").scripts.OnClick()
     assertAnyMessageContains("API=")
 
     findButtonByText("Select").scripts.OnClick()
     assertEquals(Addon.exportFrame.status.text, "Export text selected. Press Ctrl+C to copy.")
+
+    findButtonByText("JSON").scripts.OnClick()
+    assertEquals(Addon.exportFormat, "json")
+    assertContains(Addon.exportFrame.editBox.text, "\"format\": \"tbc_gear_exporter_json_v1\"")
+
+    findButtonByText("Markdown").scripts.OnClick()
+    assertEquals(Addon.exportFormat, "markdown")
+    assertContains(Addon.exportFrame.editBox.text, "# TBC Gear Exporter")
+
+    findButtonByText("Text").scripts.OnClick()
+    assertEquals(Addon.exportFormat, "text")
+    assertContains(Addon.exportFrame.editBox.text, "TBC Gear Exporter")
+
+    findButtonByText("AI").scripts.OnClick()
+    assertEquals(Addon.exportFormat, "ai")
+    assertContains(Addon.exportFrame.editBox.text, "AI_READY_WOW_TBC_INVENTORY_EXPORT")
 
     findButtonByText("Scan Bags").scripts.OnClick()
     assertEquals(Addon.exportScope, "gear")
@@ -1328,7 +1368,7 @@ test("slash commands cover export modes, scan modes, clear, help, and aliases", 
 
     Addon:HandleSlash("")
     assertEquals(Addon.exportScope, "all")
-    assertAnyMessageContains("Export opened from local DB")
+    assertAnyMessageContains("export opened from local DB")
     Addon:HandleSlash("gui")
     assertEquals(Addon.exportScope, "all")
     Addon:HandleSlash("show")
@@ -1339,6 +1379,16 @@ test("slash commands cover export modes, scan modes, clear, help, and aliases", 
     assertEquals(Addon.exportScope, "bank")
     Addon:HandleSlash("gear")
     assertEquals(Addon.exportScope, "gear")
+    Addon:HandleSlash("json")
+    assertEquals(Addon.exportFormat, "json")
+    Addon:HandleSlash("export markdown")
+    assertEquals(Addon.exportFormat, "markdown")
+    Addon:HandleSlash("bags text")
+    assertEquals(Addon.exportScope, "bags")
+    assertEquals(Addon.exportFormat, "text")
+    Addon:HandleSlash("gear md")
+    assertEquals(Addon.exportScope, "gear")
+    assertEquals(Addon.exportFormat, "markdown")
     Addon:HandleSlash("scan")
     assertAnyMessageContains("Bags scanned")
 
