@@ -120,6 +120,59 @@ local EXPORT_SCOPE_ALIASES = {
     equip = "gear",
 }
 
+local CLASS_ROLE_CONTEXT = {
+    DRUID = {
+        "Bear Feral tank: evaluate armor, stamina, defense/resilience, dodge/agility, threat stats, hit/expertise where present, feral attack power weapons, tank trinkets, and mitigation versus threat tradeoffs.",
+        "Cat Feral DPS: evaluate agility, strength, attack power, crit, hit/expertise where present, weapon feral attack power, set synergy, and whether pieces conflict with bear mitigation needs.",
+        "Restoration healing: evaluate bonus healing, spirit, intellect, mp5, haste where present, mana longevity, plus healing weapon/offhand/ring/trinket options.",
+        "Balance caster: evaluate spell damage, spell hit, spell crit, haste where present, intellect, mana sustain, and whether caster pieces are better reserved for healing or damage sets.",
+    },
+    WARRIOR = {
+        "Protection tank: evaluate armor, stamina, defense, shield/block value, avoidance, hit/expertise where present, and threat versus mitigation tradeoffs.",
+        "Arms/Fury DPS: evaluate strength, attack power, crit, hit/expertise where present, weapon speed/type, and set bonuses.",
+    },
+    PALADIN = {
+        "Protection tank: evaluate spell damage/threat, stamina, defense, block value, avoidance, and mitigation.",
+        "Holy healing: evaluate bonus healing, intellect, mp5, crit, and mana longevity.",
+        "Retribution DPS: evaluate strength, attack power, crit, hit/expertise where present, weapon quality, and set synergy.",
+    },
+    PRIEST = {
+        "Healing: evaluate bonus healing, spirit, intellect, mp5, haste where present, and mana longevity.",
+        "Shadow DPS: evaluate spell damage, shadow damage, spell hit, spell crit, haste where present, and mana sustain.",
+    },
+    SHAMAN = {
+        "Restoration healing: evaluate bonus healing, mp5, intellect, crit, haste where present, and mana longevity.",
+        "Elemental DPS: evaluate spell damage, spell hit, spell crit, haste where present, and mana sustain.",
+        "Enhancement DPS: evaluate attack power, agility, strength, crit, hit/expertise where present, weapon options, and set synergy.",
+    },
+    HUNTER = {
+        "Ranged DPS: evaluate agility, attack power, crit, hit, ranged weapon quality, ammo/quiver support, and set bonuses.",
+    },
+    ROGUE = {
+        "Melee DPS: evaluate agility, attack power, crit, hit/expertise where present, weapon speed/type, and set bonuses.",
+    },
+    MAGE = {
+        "Caster DPS: evaluate spell damage, spell hit, spell crit, haste where present, intellect, mana sustain, and school-specific bonuses.",
+    },
+    WARLOCK = {
+        "Caster DPS: evaluate spell damage, spell hit, spell crit, haste where present, stamina, intellect, and shadow/fire damage priorities.",
+    },
+}
+
+local DEFAULT_ROLE_CONTEXT = {
+    "Primary role: identify the most likely use for each equippable item from stats, item type, equip slot, quality, item level, and category.",
+    "Alternate role: call out items that may belong to an offspec set instead of the main set.",
+}
+
+local AI_OUTPUT_REQUESTS = {
+    "Summarize likely class/spec roles represented by the saved items.",
+    "For each plausible role, rank strong keepers, weak slots, and upgrade priorities.",
+    "Separate mitigation, threat, DPS, healing, caster, and utility value when relevant.",
+    "Flag duplicates, offspec pieces, consumables, materials, or items that are probably safe to vendor, bank, disenchant, or keep.",
+    "Use wowhead_url fields when naming specific items so the user can inspect them quickly.",
+    "Ask concise follow-up questions only when the exported data cannot determine the answer.",
+}
+
 local EXPORT_FORMAT_LABELS = {
     ai = "AI Text",
     json = "JSON",
@@ -930,6 +983,17 @@ local function AppendIndented(lines, indent, text)
     lines[#lines + 1] = string.rep(" ", indent) .. text
 end
 
+local function AppendJsonStringArray(lines, indent, key, values, comma)
+    AppendIndented(lines, indent, JsonString(key) .. ": [")
+
+    for index = 1, #(values or {}) do
+        local suffix = index < #(values or {}) and "," or ""
+        AppendIndented(lines, indent + 2, JsonString(values[index]) .. suffix)
+    end
+
+    AppendIndented(lines, indent, "]" .. (comma and "," or ""))
+end
+
 local function LocationLabel(source, bagID, slotID)
     if source == "bags" then
         if bagID == 0 then
@@ -956,6 +1020,78 @@ local function SourceLabel(source)
     end
 
     return source or "Unknown"
+end
+
+local function ClassToken(value)
+    value = Trim(value or ""):upper()
+    value = value:gsub("%s+", "_")
+
+    if value == "" then
+        return "UNKNOWN"
+    end
+
+    return value
+end
+
+local function GetPlayerClassInfo()
+    local localizedClass, englishClass, classID
+
+    if type(UnitClass) == "function" then
+        local ok, localized, english, id = pcall(UnitClass, "player")
+        if ok then
+            localizedClass = localized
+            englishClass = english
+            classID = id
+        end
+    end
+
+    englishClass = ClassToken(englishClass or localizedClass)
+
+    return {
+        localized = localizedClass or englishClass or "Unknown Class",
+        english = englishClass,
+        id = classID,
+    }
+end
+
+local function ClassRoleContext(classToken)
+    classToken = ClassToken(classToken)
+    return CLASS_ROLE_CONTEXT[classToken] or DEFAULT_ROLE_CONTEXT
+end
+
+local function BuildAIPrompt(profile, scope, filter, itemCount)
+    local classToken = ClassToken(profile.classEnglish or profile.class or "UNKNOWN")
+    local classDisplay = profile.classLocalized or profile.classEnglish or "Unknown Class"
+    local roleContext = ClassRoleContext(classToken)
+    local lines = {
+        "You are an expert World of Warcraft: The Burning Crusade Classic gearing assistant.",
+        "Analyze the structured item export below for this character and produce practical, role-aware gearing advice.",
+        "Character: " .. tostring(profile.player or "Unknown Player") .. " - " .. tostring(profile.realm or "Unknown Realm") .. " (" .. tostring(classDisplay) .. ").",
+        "Export scope: " .. ScopeTitle(scope) .. "; filter: " .. ExportFilterTitle(filter) .. "; item count: " .. tostring(itemCount or 0) .. ".",
+        "Bank contents are the last saved snapshot. Treat bag and bank source labels as inventory location, not proof that an item is equipped.",
+        "Use item stats, item level, quality, equip slot, category, source location, and wowhead_url fields. Do not invent missing stats or assume hidden enchants/gems.",
+        "Consider plausible class talents/specs instead of assuming one role.",
+        "",
+        "Class role lenses:",
+    }
+
+    for index = 1, #roleContext do
+        lines[#lines + 1] = "- " .. roleContext[index]
+    end
+
+    lines[#lines + 1] = ""
+    lines[#lines + 1] = "Output requirements:"
+
+    for index = 1, #AI_OUTPUT_REQUESTS do
+        lines[#lines + 1] = tostring(index) .. ". " .. AI_OUTPUT_REQUESTS[index]
+    end
+
+    return {
+        text = table.concat(lines, "\n"),
+        classToken = classToken,
+        roleContext = roleContext,
+        outputRequests = AI_OUTPUT_REQUESTS,
+    }
 end
 
 local function IsEquippableSlot(equipSlot)
@@ -1053,10 +1189,14 @@ function Addon:GetProfile()
     local realm = GetRealmName and GetRealmName() or "Unknown Realm"
     local player = UnitName and UnitName("player") or "Unknown Player"
     local key = player .. " - " .. realm
+    local classInfo = GetPlayerClassInfo()
 
     self.db.profiles[key] = self.db.profiles[key] or {
         player = player,
         realm = realm,
+        classLocalized = classInfo.localized,
+        classEnglish = classInfo.english,
+        classID = classInfo.id,
         bags = { updatedAt = 0, items = {} },
         bank = { updatedAt = 0, items = {} },
     }
@@ -1064,6 +1204,9 @@ function Addon:GetProfile()
     local profile = self.db.profiles[key]
     profile.player = player
     profile.realm = realm
+    profile.classLocalized = classInfo.localized
+    profile.classEnglish = classInfo.english
+    profile.classID = classInfo.id
     profile.bags = profile.bags or { updatedAt = 0, items = {} }
     profile.bank = profile.bank or { updatedAt = 0, items = {} }
     profile.localDB = profile.localDB or {
@@ -1386,11 +1529,20 @@ function Addon:CollectExportItems(scope, filter)
     return items
 end
 
-function Addon:BuildMarkdownExport(scope, profile, items, categories, buckets, filter)
+function Addon:BuildMarkdownExport(scope, profile, items, categories, buckets, filter, prompt)
     local lines = {
         "# TBC Gear Exporter",
         "",
+        "## AI Prompt",
+        "",
+        "```text",
+        prompt and prompt.text or "",
+        "```",
+        "",
+        "## Export Metadata",
+        "",
         "- Character: " .. tostring(profile.player or "Unknown Player") .. " - " .. tostring(profile.realm or "Unknown Realm"),
+        "- Class: " .. tostring(profile.classLocalized or profile.classEnglish or "Unknown Class"),
         "- Local DB: " .. DB_NAME .. " saved at " .. FormatTime(profile.localDB and profile.localDB.savedAt),
         "- Scope: " .. ScopeTitle(scope),
         "- Filter: " .. ExportFilterTitle(filter),
@@ -1433,10 +1585,16 @@ function Addon:BuildMarkdownExport(scope, profile, items, categories, buckets, f
     return table.concat(lines, "\n")
 end
 
-function Addon:BuildTextExport(scope, profile, items, categories, buckets, filter)
+function Addon:BuildTextExport(scope, profile, items, categories, buckets, filter, prompt)
     local lines = {
         "TBC Gear Exporter",
+        "",
+        "AI PROMPT",
+        prompt and prompt.text or "",
+        "",
+        "EXPORT METADATA",
         "Character: " .. tostring(profile.player or "Unknown Player") .. " - " .. tostring(profile.realm or "Unknown Realm"),
+        "Class: " .. tostring(profile.classLocalized or profile.classEnglish or "Unknown Class"),
         "Local DB: " .. DB_NAME .. " saved at " .. FormatTime(profile.localDB and profile.localDB.savedAt),
         "Scope: " .. ScopeTitle(scope),
         "Filter: " .. ExportFilterTitle(filter),
@@ -1488,6 +1646,7 @@ function Addon:BuildExport(scope, format, filter)
 
     local profile = self:GetProfile()
     local items = self:CollectExportItems(scope, filter)
+    local prompt = BuildAIPrompt(profile, scope, filter, #items)
     local buckets = {}
     local categorySeen = {}
 
@@ -1561,15 +1720,27 @@ function Addon:BuildExport(scope, format, filter)
 
     local lines = {
         "AI_READY_WOW_TBC_INVENTORY_EXPORT v1",
-        "Paste this entire selected text into an AI chat. It contains structured JSON for TBC bag and bank gear analysis.",
+        "Paste this entire selected text into an AI chat. It contains a prompt plus structured JSON for TBC bag and bank gear analysis.",
+        "AI_PROMPT:",
+        prompt.text,
+        "",
         "DATA_JSON:",
     }
 
     AppendIndented(lines, 0, "{")
     AppendIndented(lines, 2, JsonField("format", format == "json" and "tbc_gear_exporter_json_v1" or "tbc_gear_exporter_ai_v1", true))
+    AppendIndented(lines, 2, "\"ai_prompt\": {")
+    AppendIndented(lines, 4, JsonField("text", prompt.text, true))
+    AppendIndented(lines, 4, JsonField("class_token", prompt.classToken, true))
+    AppendJsonStringArray(lines, 4, "role_context", prompt.roleContext, true)
+    AppendJsonStringArray(lines, 4, "output_requests", prompt.outputRequests, false)
+    AppendIndented(lines, 2, "},")
     AppendIndented(lines, 2, "\"character\": {")
     AppendIndented(lines, 4, JsonField("name", profile.player or "Unknown Player", true))
-    AppendIndented(lines, 4, JsonField("realm", profile.realm or "Unknown Realm", false))
+    AppendIndented(lines, 4, JsonField("realm", profile.realm or "Unknown Realm", true))
+    AppendIndented(lines, 4, JsonField("class", profile.classLocalized or profile.classEnglish or "Unknown Class", true))
+    AppendIndented(lines, 4, JsonField("class_token", profile.classEnglish or "UNKNOWN", true))
+    AppendIndented(lines, 4, JsonField("class_id", profile.classID, false))
     AppendIndented(lines, 2, "},")
     AppendIndented(lines, 2, "\"local_db\": {")
     AppendIndented(lines, 4, JsonField("name", DB_NAME, true))
@@ -1671,11 +1842,11 @@ function Addon:BuildExport(scope, format, filter)
     end
 
     if format == "markdown" then
-        return self:BuildMarkdownExport(scope, profile, items, categories, buckets, filter)
+        return self:BuildMarkdownExport(scope, profile, items, categories, buckets, filter, prompt)
     end
 
     if format == "text" then
-        return self:BuildTextExport(scope, profile, items, categories, buckets, filter)
+        return self:BuildTextExport(scope, profile, items, categories, buckets, filter, prompt)
     end
 
     return aiText
@@ -2254,8 +2425,13 @@ if _G.TBCGearExporterTestMode then
         NormalizeExportScope = NormalizeExportScope,
         ParseExportOptions = ParseExportOptions,
         AppendIndented = AppendIndented,
+        AppendJsonStringArray = AppendJsonStringArray,
         LocationLabel = LocationLabel,
         SourceLabel = SourceLabel,
+        ClassToken = ClassToken,
+        GetPlayerClassInfo = GetPlayerClassInfo,
+        ClassRoleContext = ClassRoleContext,
+        BuildAIPrompt = BuildAIPrompt,
         IsEquippableSlot = IsEquippableSlot,
         CategoryFromInfo = CategoryFromInfo,
         CopyItems = CopyItems,

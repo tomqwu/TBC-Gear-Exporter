@@ -4,6 +4,7 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+- Add a class-aware AI prompt block to exports, including Druid bear/cat/healing/caster role lenses.
 - Add export quality filters, including rare-or-better, epic-only, and gear epic-only GUI/slash options.
 - Add item quality colors and colored item names to saved snapshots and exports.
 - Add TBC Wowhead item URLs to saved item snapshots and AI/JSON/Markdown/Text exports.

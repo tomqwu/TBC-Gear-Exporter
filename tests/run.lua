@@ -356,6 +356,14 @@ local function installGlobals()
         return "Unit"
     end
 
+    _G.UnitClass = function(unit)
+        if unit == "player" then
+            return "Druid", "DRUID", 11
+        end
+
+        return "Unknown", "UNKNOWN", nil
+    end
+
     _G.GetServerTime = function()
         return 1700000000
     end
@@ -838,6 +846,9 @@ test("json helpers create AI-safe values and fields", function()
     local lines = {}
     private.AppendIndented(lines, 2, "text")
     assertEquals(lines[1], "  text")
+    private.AppendJsonStringArray(lines, 0, "values", { "a", "b" }, true)
+    assertContains(table.concat(lines, "\n"), "\"values\": [")
+    assertContains(table.concat(lines, "\n"), "\"b\"")
 end)
 
 test("export filters parse quality, scope, and format options", function()
@@ -887,6 +898,32 @@ test("export filters parse quality, scope, and format options", function()
     assertEquals(format, "text")
     assertEquals(parsedFilter.qualityMin, 3)
     assertEquals(recognized, 3)
+end)
+
+test("class-aware AI prompt covers Druid role lenses and fallback context", function()
+    resetRuntimeState(Addon)
+    local classInfo = private.GetPlayerClassInfo()
+    assertEquals(classInfo.localized, "Druid")
+    assertEquals(classInfo.english, "DRUID")
+    assertEquals(classInfo.id, 11)
+    assertEquals(private.ClassToken("death knight"), "DEATH_KNIGHT")
+    assertEquals(private.ClassToken(nil), "UNKNOWN")
+
+    local profile = Addon:GetProfile()
+    local prompt = private.BuildAIPrompt(profile, "gear", { qualityID = 4 }, 1)
+    assertContains(prompt.text, "World of Warcraft: The Burning Crusade Classic")
+    assertContains(prompt.text, "Character: Tester - Test Realm (Druid)")
+    assertContains(prompt.text, "Export scope: Gear Only; filter: Epic only; item count: 1")
+    assertContains(prompt.text, "Bear Feral tank")
+    assertContains(prompt.text, "Cat Feral DPS")
+    assertContains(prompt.text, "Restoration healing")
+    assertContains(prompt.text, "Balance caster")
+    assertEquals(prompt.classToken, "DRUID")
+    assertTrue(#prompt.roleContext >= 4)
+    assertTrue(#prompt.outputRequests >= 6)
+
+    local fallback = private.ClassRoleContext("UNKNOWN")
+    assertContains(fallback[1], "Primary role")
 end)
 
 test("location, source, category, copy, and sizing helpers cover branches", function()
@@ -1156,6 +1193,9 @@ test("scans bags and bank containers into saved snapshots", function()
     assertTrue(#bagSnapshot.items >= 3)
     assertEquals(Addon:GetProfile().localDB.bagItemCount, #bagSnapshot.items)
     assertEquals(Addon:GetProfile().localDB.name, "TBCGearExporterDB")
+    assertEquals(Addon:GetProfile().classLocalized, "Druid")
+    assertEquals(Addon:GetProfile().classEnglish, "DRUID")
+    assertEquals(Addon:GetProfile().classID, 11)
     assertEquals(Addon:GetBagContainers()[1], 0)
 
     local bankContainers = Addon:GetBankContainers()
@@ -1241,10 +1281,19 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
 
     local allExport = Addon:BuildExport("all")
     assertContains(allExport, "AI_READY_WOW_TBC_INVENTORY_EXPORT v1")
+    assertContains(allExport, "AI_PROMPT:")
+    assertContains(allExport, "Class role lenses:")
+    assertContains(allExport, "Bear Feral tank")
+    assertTrue(allExport:find("AI_PROMPT:", 1, true) < allExport:find("DATA_JSON:", 1, true))
     assertContains(allExport, "DATA_JSON:")
+    assertContains(allExport, "\"ai_prompt\": {")
+    assertContains(allExport, "\"class_token\": \"DRUID\"")
+    assertContains(allExport, "\"role_context\": [")
     assertContains(allExport, "\"character\": {")
     assertContains(allExport, "\"name\": \"Tester\"")
     assertContains(allExport, "\"realm\": \"Test Realm\"")
+    assertContains(allExport, "\"class\": \"Druid\"")
+    assertContains(allExport, "\"class_id\": 11")
     assertContains(allExport, "\"local_db\": {")
     assertContains(allExport, "\"name\": \"TBCGearExporterDB\"")
     assertContains(allExport, "\"bag_item_count\":")
@@ -1285,6 +1334,7 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
 
     local jsonExport = Addon:BuildExport("all", "json")
     assertContains(jsonExport, "\"format\": \"tbc_gear_exporter_json_v1\"")
+    assertContains(jsonExport, "\"ai_prompt\": {")
     assertContains(jsonExport, "\"items\": [")
     assertContains(jsonExport, "\"wowhead_url\": \"https://www.wowhead.com/tbc/item=1002\"")
     assertContains(jsonExport, "\"quality_color\": \"#A335EE\"")
@@ -1292,6 +1342,9 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
 
     local markdownExport = Addon:BuildExport("all", "markdown")
     assertContains(markdownExport, "# TBC Gear Exporter")
+    assertContains(markdownExport, "## AI Prompt")
+    assertContains(markdownExport, "Bear Feral tank")
+    assertContains(markdownExport, "## Export Metadata")
     assertContains(markdownExport, "## Gear")
     assertContains(markdownExport, "<span style=\"color:#0070DD\"><strong>Defender Helm</strong></span>")
     assertContains(markdownExport, "Rare (#0070DD)")
@@ -1301,6 +1354,9 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
 
     local textExport = Addon:BuildExport("all", "text")
     assertContains(textExport, "TBC Gear Exporter")
+    assertContains(textExport, "AI PROMPT")
+    assertContains(textExport, "EXPORT METADATA")
+    assertContains(textExport, "Bear Feral tank")
     assertContains(textExport, "[Gear]")
     assertContains(textExport, "- |cff0070ddDefender Helm|r")
     assertContains(textExport, "Rare (#0070DD)")
