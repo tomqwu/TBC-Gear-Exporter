@@ -69,6 +69,57 @@ local QUALITY_COLOR_HEX = {
     [7] = "00CCFF",
 }
 
+local QUALITY_ALIASES = {
+    poor = 0,
+    gray = 0,
+    grey = 0,
+    common = 1,
+    white = 1,
+    uncommon = 2,
+    green = 2,
+    rare = 3,
+    blue = 3,
+    epic = 4,
+    purple = 4,
+    legendary = 5,
+    orange = 5,
+    artifact = 6,
+    heirloom = 7,
+}
+
+local EXPORT_FILTER_IGNORE_TOKENS = {
+    filter = true,
+    filters = true,
+    only = true,
+    quality = true,
+    q = true,
+}
+
+local EXPORT_FORMAT_ALIASES = {
+    ai = true,
+    chatgpt = true,
+    gpt = true,
+    json = true,
+    raw = true,
+    markdown = true,
+    md = true,
+    text = true,
+    txt = true,
+    plain = true,
+}
+
+local EXPORT_SCOPE_ALIASES = {
+    all = "all",
+    bags = "bags",
+    bag = "bags",
+    inventory = "bags",
+    bank = "bank",
+    gear = "gear",
+    gears = "gear",
+    equipment = "gear",
+    equip = "gear",
+}
+
 local EXPORT_FORMAT_LABELS = {
     ai = "AI Text",
     json = "JSON",
@@ -700,8 +751,179 @@ local function NormalizeExportFormat(format)
     return "ai"
 end
 
+local function IsExportFormatToken(token)
+    return EXPORT_FORMAT_ALIASES[Trim(token):lower()] and true or false
+end
+
 local function ExportFormatTitle(format)
     return EXPORT_FORMAT_LABELS[NormalizeExportFormat(format)] or EXPORT_FORMAT_LABELS.ai
+end
+
+local function SplitWords(value)
+    local words = {}
+    value = Trim(value)
+
+    for word in value:gmatch("%S+") do
+        words[#words + 1] = word
+    end
+
+    return words
+end
+
+local function NormalizeQualityID(value)
+    if type(value) == "number" then
+        if value >= 0 and value <= 7 then
+            return value
+        end
+
+        return nil
+    end
+
+    if type(value) ~= "string" then
+        return nil
+    end
+
+    value = Trim(value):lower()
+    value = value:gsub("^quality[:=_%-]?", "")
+    value = value:gsub("^q[:=_%-]?", "")
+
+    if value:match("^%d+$") then
+        return NormalizeQualityID(tonumber(value))
+    end
+
+    return QUALITY_ALIASES[value]
+end
+
+local function DefaultExportFilter()
+    return {
+        qualityID = nil,
+        qualityMin = nil,
+    }
+end
+
+local function NormalizeExportFilter(filter)
+    if filter == nil then
+        return DefaultExportFilter()
+    end
+
+    if type(filter) == "table" then
+        return {
+            qualityID = NormalizeQualityID(filter.qualityID or filter.quality_id or filter.quality),
+            qualityMin = NormalizeQualityID(filter.qualityMin or filter.quality_min),
+        }
+    end
+
+    filter = Trim(filter):lower()
+    if filter == "" or filter == "all" or filter == "none" or filter == "any" then
+        return DefaultExportFilter()
+    end
+
+    local normalized = DefaultExportFilter()
+    local words = SplitWords(filter)
+
+    for index = 1, #words do
+        local token = words[index]:lower()
+        token = token:gsub("[,;]", "")
+
+        if not EXPORT_FILTER_IGNORE_TOKENS[token] then
+            local minimumQuality = token:match("^(.+)%+$") or token:match("^min[:=_%-]?(.+)$") or token:match("^(.+)plus$")
+            if minimumQuality then
+                local qualityID = NormalizeQualityID(minimumQuality)
+                if qualityID then
+                    normalized.qualityMin = qualityID
+                    normalized.qualityID = nil
+                end
+            else
+                local qualityID = NormalizeQualityID(token)
+                if qualityID then
+                    normalized.qualityID = qualityID
+                    normalized.qualityMin = nil
+                end
+            end
+        end
+    end
+
+    return normalized
+end
+
+local function ExportFilterHasCriteria(filter)
+    filter = NormalizeExportFilter(filter)
+    return filter.qualityID ~= nil or filter.qualityMin ~= nil
+end
+
+local function ExportFilterTitle(filter)
+    filter = NormalizeExportFilter(filter)
+
+    if filter.qualityID ~= nil then
+        return QualityName(filter.qualityID) .. " only"
+    end
+
+    if filter.qualityMin ~= nil then
+        return QualityName(filter.qualityMin) .. "+"
+    end
+
+    return "All qualities"
+end
+
+local function ItemQualityID(item)
+    if not item then
+        return nil
+    end
+
+    return NormalizeQualityID(item.quality or item.quality_id)
+end
+
+local function ExportFilterMatchesItem(item, filter)
+    filter = NormalizeExportFilter(filter)
+    local qualityID = ItemQualityID(item)
+
+    if filter.qualityID ~= nil and qualityID ~= filter.qualityID then
+        return false
+    end
+
+    if filter.qualityMin ~= nil and (not qualityID or qualityID < filter.qualityMin) then
+        return false
+    end
+
+    return true
+end
+
+local function NormalizeExportScope(scope)
+    scope = Trim(scope):lower()
+    return EXPORT_SCOPE_ALIASES[scope] or "all"
+end
+
+local function ParseExportOptions(defaultScope, value)
+    local scope = NormalizeExportScope(defaultScope or "all")
+    local format
+    local filterParts = {}
+    local recognized = 0
+    local words = SplitWords(value)
+
+    for index = 1, #words do
+        local token = words[index]:lower()
+        token = token:gsub("[,;]", "")
+
+        if EXPORT_SCOPE_ALIASES[token] then
+            scope = EXPORT_SCOPE_ALIASES[token]
+            recognized = recognized + 1
+        elseif IsExportFormatToken(token) then
+            format = NormalizeExportFormat(token)
+            recognized = recognized + 1
+        elseif EXPORT_FILTER_IGNORE_TOKENS[token] then
+            recognized = recognized + 1
+        else
+            local minimumQuality = token:match("^(.+)%+$") or token:match("^min[:=_%-]?(.+)$") or token:match("^(.+)plus$")
+            local qualityID = NormalizeQualityID(minimumQuality or token)
+
+            if qualityID then
+                filterParts[#filterParts + 1] = token
+                recognized = recognized + 1
+            end
+        end
+    end
+
+    return scope, format, NormalizeExportFilter(table.concat(filterParts, " ")), recognized
 end
 
 local function AppendIndented(lines, indent, text)
@@ -1133,18 +1355,20 @@ function Addon:ScheduleBankScan()
     end
 end
 
-function Addon:CollectExportItems(scope)
+function Addon:CollectExportItems(scope, filter)
     local profile = self:GetProfile()
     local items = {}
     local includeBags = scope == "all" or scope == "gear" or scope == "bags"
     local includeBank = scope == "all" or scope == "gear" or scope == "bank"
     local gearOnly = scope == "gear"
+    filter = NormalizeExportFilter(filter)
 
     if includeBags then
         local bagItems = CopyItems(profile.bags and profile.bags.items)
         for index = 1, #bagItems do
-            if not gearOnly or bagItems[index].category == "Gear" then
-                items[#items + 1] = bagItems[index]
+            local item = bagItems[index]
+            if (not gearOnly or item.category == "Gear") and ExportFilterMatchesItem(item, filter) then
+                items[#items + 1] = item
             end
         end
     end
@@ -1152,8 +1376,9 @@ function Addon:CollectExportItems(scope)
     if includeBank then
         local bankItems = CopyItems(profile.bank and profile.bank.items)
         for index = 1, #bankItems do
-            if not gearOnly or bankItems[index].category == "Gear" then
-                items[#items + 1] = bankItems[index]
+            local item = bankItems[index]
+            if (not gearOnly or item.category == "Gear") and ExportFilterMatchesItem(item, filter) then
+                items[#items + 1] = item
             end
         end
     end
@@ -1161,13 +1386,14 @@ function Addon:CollectExportItems(scope)
     return items
 end
 
-function Addon:BuildMarkdownExport(scope, profile, items, categories, buckets)
+function Addon:BuildMarkdownExport(scope, profile, items, categories, buckets, filter)
     local lines = {
         "# TBC Gear Exporter",
         "",
         "- Character: " .. tostring(profile.player or "Unknown Player") .. " - " .. tostring(profile.realm or "Unknown Realm"),
         "- Local DB: " .. DB_NAME .. " saved at " .. FormatTime(profile.localDB and profile.localDB.savedAt),
         "- Scope: " .. ScopeTitle(scope),
+        "- Filter: " .. ExportFilterTitle(filter),
         "- Items: " .. #items,
         "- Bag scan: " .. FormatTime(profile.bags and profile.bags.updatedAt),
         "- Bank scan: " .. FormatTime(profile.bank and profile.bank.updatedAt),
@@ -1207,12 +1433,13 @@ function Addon:BuildMarkdownExport(scope, profile, items, categories, buckets)
     return table.concat(lines, "\n")
 end
 
-function Addon:BuildTextExport(scope, profile, items, categories, buckets)
+function Addon:BuildTextExport(scope, profile, items, categories, buckets, filter)
     local lines = {
         "TBC Gear Exporter",
         "Character: " .. tostring(profile.player or "Unknown Player") .. " - " .. tostring(profile.realm or "Unknown Realm"),
         "Local DB: " .. DB_NAME .. " saved at " .. FormatTime(profile.localDB and profile.localDB.savedAt),
         "Scope: " .. ScopeTitle(scope),
+        "Filter: " .. ExportFilterTitle(filter),
         "Items: " .. #items,
         "Bag scan: " .. FormatTime(profile.bags and profile.bags.updatedAt),
         "Bank scan: " .. FormatTime(profile.bank and profile.bank.updatedAt),
@@ -1254,12 +1481,13 @@ function Addon:BuildTextExport(scope, profile, items, categories, buckets)
     return table.concat(lines, "\n")
 end
 
-function Addon:BuildExport(scope, format)
+function Addon:BuildExport(scope, format, filter)
     scope = scope or "all"
     format = NormalizeExportFormat(format or self.exportFormat or "ai")
+    filter = NormalizeExportFilter(filter or self.exportFilter)
 
     local profile = self:GetProfile()
-    local items = self:CollectExportItems(scope)
+    local items = self:CollectExportItems(scope, filter)
     local buckets = {}
     local categorySeen = {}
 
@@ -1352,6 +1580,13 @@ function Addon:BuildExport(scope, format)
     AppendIndented(lines, 2, "\"export\": {")
     AppendIndented(lines, 4, JsonField("scope", scope, true))
     AppendIndented(lines, 4, JsonField("scope_title", ScopeTitle(scope), true))
+    AppendIndented(lines, 4, "\"filter\": {")
+    AppendIndented(lines, 6, JsonField("title", ExportFilterTitle(filter), true))
+    AppendIndented(lines, 6, JsonField("quality_id", filter.qualityID, true))
+    AppendIndented(lines, 6, JsonField("quality", filter.qualityID ~= nil and QualityName(filter.qualityID) or nil, true))
+    AppendIndented(lines, 6, JsonField("quality_min_id", filter.qualityMin, true))
+    AppendIndented(lines, 6, JsonField("quality_min", filter.qualityMin ~= nil and QualityName(filter.qualityMin) or nil, false))
+    AppendIndented(lines, 4, "},")
     AppendIndented(lines, 4, JsonField("generated_at", FormatTime(Now()), true))
     AppendIndented(lines, 4, JsonField("bag_scan_at", FormatTime(profile.bags and profile.bags.updatedAt), true))
     AppendIndented(lines, 4, JsonField("bank_scan_at", FormatTime(profile.bank and profile.bank.updatedAt), true))
@@ -1361,7 +1596,7 @@ function Addon:BuildExport(scope, format)
     AppendIndented(lines, 4, JsonString("Bank contents are the last saved snapshot. Open the bank in game and scan to refresh bank data.") .. (#items == 0 and "," or ""))
 
     if #items == 0 then
-        AppendIndented(lines, 4, JsonString("No saved items are available for this export. Use /tbcgear scan to scan bags.") )
+        AppendIndented(lines, 4, JsonString("No saved items match this export. Use /tbcgear scan to refresh bags, or clear export filters.") )
     end
 
     AppendIndented(lines, 2, "],")
@@ -1436,11 +1671,11 @@ function Addon:BuildExport(scope, format)
     end
 
     if format == "markdown" then
-        return self:BuildMarkdownExport(scope, profile, items, categories, buckets)
+        return self:BuildMarkdownExport(scope, profile, items, categories, buckets, filter)
     end
 
     if format == "text" then
-        return self:BuildTextExport(scope, profile, items, categories, buckets)
+        return self:BuildTextExport(scope, profile, items, categories, buckets, filter)
     end
 
     return aiText
@@ -1463,24 +1698,29 @@ function Addon:SelectExportText()
     self.exportFrame.editBox:SetFocus()
 end
 
-function Addon:RefreshExport(scope, format)
+function Addon:RefreshExport(scope, format, filter)
     self.exportScope = scope or self.exportScope or "all"
     self.exportFormat = NormalizeExportFormat(format or self.exportFormat or "ai")
+    if filter ~= nil then
+        self.exportFilter = NormalizeExportFilter(filter)
+    else
+        self.exportFilter = self.exportFilter or NormalizeExportFilter(nil)
+    end
 
     if not self.exportFrame then
         return
     end
 
-    local text = self:BuildExport(self.exportScope, self.exportFormat)
+    local text = self:BuildExport(self.exportScope, self.exportFormat, self.exportFilter)
     local bagCount, bankCount = self:SavedItemCounts()
     self.exportFrame.editBox:SetText(text)
     self:SelectExportText()
 
     if self.exportFrame.summary then
-        self.exportFrame.summary:SetText("Bags: " .. bagCount .. " items   Bank: " .. bankCount .. " items   Scope: " .. ScopeTitle(self.exportScope) .. "   Format: " .. ExportFormatTitle(self.exportFormat))
+        self.exportFrame.summary:SetText("Bags: " .. bagCount .. " items   Bank: " .. bankCount .. " items   Scope: " .. ScopeTitle(self.exportScope) .. "   Filter: " .. ExportFilterTitle(self.exportFilter) .. "   Format: " .. ExportFormatTitle(self.exportFormat))
     end
 
-    self.exportFrame.status:SetText(ExportFormatTitle(self.exportFormat) .. " export generated from saved local DB. Press Ctrl+C to copy.")
+    self.exportFrame.status:SetText(ExportFormatTitle(self.exportFormat) .. " export generated from saved local DB with filter: " .. ExportFilterTitle(self.exportFilter) .. ". Press Ctrl+C to copy.")
 end
 
 function Addon:CreateExportFrame()
@@ -1626,8 +1866,44 @@ function Addon:CreateExportFrame()
         Addon:ExportSaved(nil, "text")
     end)
 
+    local filterLabel = exportFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    filterLabel:SetPoint("TOPLEFT", 20, -126)
+    filterLabel:SetText("Filter:")
+
+    local allQuality = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
+    SetFrameSize(allQuality, 62, 22)
+    allQuality:SetPoint("LEFT", filterLabel, "RIGHT", 8, 0)
+    allQuality:SetText("All Q")
+    allQuality:SetScript("OnClick", function()
+        Addon:ExportSaved(nil, nil, "all")
+    end)
+
+    local rarePlus = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
+    SetFrameSize(rarePlus, 68, 22)
+    rarePlus:SetPoint("LEFT", allQuality, "RIGHT", 6, 0)
+    rarePlus:SetText("Rare+")
+    rarePlus:SetScript("OnClick", function()
+        Addon:ExportSaved(nil, nil, { qualityMin = 3 })
+    end)
+
+    local epicQuality = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
+    SetFrameSize(epicQuality, 62, 22)
+    epicQuality:SetPoint("LEFT", rarePlus, "RIGHT", 6, 0)
+    epicQuality:SetText("Epic")
+    epicQuality:SetScript("OnClick", function()
+        Addon:ExportSaved(nil, nil, { qualityID = 4 })
+    end)
+
+    local gearEpic = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
+    SetFrameSize(gearEpic, 94, 22)
+    gearEpic:SetPoint("LEFT", epicQuality, "RIGHT", 6, 0)
+    gearEpic:SetText("Gear Epic")
+    gearEpic:SetScript("OnClick", function()
+        Addon:ExportSaved("gear", nil, { qualityID = 4 })
+    end)
+
     local scroll = CreateFrame("ScrollFrame", "TBCGearExporterScrollFrame", exportFrame, "UIPanelScrollFrameTemplate")
-    scroll:SetPoint("TOPLEFT", 20, -126)
+    scroll:SetPoint("TOPLEFT", 20, -156)
     scroll:SetPoint("BOTTOMRIGHT", -38, 48)
 
     local editBox = CreateFrame("EditBox", nil, scroll)
@@ -1658,27 +1934,28 @@ function Addon:CreateExportFrame()
     exportFrame.summary = summary
     exportFrame.status = status
     exportFrame.formatLabel = formatLabel
+    exportFrame.filterLabel = filterLabel
     self.exportFrame = exportFrame
 end
 
-function Addon:ShowExport(scope, format)
+function Addon:ShowExport(scope, format, filter)
     if not self.exportFrame then
         self:CreateExportFrame()
     end
 
     self.exportFrame:Show()
-    self:RefreshExport(scope, format)
+    self:RefreshExport(scope, format, filter)
 end
 
-function Addon:ExportSaved(scope, format)
+function Addon:ExportSaved(scope, format, filter)
     local selectedFormat = format
     if selectedFormat and Trim(selectedFormat) == "" then
         selectedFormat = nil
     end
 
-    self:ShowExport(scope or self.exportScope or "all", selectedFormat)
+    self:ShowExport(scope or self.exportScope or "all", selectedFormat, filter)
     local bagCount, bankCount = self:SavedItemCounts()
-    self:Print(ExportFormatTitle(self.exportFormat) .. " export opened from local DB: " .. bagCount .. " bag items, " .. bankCount .. " bank items.")
+    self:Print(ExportFormatTitle(self.exportFormat) .. " export opened from local DB: " .. bagCount .. " bag items, " .. bankCount .. " bank items. Filter: " .. ExportFilterTitle(self.exportFilter) .. ".")
 end
 
 function Addon:CreateMinimapButton()
@@ -1766,7 +2043,7 @@ function Addon:ClearProfile()
 end
 
 function Addon:ShowHelp()
-    self:Print("Commands: /tbcgear export [ai|json|markdown|text], /tbcgear bags [format], /tbcgear bank [format], /tbcgear gear [format], /tbcgear scan, /tbcgear debug, /tbcgear clear")
+    self:Print("Commands: /tbcgear export [scope] [quality|quality+] [ai|json|markdown|text], /tbcgear gear epic, /tbcgear rare+, /tbcgear scan, /tbcgear debug, /tbcgear clear")
 end
 
 function Addon:HandleSlash(message)
@@ -1776,32 +2053,37 @@ function Addon:HandleSlash(message)
     argument = argument or ""
 
     if command == "" or command == "gui" or command == "show" then
-        self:ExportSaved("all")
+        self:ExportSaved("all", nil, "all")
         return
     end
 
     if command == "export" then
-        self:ExportSaved("all", argument)
+        local scope, format, filter = ParseExportOptions("all", argument)
+        self:ExportSaved(scope, format, filter)
         return
     end
 
     if command == "ai" or command == "json" or command == "markdown" or command == "md" or command == "text" or command == "txt" then
-        self:ExportSaved("all", command)
+        local scope, _, filter = ParseExportOptions("all", argument)
+        self:ExportSaved(scope, command, filter)
         return
     end
 
     if command == "bags" then
-        self:ExportSaved("bags", argument)
+        local scope, format, filter = ParseExportOptions("bags", argument)
+        self:ExportSaved(scope, format, filter)
         return
     end
 
     if command == "bank" then
-        self:ExportSaved("bank", argument)
+        local scope, format, filter = ParseExportOptions("bank", argument)
+        self:ExportSaved(scope, format, filter)
         return
     end
 
     if command == "gear" then
-        self:ExportSaved("gear", argument)
+        local scope, format, filter = ParseExportOptions("gear", argument)
+        self:ExportSaved(scope, format, filter)
         return
     end
 
@@ -1826,6 +2108,12 @@ function Addon:HandleSlash(message)
         if self.exportFrame and self.exportFrame:IsShown() then
             self:RefreshExport()
         end
+        return
+    end
+
+    local scope, format, filter, recognized = ParseExportOptions("all", input)
+    if recognized > 0 or ExportFilterHasCriteria(filter) then
+        self:ExportSaved(scope, format, filter)
         return
     end
 
@@ -1953,7 +2241,18 @@ if _G.TBCGearExporterTestMode then
         JsonField = JsonField,
         ScopeTitle = ScopeTitle,
         NormalizeExportFormat = NormalizeExportFormat,
+        IsExportFormatToken = IsExportFormatToken,
         ExportFormatTitle = ExportFormatTitle,
+        SplitWords = SplitWords,
+        NormalizeQualityID = NormalizeQualityID,
+        DefaultExportFilter = DefaultExportFilter,
+        NormalizeExportFilter = NormalizeExportFilter,
+        ExportFilterHasCriteria = ExportFilterHasCriteria,
+        ExportFilterTitle = ExportFilterTitle,
+        ItemQualityID = ItemQualityID,
+        ExportFilterMatchesItem = ExportFilterMatchesItem,
+        NormalizeExportScope = NormalizeExportScope,
+        ParseExportOptions = ParseExportOptions,
         AppendIndented = AppendIndented,
         LocationLabel = LocationLabel,
         SourceLabel = SourceLabel,
