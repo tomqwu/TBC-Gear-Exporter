@@ -1,6 +1,6 @@
 # TBC Gear Exporter
 
-A small World of Warcraft TBC Classic addon that saves the current character's bag and bank items, groups them into categories, lists item stats, and shows a copyable text export in game.
+A small World of Warcraft TBC Classic addon that saves the current character's bag and bank items, groups them into categories, lists item stats, and shows a GUI with an auto-selected AI-ready text export.
 
 ## Install
 
@@ -11,7 +11,8 @@ A small World of Warcraft TBC Classic addon that saves the current character's b
 
 ## Commands
 
-- `/tbcgear export` opens a copyable export window with bags and the last saved bank scan.
+- `/tbcgear gui` opens the export GUI.
+- `/tbcgear export` opens the export GUI with bags and the last saved bank scan.
 - `/tbcgear bags` exports bag items only.
 - `/tbcgear bank` exports the last saved bank scan.
 - `/tbcgear gear` exports only gear from bags and bank.
@@ -19,6 +20,8 @@ A small World of Warcraft TBC Classic addon that saves the current character's b
 - `/tbcgear clear` clears this character's saved bag and bank snapshots.
 
 WoW only exposes bank contents to addons while the bank is open. Open your bank once after installing, or any time you want the bank snapshot refreshed.
+
+The export box auto-selects text formatted for AI tools: a short instruction header followed by structured `DATA_JSON` containing character info, scan timestamps, categories, items, and stat arrays.
 
 ## Tests
 

@@ -349,6 +349,58 @@ local function FormatStats(stats)
     return table.concat(parts, ", ")
 end
 
+local JSON_ESCAPE_CHARS = {
+    ["\\"] = "\\\\",
+    ["\""] = "\\\"",
+    ["\b"] = "\\b",
+    ["\f"] = "\\f",
+    ["\n"] = "\\n",
+    ["\r"] = "\\r",
+    ["\t"] = "\\t",
+}
+
+local function JsonString(value)
+    value = tostring(value or "")
+    value = value:gsub('[%z\1-\31\\"]', function(character)
+        return JSON_ESCAPE_CHARS[character] or string.format("\\u%04x", character:byte())
+    end)
+    return "\"" .. value .. "\""
+end
+
+local function JsonValue(value)
+    local valueType = type(value)
+
+    if value == nil then
+        return "null"
+    end
+
+    if valueType == "number" then
+        return tostring(value)
+    end
+
+    if valueType == "boolean" then
+        return value and "true" or "false"
+    end
+
+    return JsonString(value)
+end
+
+local function JsonField(key, value, comma)
+    return JsonString(key) .. ": " .. JsonValue(value) .. (comma and "," or "")
+end
+
+local function ScopeTitle(scope)
+    if scope == "gear" then
+        return "Gear Only"
+    end
+
+    return (scope or "all"):gsub("^%l", string.upper)
+end
+
+local function AppendIndented(lines, indent, text)
+    lines[#lines + 1] = string.rep(" ", indent) .. text
+end
+
 local function LocationLabel(source, bagID, slotID)
     if source == "bags" then
         if bagID == 0 then
@@ -776,50 +828,90 @@ function Addon:BuildExport(scope)
         end)
     end
 
-    local titleScope = scope == "gear" and "Gear Only" or scope:gsub("^%l", string.upper)
     local lines = {
-        "TBC Gear Exporter",
-        "Character: " .. (profile.player or "Unknown Player") .. " - " .. (profile.realm or "Unknown Realm"),
-        "Export: " .. titleScope,
-        "Generated: " .. FormatTime(Now()),
-        "Bag scan: " .. FormatTime(profile.bags and profile.bags.updatedAt),
-        "Bank scan: " .. FormatTime(profile.bank and profile.bank.updatedAt),
-        "",
+        "AI_READY_WOW_TBC_INVENTORY_EXPORT v1",
+        "Paste this entire selected text into an AI chat. It contains structured JSON for TBC bag and bank gear analysis.",
+        "DATA_JSON:",
     }
 
+    AppendIndented(lines, 0, "{")
+    AppendIndented(lines, 2, JsonField("format", "tbc_gear_exporter_ai_v1", true))
+    AppendIndented(lines, 2, "\"character\": {")
+    AppendIndented(lines, 4, JsonField("name", profile.player or "Unknown Player", true))
+    AppendIndented(lines, 4, JsonField("realm", profile.realm or "Unknown Realm", false))
+    AppendIndented(lines, 2, "},")
+    AppendIndented(lines, 2, "\"export\": {")
+    AppendIndented(lines, 4, JsonField("scope", scope, true))
+    AppendIndented(lines, 4, JsonField("scope_title", ScopeTitle(scope), true))
+    AppendIndented(lines, 4, JsonField("generated_at", FormatTime(Now()), true))
+    AppendIndented(lines, 4, JsonField("bag_scan_at", FormatTime(profile.bags and profile.bags.updatedAt), true))
+    AppendIndented(lines, 4, JsonField("bank_scan_at", FormatTime(profile.bank and profile.bank.updatedAt), true))
+    AppendIndented(lines, 4, JsonField("item_count", #items, false))
+    AppendIndented(lines, 2, "},")
+    AppendIndented(lines, 2, "\"notes\": [")
+    AppendIndented(lines, 4, JsonString("Bank contents are the last saved snapshot. Open the bank in game and scan to refresh bank data.") .. (#items == 0 and "," or ""))
+
     if #items == 0 then
-        lines[#lines + 1] = "No saved items for this export."
-        lines[#lines + 1] = "Use /tbcgear scan to scan bags. Open your bank, then use /tbcgear scan to refresh bank items."
-        return table.concat(lines, "\n")
+        AppendIndented(lines, 4, JsonString("No saved items are available for this export. Use /tbcgear scan to scan bags.") )
     end
 
+    AppendIndented(lines, 2, "],")
+    AppendIndented(lines, 2, "\"categories\": [")
+
+    for categoryIndex = 1, #categories do
+        local category = categories[categoryIndex]
+        local suffix = categoryIndex < #categories and "," or ""
+        AppendIndented(lines, 4, "{ " .. JsonField("name", category, true) .. " " .. JsonField("item_count", #(buckets[category] or {}), false) .. " }" .. suffix)
+    end
+
+    AppendIndented(lines, 2, "],")
+    AppendIndented(lines, 2, "\"items\": [")
+
+    local itemPosition = 0
     for categoryIndex = 1, #categories do
         local category = categories[categoryIndex]
         local bucket = buckets[category]
 
-        lines[#lines + 1] = "[" .. category .. "]"
-
         for itemIndex = 1, #bucket do
             local item = bucket[itemIndex]
-            local detail = item.itemType or "Unknown Type"
-
-            if item.itemSubType and item.itemSubType ~= "" then
-                detail = detail .. " / " .. item.itemSubType
-            end
-
-            if item.equipSlot and item.equipSlot ~= "" then
-                detail = detail .. " / " .. item.equipSlot
-            end
-
-            local itemIDText = item.itemID and ("id:" .. item.itemID) or "id:unknown"
-            local levelText = item.itemLevel and ("ilvl:" .. item.itemLevel) or "ilvl:unknown"
             local statsText = FormatStats(item.stats)
+            itemPosition = itemPosition + 1
 
-            lines[#lines + 1] = "- " .. SourceLabel(item.source) .. " | " .. item.location .. " | x" .. (item.count or 1) .. " | " .. (item.name or "Unknown Item") .. " | " .. (item.qualityName or "Unknown") .. " | " .. detail .. " | " .. levelText .. " | " .. itemIDText .. " | stats: " .. statsText
+            AppendIndented(lines, 4, "{")
+            AppendIndented(lines, 6, JsonField("category", category, true))
+            AppendIndented(lines, 6, JsonField("source", item.source, true))
+            AppendIndented(lines, 6, JsonField("source_label", SourceLabel(item.source), true))
+            AppendIndented(lines, 6, JsonField("location", item.location, true))
+            AppendIndented(lines, 6, JsonField("bag", item.bag, true))
+            AppendIndented(lines, 6, JsonField("slot", item.slot, true))
+            AppendIndented(lines, 6, JsonField("count", item.count or 1, true))
+            AppendIndented(lines, 6, JsonField("name", item.name or "Unknown Item", true))
+            AppendIndented(lines, 6, JsonField("item_id", item.itemID, true))
+            AppendIndented(lines, 6, JsonField("item_string", item.itemString, true))
+            AppendIndented(lines, 6, JsonField("item_link", item.link, true))
+            AppendIndented(lines, 6, JsonField("quality", item.qualityName or "Unknown", true))
+            AppendIndented(lines, 6, JsonField("quality_id", item.quality, true))
+            AppendIndented(lines, 6, JsonField("item_level", item.itemLevel, true))
+            AppendIndented(lines, 6, JsonField("required_level", item.requiredLevel, true))
+            AppendIndented(lines, 6, JsonField("type", item.itemType, true))
+            AppendIndented(lines, 6, JsonField("subtype", item.itemSubType, true))
+            AppendIndented(lines, 6, JsonField("equip_slot", item.equipSlot, true))
+            AppendIndented(lines, 6, JsonField("stats_text", statsText, true))
+            AppendIndented(lines, 6, "\"stats\": [")
+
+            for statIndex = 1, #(item.stats or {}) do
+                local stat = item.stats[statIndex]
+                local suffix = statIndex < #(item.stats or {}) and "," or ""
+                AppendIndented(lines, 8, "{ " .. JsonField("token", stat.token, true) .. " " .. JsonField("label", stat.label, true) .. " " .. JsonField("value", stat.value, false) .. " }" .. suffix)
+            end
+
+            AppendIndented(lines, 6, "]")
+            AppendIndented(lines, 4, "}" .. (itemPosition < #items and "," or ""))
         end
-
-        lines[#lines + 1] = ""
     end
+
+    AppendIndented(lines, 2, "]")
+    AppendIndented(lines, 0, "}")
 
     return table.concat(lines, "\n")
 end
@@ -836,7 +928,7 @@ function Addon:RefreshExport(scope)
     self.exportFrame.editBox:SetCursorPosition(0)
     self.exportFrame.editBox:HighlightText()
     self.exportFrame.editBox:SetFocus()
-    self.exportFrame.status:SetText("Export text is selected. Press Ctrl+C to copy.")
+    self.exportFrame.status:SetText("AI-ready export is selected. Press Ctrl+C to copy.")
 end
 
 function Addon:CreateExportFrame()
@@ -864,7 +956,7 @@ function Addon:CreateExportFrame()
 
     local title = exportFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     title:SetPoint("TOPLEFT", 20, -18)
-    title:SetText("TBC Gear Exporter")
+    title:SetText("TBC Gear Exporter - AI Export")
 
     local close = CreateFrame("Button", nil, exportFrame, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", -5, -5)
@@ -947,7 +1039,7 @@ function Addon:CreateExportFrame()
     status:SetPoint("BOTTOMLEFT", 20, 24)
     status:SetPoint("BOTTOMRIGHT", -20, 24)
     status:SetJustifyH("LEFT")
-    status:SetText("Export text is selected. Press Ctrl+C to copy.")
+    status:SetText("AI-ready export is selected. Press Ctrl+C to copy.")
 
     exportFrame.editBox = editBox
     exportFrame.status = status
@@ -970,13 +1062,13 @@ function Addon:ClearProfile()
 end
 
 function Addon:ShowHelp()
-    self:Print("Commands: /tbcgear export, /tbcgear bags, /tbcgear bank, /tbcgear gear, /tbcgear scan, /tbcgear clear")
+    self:Print("Commands: /tbcgear gui, /tbcgear export, /tbcgear bags, /tbcgear bank, /tbcgear gear, /tbcgear scan, /tbcgear clear")
 end
 
 function Addon:HandleSlash(message)
     local command = Trim(message):lower()
 
-    if command == "" or command == "export" or command == "show" then
+    if command == "" or command == "gui" or command == "export" or command == "show" then
         self:ScanBags()
         self:ShowExport("all")
         return
@@ -1111,6 +1203,11 @@ if _G.TBCGearExporterTestMode then
         StatLabel = StatLabel,
         BuildStatList = BuildStatList,
         FormatStats = FormatStats,
+        JsonString = JsonString,
+        JsonValue = JsonValue,
+        JsonField = JsonField,
+        ScopeTitle = ScopeTitle,
+        AppendIndented = AppendIndented,
         LocationLabel = LocationLabel,
         SourceLabel = SourceLabel,
         CategoryFromInfo = CategoryFromInfo,
