@@ -162,6 +162,12 @@ local function createMockFrame(frameType, name, parent, template)
     frame.SetFrameStrata = frameMethod("SetFrameStrata", function(self, strata)
         self.frameStrata = strata
     end)
+    frame.SetFrameLevel = frameMethod("SetFrameLevel", function(self, level)
+        self.frameLevel = level
+    end)
+    frame.GetFrameLevel = function(self)
+        return self.frameLevel or 1
+    end
     frame.SetMovable = frameMethod("SetMovable", function(self, movable)
         self.movable = movable
     end)
@@ -237,6 +243,21 @@ local function createMockFrame(frameType, name, parent, template)
     frame.SetScrollChild = frameMethod("SetScrollChild", function(self, child)
         self.scrollChild = child
     end)
+    frame.RegisterForClicks = frameMethod("RegisterForClicks", function(self, ...)
+        self.clicks = { ... }
+    end)
+    frame.CreateTexture = frameMethod("CreateTexture", function(self, name, layer)
+        local texture = createMockFrame("Texture", name, self, nil)
+        texture.layer = layer
+        texture.SetTexture = frameMethod("SetTexture", function(target, value)
+            target.texture = value
+        end)
+        texture.SetTexCoord = frameMethod("SetTexCoord", function(target, ...)
+            target.texCoord = { ... }
+        end)
+        self.children[#self.children + 1] = texture
+        return texture
+    end)
 
     mock.frames[#mock.frames + 1] = frame
     if name then
@@ -264,6 +285,8 @@ local function installGlobals()
     _G.NUM_BAG_SLOTS = 4
     _G.NUM_BANKBAGSLOTS = 7
     _G.UIParent = createMockFrame("UIParent", "UIParent")
+    _G.Minimap = createMockFrame("Frame", "Minimap")
+    _G.Minimap.frameLevel = 4
     _G.ChatFontNormal = {}
     _G.GameFontNormalLarge = {}
     _G.GameFontHighlightSmall = {}
@@ -278,6 +301,26 @@ local function installGlobals()
     _G.DEFAULT_CHAT_FRAME = {
         AddMessage = function(_, message)
             mock.messages[#mock.messages + 1] = message
+        end,
+    }
+
+    _G.GameTooltip = {
+        lines = {},
+        SetOwner = function(self, owner, anchor)
+            self.owner = owner
+            self.anchor = anchor
+        end,
+        SetText = function(self, text)
+            self.text = text
+        end,
+        AddLine = function(self, text)
+            self.lines[#self.lines + 1] = text
+        end,
+        Show = function(self)
+            self.shown = true
+        end,
+        Hide = function(self)
+            self.shown = false
         end,
     }
 
@@ -430,6 +473,13 @@ local function resetRuntimeState(Addon)
     Addon.bankOpen = nil
     Addon.exportFrame = nil
     Addon.exportScope = nil
+    Addon.minimapButton = nil
+    if _G.GameTooltip then
+        _G.GameTooltip.lines = {}
+        _G.GameTooltip.text = nil
+        _G.GameTooltip.owner = nil
+        _G.GameTooltip.shown = nil
+    end
     SlashCmdList.TBCGEAREXPORTER = nil
     SLASH_TBCGEAREXPORTER1 = nil
     SLASH_TBCGEAREXPORTER2 = nil
@@ -574,15 +624,33 @@ chunk("TBCGearExporter")
 local Addon = assert(_G.TBCGearExporter, "test mode did not expose addon")
 local private = assert(Addon._testing, "test helpers missing")
 
+local function addonRootFrame()
+    for index = 1, #mock.frames do
+        local frame = mock.frames[index]
+        if frame.events.ADDON_LOADED or frame.scripts.OnEvent then
+            return frame
+        end
+    end
+    error("addon root frame not found")
+end
+
 test("addon registers ADDON_LOADED on load", function()
-    assertTrue(mock.frames[2].events.ADDON_LOADED, "root addon frame should register ADDON_LOADED")
+    assertTrue(addonRootFrame().events.ADDON_LOADED, "root addon frame should register ADDON_LOADED")
+end)
+
+test("toc targets current TBC Anniversary interface", function()
+    local file = assert(io.open("TBCGearExporter/TBCGearExporter.toc", "r"))
+    local toc = file:read("*a")
+    file:close()
+    assertContains(toc, "## Interface: 20505")
+    assertContains(toc, "## Interface-BCC: 20505")
 end)
 
 test("addon registers bag and bank scan events after load", function()
     resetRuntimeState(Addon)
     Addon:OnAddonLoaded("TBCGearExporter")
-    assertTrue(mock.frames[2].events.BAG_OPEN, "bag open should be registered")
-    assertTrue(mock.frames[2].events.BANKFRAME_OPENED, "bank open should be registered")
+    assertTrue(addonRootFrame().events.BAG_OPEN, "bag open should be registered")
+    assertTrue(addonRootFrame().events.BANKFRAME_OPENED, "bank open should be registered")
 end)
 
 test("private parsers handle links and nils", function()
@@ -967,6 +1035,43 @@ test("ShowExport creates once and refreshes selected scope", function()
     assertContains(firstFrame.editBox.text, "\"scope_title\": \"Gear Only\"")
 end)
 
+test("minimap button opens export, scans on right click, and shows tooltip", function()
+    resetRuntimeState(Addon)
+    local button = Addon:CreateMinimapButton()
+    assertEquals(button, Addon.minimapButton)
+    assertEquals(button.parent, _G.Minimap)
+    assertEquals(button.width, 32)
+    assertEquals(button.frameStrata, "MEDIUM")
+    assertEquals(button.frameLevel, 12)
+    assertEquals(button.icon.texture, "Interface\\Icons\\INV_Misc_Bag_10_Blue")
+    assertEquals(button.border.texture, "Interface\\Minimap\\MiniMap-TrackingBorder")
+    assertEquals(Addon:CreateMinimapButton(), button)
+
+    button.scripts.OnEnter(button)
+    assertEquals(GameTooltip.text, "TBC Gear Exporter")
+    assertTrue(GameTooltip.shown)
+    assertContains(GameTooltip.lines[1], "Left-click")
+    button.scripts.OnLeave(button)
+    assertFalse(GameTooltip.shown)
+
+    button.scripts.OnClick(button, "LeftButton")
+    assertTrue(Addon.exportFrame:IsShown())
+    assertEquals(Addon.exportScope, "all")
+
+    button.scripts.OnClick(button, "RightButton")
+    assertContains(mock.messages[#mock.messages], "Bags scanned")
+
+    Addon.bankOpen = true
+    button.scripts.OnClick(button, "RightButton")
+    assertContains(mock.messages[#mock.messages], "Bags and bank scanned")
+
+    local oldMinimap = _G.Minimap
+    _G.Minimap = nil
+    Addon.minimapButton = nil
+    assertEquals(Addon:CreateMinimapButton(), nil)
+    _G.Minimap = oldMinimap
+end)
+
 local function findButtonByText(text)
     for index = #mock.frames, 1, -1 do
         local frame = mock.frames[index]
@@ -1098,7 +1203,7 @@ end)
 
 test("frame event script delegates to addon event handler", function()
     resetRuntimeState(Addon)
-    local rootFrame = mock.frames[2]
+    local rootFrame = addonRootFrame()
     rootFrame.scripts.OnEvent(rootFrame, "PLAYER_LOGIN")
     assertContains(mock.messages[#mock.messages], "Loaded")
 end)

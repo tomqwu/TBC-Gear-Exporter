@@ -4,6 +4,8 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+- Bump TBC Anniversary addon interface metadata to `20505`.
+- Add a minimap button that opens the AI export GUI on left-click and scans bags/bank on right-click.
 - Add GitHub release packaging that builds a WoW-ready addon zip from `TBCGearExporter/`.
 - Add package metadata for addon packagers.
 - Document the local Anniversary-client install mirror step.
