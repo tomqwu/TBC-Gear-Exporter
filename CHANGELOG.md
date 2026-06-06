@@ -4,6 +4,8 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+- Add export format options for AI Text, JSON, Markdown, and plain Text in the GUI and slash commands.
+- Add `/tbcgear json`, `/tbcgear markdown`, `/tbcgear text`, and `export <format>` command support.
 - Make scan/export behavior explicit: scans persist snapshots and counts into `TBCGearExporterDB`, while export opens a popup from the saved local DB.
 - Add a dedicated `Export` GUI action for opening/selecting saved AI-ready text without doing another hidden scan.
 - Prefer `C_Container` over legacy bag APIs, fixing clients where legacy calls exist but report zero slots.
