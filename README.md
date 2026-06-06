@@ -13,16 +13,30 @@ A small World of Warcraft TBC Classic addon that saves the current character's b
 
 ## Install
 
-1. Copy the `TBCGearExporter` folder into the AddOns folder for the client you play on, for example:
-   `World of Warcraft/_classic_/Interface/AddOns/TBCGearExporter`
-2. Restart the game or run `/reload`.
-3. Enable **Load out of date AddOns** if your TBC Anniversary client uses a newer interface number than the one in `TBCGearExporter.toc`.
+1. Download the latest zip from the [Releases page](https://github.com/tomqwu/tbc-wow-list-gears/releases).
+2. Extract the `TBCGearExporter/` folder, the one containing `TBCGearExporter.toc`, into your WoW AddOns directory:
+   - **TBC Classic / Anniversary**: `<WoW install>/_anniversary_/Interface/AddOns/`
+   - **Windows example**: `F:\World of Warcraft\_anniversary_\Interface\AddOns\TBCGearExporter`
+3. Restart the game or run `/reload`.
+4. Enable **Load out of date AddOns** if your TBC Anniversary client uses a newer interface number than the one in `TBCGearExporter.toc`.
 
 For this local machine, install or refresh the Anniversary client copy with:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\install-local.ps1
 ```
+
+When I create a GitHub release or tag from this workspace, I also run that local install command so your `F:\World of Warcraft\_anniversary_\Interface\AddOns` copy stays in sync.
+
+## First-run checklist
+
+```text
+/tbcgear gui     -- open the AI-ready export GUI
+/tbcgear scan    -- refresh bag data; refreshes bank too if bank is open
+/tbcgear gear    -- export only gear from bags and saved bank snapshot
+```
+
+Open the bank once after installing so the addon can capture the bank snapshot. WoW only exposes bank contents to addons while the bank is open.
 
 ## Commands
 
@@ -34,18 +48,26 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\install-local.ps1
 - `/tbcgear scan` refreshes bag data. If your bank is open, it refreshes bank data too.
 - `/tbcgear clear` clears this character's saved bag and bank snapshots.
 
-WoW only exposes bank contents to addons while the bank is open. Open your bank once after installing, or any time you want the bank snapshot refreshed.
-
 The export box auto-selects text formatted for AI tools: a short instruction header followed by structured `DATA_JSON` containing character info, scan timestamps, categories, items, and stat arrays.
 
 Opening a bag scans bag contents and prints a debug line in chat. Opening the bank scans bank contents and prints a matching debug line.
 
 ## Tests
 
-Run the local WoW API mock suite with:
+The addon is pure Lua and headless-testable. The suite stubs the WoW API surface it needs.
 
 ```sh
 lua tests/run.lua
+luac -p TBCGearExporter/TBCGearExporter.lua
 ```
 
-The test runner includes a line coverage gate of 99% for `TBCGearExporter.lua`.
+CI runs syntax checks for every Lua file and the local WoW API mock suite on every push to `main` and every pull request. The test runner includes a line coverage gate of 99% for `TBCGearExporter.lua`.
+
+## Release workflow
+
+This repo follows the same shape as `ArenaCoachTBC`:
+
+- Every `main` push builds a prerelease zip like `TBCGearExporter-v0.1.0-dev.<run>.zip`.
+- Stable tags named `v*`, for example `v0.1.0`, build a GitHub Release using notes from `CHANGELOG.md`.
+- The release zip contains the addon folder as the top-level entry, so extraction into `Interface/AddOns/` works directly.
+- Local release mirroring is done with `scripts/install-local.ps1` because GitHub Actions cannot access your `F:\` drive.
