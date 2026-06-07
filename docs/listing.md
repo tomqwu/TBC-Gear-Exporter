@@ -8,6 +8,8 @@ Character count: 256
 
 ## Full Markdown Description
 
+![TBC Gear Exporter logo](https://raw.githubusercontent.com/tomqwu/TBC-Gear-Exporter/main/assets/tbc-gear-exporter-logo.png)
+
 **TBC Gear Exporter** is a World of Warcraft TBC Classic / TBC Anniversary addon for saving, reviewing, and exporting your character's bag and bank inventory.
 
 It scans visible bags and bank containers, stores the results in `TBCGearExporterDB`, groups items by category, records item stats, preserves WoW quality colors, adds TBC Wowhead links, and gives you a compact in-game GUI for reviewing items visually or exporting everything in AI-friendly formats.
