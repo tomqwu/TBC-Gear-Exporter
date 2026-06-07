@@ -4,6 +4,7 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+- Redesign the export GUI into a two-column power-user panel with source/filter/format controls, visual item-icon browsing, item-link tooltips, and a separate copyable text-export tab.
 - Localize in-game GUI labels, status text, minimap tooltip, slash help, and scan chat lines for English, simplified Chinese, and traditional Chinese clients.
 - Localize the generated AI prompt from the WoW client locale, including Chinese prompt wording for Chinese clients.
 - Add a class-aware AI prompt block to exports, including Druid bear/cat/healing/caster role lenses.

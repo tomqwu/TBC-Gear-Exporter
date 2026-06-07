@@ -271,6 +271,11 @@ local UI_STRINGS = {
         gear_button = "Gear",
         debug_button = "Debug",
         select_button = "Select",
+        source_label = "Source:",
+        local_db_label = "Local DB",
+        items_tab = "Items",
+        text_export_tab = "Text Export",
+        generate_button = "Generate",
         format_label = "Format:",
         filter_label = "Filter:",
         all_q_button = "All Q",
@@ -284,6 +289,8 @@ local UI_STRINGS = {
         status_ready = "AI-ready export is selected. Press Ctrl+C to copy.",
         status_selected = "Export text selected. Press Ctrl+C to copy.",
         status_generated = "%s export generated from saved local DB with filter: %s. Press Ctrl+C to copy.",
+        status_visual = "Visual item view updated: %d items. Use Text Export to copy AI-ready data.",
+        item_view_empty = "No saved items match this view.",
         export_opened = "%s export opened from local DB: %d bag items, %d bank items. Filter: %s.",
         bags_scanned = "Bags scanned",
         bank_scanned = "Bank scanned",
@@ -311,6 +318,11 @@ local UI_STRINGS = {
         gear_button = "装备",
         debug_button = "调试",
         select_button = "全选",
+        source_label = "来源：",
+        local_db_label = "本地数据库",
+        items_tab = "物品",
+        text_export_tab = "文本导出",
+        generate_button = "生成",
         format_label = "格式：",
         filter_label = "过滤：",
         all_q_button = "全部",
@@ -324,6 +336,8 @@ local UI_STRINGS = {
         status_ready = "AI 导出文本已选中，按 Ctrl+C 复制。",
         status_selected = "导出文本已选中，按 Ctrl+C 复制。",
         status_generated = "%s 已从本地数据库生成，过滤：%s。按 Ctrl+C 复制。",
+        status_visual = "物品图标视图已更新：%d 件。切到文本导出即可复制 AI 数据。",
+        item_view_empty = "没有已保存物品匹配当前视图。",
         export_opened = "%s 已从本地数据库打开：背包 %d 件，银行 %d 件。过滤：%s。",
         bags_scanned = "背包已扫描",
         bank_scanned = "银行已扫描",
@@ -351,6 +365,11 @@ local UI_STRINGS = {
         gear_button = "裝備",
         debug_button = "偵錯",
         select_button = "全選",
+        source_label = "來源：",
+        local_db_label = "本地資料庫",
+        items_tab = "物品",
+        text_export_tab = "文字匯出",
+        generate_button = "產生",
         format_label = "格式：",
         filter_label = "篩選：",
         all_q_button = "全部",
@@ -364,6 +383,8 @@ local UI_STRINGS = {
         status_ready = "AI 匯出文字已選取，按 Ctrl+C 複製。",
         status_selected = "匯出文字已選取，按 Ctrl+C 複製。",
         status_generated = "%s 已從本地資料庫產生，篩選：%s。按 Ctrl+C 複製。",
+        status_visual = "物品圖示檢視已更新：%d 件。切到文字匯出即可複製 AI 資料。",
+        item_view_empty = "沒有已儲存物品符合目前檢視。",
         export_opened = "%s 已從本地資料庫開啟：背包 %d 件，銀行 %d 件。篩選：%s。",
         bags_scanned = "背包已掃描",
         bank_scanned = "銀行已掃描",
@@ -2278,11 +2299,144 @@ function Addon:SavedItemCounts()
     return #bagItems, #bankItems
 end
 
+function Addon:SetExportView(view)
+    self.exportView = view == "text" and "text" or "items"
+
+    if not self.exportFrame then
+        return
+    end
+
+    if self.exportFrame.visualScroll then
+        if self.exportView == "items" then
+            self.exportFrame.visualScroll:Show()
+        else
+            self.exportFrame.visualScroll:Hide()
+        end
+    end
+
+    if self.exportFrame.textScroll then
+        if self.exportView == "text" then
+            self.exportFrame.textScroll:Show()
+        else
+            self.exportFrame.textScroll:Hide()
+        end
+    end
+end
+
+function Addon:CreateVisualItemRow(parent, index)
+    local row = CreateFrame("Button", nil, parent)
+    SetFrameSize(row, 490, 42)
+    row:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, -((index - 1) * 44))
+    row:EnableMouse(true)
+
+    local icon = row:CreateTexture(nil, "ARTWORK")
+    SetFrameSize(icon, 34, 34)
+    icon:SetPoint("LEFT", 4, 0)
+    icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
+
+    local name = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    name:SetPoint("TOPLEFT", icon, "TOPRIGHT", 8, -2)
+    name:SetPoint("RIGHT", row, "RIGHT", -50, 0)
+    name:SetJustifyH("LEFT")
+
+    local meta = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    meta:SetPoint("TOPLEFT", icon, "TOPRIGHT", 8, -20)
+    meta:SetPoint("RIGHT", row, "RIGHT", -50, 0)
+    meta:SetJustifyH("LEFT")
+
+    local count = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    count:SetPoint("RIGHT", row, "RIGHT", -8, 0)
+    count:SetJustifyH("RIGHT")
+
+    row.icon = icon
+    row.name = name
+    row.meta = meta
+    row.count = count
+
+    row:SetScript("OnEnter", function(self)
+        local item = self.item
+        if not item or not GameTooltip then
+            return
+        end
+
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        if item.link and GameTooltip.SetHyperlink then
+            GameTooltip:SetHyperlink(item.link)
+        else
+            GameTooltip:SetText(item.name or "Unknown Item")
+        end
+        if GameTooltip.AddLine then
+            GameTooltip:AddLine(tostring(item.location or item.sourceLabel or item.source or ""))
+            local stats = FormatStats(item.stats)
+            if stats ~= "none" then
+                GameTooltip:AddLine(stats)
+            end
+        end
+        GameTooltip:Show()
+    end)
+
+    row:SetScript("OnLeave", function()
+        if GameTooltip then
+            GameTooltip:Hide()
+        end
+    end)
+
+    return row
+end
+
+function Addon:RefreshVisualItems(items)
+    if not self.exportFrame or not self.exportFrame.itemListContent then
+        return
+    end
+
+    items = items or {}
+    local rows = self.exportFrame.itemRows or {}
+    self.exportFrame.itemRows = rows
+
+    if self.exportFrame.emptyItems then
+        if #items == 0 then
+            self.exportFrame.emptyItems:SetText(L("item_view_empty"))
+            self.exportFrame.emptyItems:Show()
+        else
+            self.exportFrame.emptyItems:Hide()
+        end
+    end
+
+    for index = 1, #rows do
+        rows[index]:Hide()
+    end
+
+    for index = 1, #items do
+        local item = items[index]
+        local row = rows[index]
+        if not row then
+            row = self:CreateVisualItemRow(self.exportFrame.itemListContent, index)
+            rows[index] = row
+        end
+
+        row.item = item
+        row.icon:SetTexture(item.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
+        row.name:SetText(item.nameColored or item.name or "Unknown Item")
+        row.meta:SetText(tostring(item.location or "") .. "  " .. QualityDisplay(item) .. "  iLvl " .. ItemLevelDisplay(item) .. "  " .. ItemTypeDisplay(item))
+        if item.count and item.count > 1 then
+            row.count:SetText("x" .. tostring(item.count))
+        else
+            row.count:SetText("")
+        end
+        row:Show()
+    end
+
+    if self.exportFrame.itemListContent.SetHeight then
+        self.exportFrame.itemListContent:SetHeight(math.max(300, (#items * 44) + 8))
+    end
+end
+
 function Addon:SelectExportText()
     if not self.exportFrame or not self.exportFrame.editBox then
         return
     end
 
+    self:SetExportView("text")
     self.exportFrame.editBox:SetCursorPosition(0)
     self.exportFrame.editBox:HighlightText()
     self.exportFrame.editBox:SetFocus()
@@ -2302,20 +2456,32 @@ function Addon:RefreshExport(scope, format, filter)
     end
 
     local text = self:BuildExport(self.exportScope, self.exportFormat, self.exportFilter)
+    local items = self:CollectExportItems(self.exportScope, self.exportFilter)
     local bagCount, bankCount = self:SavedItemCounts()
     self.exportFrame.editBox:SetText(text)
-    self:SelectExportText()
+    self:RefreshVisualItems(items)
+    self:SetExportView(self.exportView or "items")
+
+    if self.exportView == "text" then
+        self.exportFrame.editBox:SetCursorPosition(0)
+        self.exportFrame.editBox:HighlightText()
+        self.exportFrame.editBox:SetFocus()
+    end
 
     if self.exportFrame.summary then
         self.exportFrame.summary:SetText(L("summary", bagCount, bankCount, LocalizedScopeTitle(self.exportScope, ClientLocale()), LocalizedExportFilterTitle(self.exportFilter, ClientLocale()), LocalizedExportFormatTitle(self.exportFormat, ClientLocale())))
     end
 
-    self.exportFrame.status:SetText(L("status_generated", LocalizedExportFormatTitle(self.exportFormat, ClientLocale()), LocalizedExportFilterTitle(self.exportFilter, ClientLocale())))
+    if self.exportView == "text" then
+        self.exportFrame.status:SetText(L("status_generated", LocalizedExportFormatTitle(self.exportFormat, ClientLocale()), LocalizedExportFilterTitle(self.exportFilter, ClientLocale())))
+    else
+        self.exportFrame.status:SetText(L("status_visual", #items))
+    end
 end
 
 function Addon:CreateExportFrame()
     local exportFrame = CreateFrame("Frame", "TBCGearExporterExportFrame", UIParent, BackdropTemplate())
-    SetFrameSize(exportFrame, 680, 520)
+    SetFrameSize(exportFrame, 820, 560)
     exportFrame:SetPoint("CENTER")
     exportFrame:SetFrameStrata("DIALOG")
     exportFrame:SetMovable(true)
@@ -2357,9 +2523,17 @@ function Addon:CreateExportFrame()
     summary:SetJustifyH("LEFT")
     summary:SetText(L("summary_initial"))
 
+    local leftPanel = CreateFrame("Frame", nil, exportFrame)
+    SetFrameSize(leftPanel, 238, 438)
+    leftPanel:SetPoint("TOPLEFT", 20, -64)
+
+    local dbLabel = leftPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    dbLabel:SetPoint("TOPLEFT", 0, 0)
+    dbLabel:SetText(L("local_db_label"))
+
     local scan = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
     SetFrameSize(scan, 100, 24)
-    scan:SetPoint("TOPLEFT", 20, -64)
+    scan:SetPoint("TOPLEFT", leftPanel, "TOPLEFT", 0, -28)
     scan:SetText(L("scan_button"))
     scan:SetScript("OnClick", function()
         Addon:ScanBagsAndReport(L("bags_scanned"))
@@ -2372,47 +2546,23 @@ function Addon:CreateExportFrame()
     end)
 
     local export = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
-    SetFrameSize(export, 78, 24)
+    SetFrameSize(export, 86, 24)
     export:SetPoint("LEFT", scan, "RIGHT", 8, 0)
     export:SetText(L("export_button"))
     export:SetScript("OnClick", function()
-        Addon:ExportSaved("all")
-    end)
-
-    local bags = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
-    SetFrameSize(bags, 62, 24)
-    bags:SetPoint("LEFT", export, "RIGHT", 8, 0)
-    bags:SetText(L("bags_button"))
-    bags:SetScript("OnClick", function()
-        Addon:ExportSaved("bags")
-    end)
-
-    local bank = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
-    SetFrameSize(bank, 62, 24)
-    bank:SetPoint("LEFT", bags, "RIGHT", 8, 0)
-    bank:SetText(L("bank_button"))
-    bank:SetScript("OnClick", function()
-        Addon:ExportSaved("bank")
-    end)
-
-    local gear = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
-    SetFrameSize(gear, 70, 24)
-    gear:SetPoint("LEFT", bank, "RIGHT", 8, 0)
-    gear:SetText(L("gear_button"))
-    gear:SetScript("OnClick", function()
-        Addon:ExportSaved("gear")
+        Addon:ExportSaved(Addon.exportScope or "all")
     end)
 
     local debugButton = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
-    SetFrameSize(debugButton, 70, 24)
-    debugButton:SetPoint("LEFT", gear, "RIGHT", 8, 0)
+    SetFrameSize(debugButton, 82, 24)
+    debugButton:SetPoint("TOPLEFT", scan, "BOTTOMLEFT", 0, -8)
     debugButton:SetText(L("debug_button"))
     debugButton:SetScript("OnClick", function()
         Addon:DebugContainers()
     end)
 
     local selectButton = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
-    SetFrameSize(selectButton, 86, 24)
+    SetFrameSize(selectButton, 98, 24)
     selectButton:SetPoint("LEFT", debugButton, "RIGHT", 8, 0)
     selectButton:SetText(L("select_button"))
     selectButton:SetScript("OnClick", function()
@@ -2420,13 +2570,49 @@ function Addon:CreateExportFrame()
         Addon.exportFrame.status:SetText(L("status_selected"))
     end)
 
+    local sourceLabel = leftPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    sourceLabel:SetPoint("TOPLEFT", 0, -92)
+    sourceLabel:SetText(L("source_label"))
+
+    local allSource = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
+    SetFrameSize(allSource, 58, 24)
+    allSource:SetPoint("TOPLEFT", sourceLabel, "BOTTOMLEFT", 0, -6)
+    allSource:SetText(LocalizedScopeTitle("all", ClientLocale()))
+    allSource:SetScript("OnClick", function()
+        Addon:ExportSaved("all")
+    end)
+
+    local bags = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
+    SetFrameSize(bags, 62, 24)
+    bags:SetPoint("LEFT", allSource, "RIGHT", 6, 0)
+    bags:SetText(L("bags_button"))
+    bags:SetScript("OnClick", function()
+        Addon:ExportSaved("bags")
+    end)
+
+    local bank = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
+    SetFrameSize(bank, 62, 24)
+    bank:SetPoint("TOPLEFT", allSource, "BOTTOMLEFT", 0, -6)
+    bank:SetText(L("bank_button"))
+    bank:SetScript("OnClick", function()
+        Addon:ExportSaved("bank")
+    end)
+
+    local gear = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
+    SetFrameSize(gear, 68, 24)
+    gear:SetPoint("LEFT", bank, "RIGHT", 6, 0)
+    gear:SetText(L("gear_button"))
+    gear:SetScript("OnClick", function()
+        Addon:ExportSaved("gear")
+    end)
+
     local formatLabel = exportFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    formatLabel:SetPoint("TOPLEFT", 20, -96)
+    formatLabel:SetPoint("TOPLEFT", leftPanel, "TOPLEFT", 0, -178)
     formatLabel:SetText(L("format_label"))
 
     local aiFormat = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
     SetFrameSize(aiFormat, 52, 22)
-    aiFormat:SetPoint("LEFT", formatLabel, "RIGHT", 8, 0)
+    aiFormat:SetPoint("TOPLEFT", formatLabel, "BOTTOMLEFT", 0, -6)
     aiFormat:SetText("AI")
     aiFormat:SetScript("OnClick", function()
         Addon:ExportSaved(nil, "ai")
@@ -2442,7 +2628,7 @@ function Addon:CreateExportFrame()
 
     local markdownFormat = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
     SetFrameSize(markdownFormat, 90, 22)
-    markdownFormat:SetPoint("LEFT", jsonFormat, "RIGHT", 6, 0)
+    markdownFormat:SetPoint("TOPLEFT", aiFormat, "BOTTOMLEFT", 0, -6)
     markdownFormat:SetText("Markdown")
     markdownFormat:SetScript("OnClick", function()
         Addon:ExportSaved(nil, "markdown")
@@ -2457,12 +2643,12 @@ function Addon:CreateExportFrame()
     end)
 
     local filterLabel = exportFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    filterLabel:SetPoint("TOPLEFT", 20, -126)
+    filterLabel:SetPoint("TOPLEFT", leftPanel, "TOPLEFT", 0, -270)
     filterLabel:SetText(L("filter_label"))
 
     local allQuality = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
     SetFrameSize(allQuality, 62, 22)
-    allQuality:SetPoint("LEFT", filterLabel, "RIGHT", 8, 0)
+    allQuality:SetPoint("TOPLEFT", filterLabel, "BOTTOMLEFT", 0, -6)
     allQuality:SetText(L("all_q_button"))
     allQuality:SetScript("OnClick", function()
         Addon:ExportSaved(nil, nil, "all")
@@ -2478,7 +2664,7 @@ function Addon:CreateExportFrame()
 
     local epicQuality = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
     SetFrameSize(epicQuality, 62, 22)
-    epicQuality:SetPoint("LEFT", rarePlus, "RIGHT", 6, 0)
+    epicQuality:SetPoint("TOPLEFT", allQuality, "BOTTOMLEFT", 0, -6)
     epicQuality:SetText(L("epic_button"))
     epicQuality:SetScript("OnClick", function()
         Addon:ExportSaved(nil, nil, { qualityID = 4 })
@@ -2492,12 +2678,42 @@ function Addon:CreateExportFrame()
         Addon:ExportSaved("gear", nil, { qualityID = 4 })
     end)
 
-    local scroll = CreateFrame("ScrollFrame", "TBCGearExporterScrollFrame", exportFrame, "UIPanelScrollFrameTemplate")
-    scroll:SetPoint("TOPLEFT", 20, -156)
-    scroll:SetPoint("BOTTOMRIGHT", -38, 48)
+    local itemsTab = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
+    SetFrameSize(itemsTab, 82, 24)
+    itemsTab:SetPoint("TOPLEFT", 282, -64)
+    itemsTab:SetText(L("items_tab"))
+    itemsTab:SetScript("OnClick", function()
+        Addon:SetExportView("items")
+        Addon.exportFrame.status:SetText(L("status_visual", #(Addon:CollectExportItems(Addon.exportScope or "all", Addon.exportFilter))))
+    end)
 
-    local editBox = CreateFrame("EditBox", nil, scroll)
-    SetFrameSize(editBox, 600, 300)
+    local textTab = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
+    SetFrameSize(textTab, 112, 24)
+    textTab:SetPoint("LEFT", itemsTab, "RIGHT", 8, 0)
+    textTab:SetText(L("text_export_tab"))
+    textTab:SetScript("OnClick", function()
+        Addon:SelectExportText()
+    end)
+
+    local visualScroll = CreateFrame("ScrollFrame", "TBCGearExporterVisualScrollFrame", exportFrame, "UIPanelScrollFrameTemplate")
+    visualScroll:SetPoint("TOPLEFT", 282, -96)
+    visualScroll:SetPoint("BOTTOMRIGHT", -38, 48)
+
+    local itemListContent = CreateFrame("Frame", nil, visualScroll)
+    SetFrameSize(itemListContent, 490, 300)
+    visualScroll:SetScrollChild(itemListContent)
+
+    local emptyItems = itemListContent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    emptyItems:SetPoint("TOPLEFT", 4, -4)
+    emptyItems:SetText(L("item_view_empty"))
+    emptyItems:Hide()
+
+    local textScroll = CreateFrame("ScrollFrame", "TBCGearExporterScrollFrame", exportFrame, "UIPanelScrollFrameTemplate")
+    textScroll:SetPoint("TOPLEFT", 282, -96)
+    textScroll:SetPoint("BOTTOMRIGHT", -38, 48)
+
+    local editBox = CreateFrame("EditBox", nil, textScroll)
+    SetFrameSize(editBox, 490, 300)
     editBox:SetMultiLine(true)
     editBox:SetAutoFocus(false)
     editBox:EnableMouse(true)
@@ -2512,7 +2728,7 @@ function Addon:CreateExportFrame()
             self:SetHeight(height)
         end
     end)
-    scroll:SetScrollChild(editBox)
+    textScroll:SetScrollChild(editBox)
 
     local status = exportFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     status:SetPoint("BOTTOMLEFT", 20, 24)
@@ -2525,7 +2741,17 @@ function Addon:CreateExportFrame()
     exportFrame.status = status
     exportFrame.formatLabel = formatLabel
     exportFrame.filterLabel = filterLabel
+    exportFrame.sourceLabel = sourceLabel
+    exportFrame.dbLabel = dbLabel
+    exportFrame.itemsTab = itemsTab
+    exportFrame.textTab = textTab
+    exportFrame.visualScroll = visualScroll
+    exportFrame.textScroll = textScroll
+    exportFrame.itemListContent = itemListContent
+    exportFrame.emptyItems = emptyItems
+    exportFrame.itemRows = {}
     self.exportFrame = exportFrame
+    self:SetExportView(self.exportView or "items")
 end
 
 function Addon:ShowExport(scope, format, filter)
