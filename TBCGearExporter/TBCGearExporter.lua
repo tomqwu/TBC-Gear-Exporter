@@ -10,6 +10,9 @@ local BANK_BAG_SLOTS = NUM_BANKBAGSLOTS or 7
 local MINIMAP_ICON_TEXTURE = "Interface\\Icons\\INV_Misc_Bag_10_Blue"
 local WOWHEAD_TBC_ITEM_URL_PREFIX = "https://www.wowhead.com/tbc/item="
 
+local ClientLocale
+local PromptLocale
+
 local CLASS_CATEGORY = {
     [0] = "Consumables",
     [1] = "Containers",
@@ -254,6 +257,129 @@ local EXPORT_FORMAT_LABELS = {
     json = "JSON",
     markdown = "Markdown",
     text = "Text",
+}
+
+local UI_STRINGS = {
+    enUS = {
+        addon_title = "TBC Gear Exporter",
+        summary_initial = "Bags: 0 items   Bank: 0 items   Scope: All",
+        summary = "Bags: %d items   Bank: %d items   Scope: %s   Filter: %s   Format: %s",
+        scan_button = "Scan Bags",
+        export_button = "Export",
+        bags_button = "Bags",
+        bank_button = "Bank",
+        gear_button = "Gear",
+        debug_button = "Debug",
+        select_button = "Select",
+        format_label = "Format:",
+        filter_label = "Filter:",
+        all_q_button = "All Q",
+        rare_plus_button = "Rare+",
+        epic_button = "Epic",
+        gear_epic_button = "Gear Epic",
+        format_ai_title = "AI Text",
+        format_json_title = "JSON",
+        format_markdown_title = "Markdown",
+        format_text_title = "Text",
+        status_ready = "AI-ready export is selected. Press Ctrl+C to copy.",
+        status_selected = "Export text selected. Press Ctrl+C to copy.",
+        status_generated = "%s export generated from saved local DB with filter: %s. Press Ctrl+C to copy.",
+        export_opened = "%s export opened from local DB: %d bag items, %d bank items. Filter: %s.",
+        bags_scanned = "Bags scanned",
+        bank_scanned = "Bank scanned",
+        bags_label = "Bags",
+        bank_label = "Bank",
+        scan_summary = "%s: %d items, %d slots via %s, saved to local DB",
+        open_bank_hint = "Open your bank and scan again to update bank items.",
+        tooltip_left = "Left-click: export saved local DB",
+        tooltip_right = "Right-click: scan and save bags/bank",
+        help_commands = "Commands: /tbcgear export [scope] [quality|quality+] [ai|json|markdown|text], /tbcgear gear epic, /tbcgear rare+, /tbcgear scan, /tbcgear debug, /tbcgear clear",
+        clear_done = "Saved bag and bank snapshots cleared for this character.",
+        loaded = "Loaded. %s. Click the minimap bag icon or use /tbcgear gui.",
+        debug_bag_open_id = "Debug: bag %s opened; %s.",
+        debug_bag_open = "Debug: bag opened; %s.",
+        debug_bank_open = "Debug: bank opened; %s.",
+    },
+    zhCN = {
+        addon_title = "TBC 装备导出器",
+        summary_initial = "背包：0 件   银行：0 件   范围：全部",
+        summary = "背包：%d 件   银行：%d 件   范围：%s   过滤：%s   格式：%s",
+        scan_button = "扫描背包",
+        export_button = "导出",
+        bags_button = "背包",
+        bank_button = "银行",
+        gear_button = "装备",
+        debug_button = "调试",
+        select_button = "全选",
+        format_label = "格式：",
+        filter_label = "过滤：",
+        all_q_button = "全部",
+        rare_plus_button = "精良+",
+        epic_button = "史诗",
+        gear_epic_button = "史诗装备",
+        format_ai_title = "AI 文本",
+        format_json_title = "JSON",
+        format_markdown_title = "Markdown",
+        format_text_title = "文本",
+        status_ready = "AI 导出文本已选中，按 Ctrl+C 复制。",
+        status_selected = "导出文本已选中，按 Ctrl+C 复制。",
+        status_generated = "%s 已从本地数据库生成，过滤：%s。按 Ctrl+C 复制。",
+        export_opened = "%s 已从本地数据库打开：背包 %d 件，银行 %d 件。过滤：%s。",
+        bags_scanned = "背包已扫描",
+        bank_scanned = "银行已扫描",
+        bags_label = "背包",
+        bank_label = "银行",
+        scan_summary = "%s：%d 件物品，%d 个栏位，使用 %s，已保存到本地数据库",
+        open_bank_hint = "打开银行后再次扫描即可更新银行物品。",
+        tooltip_left = "左键：导出已保存的本地数据库",
+        tooltip_right = "右键：扫描并保存背包/银行",
+        help_commands = "命令：/tbcgear export [范围] [品质|品质+] [ai|json|markdown|text]，/tbcgear gear epic，/tbcgear rare+，/tbcgear scan，/tbcgear debug，/tbcgear clear",
+        clear_done = "此角色已保存的背包和银行快照已清除。",
+        loaded = "已加载。%s。点击小地图背包图标或使用 /tbcgear gui。",
+        debug_bag_open_id = "调试：背包 %s 已打开；%s。",
+        debug_bag_open = "调试：背包已打开；%s。",
+        debug_bank_open = "调试：银行已打开；%s。",
+    },
+    zhTW = {
+        addon_title = "TBC 裝備匯出器",
+        summary_initial = "背包：0 件   銀行：0 件   範圍：全部",
+        summary = "背包：%d 件   銀行：%d 件   範圍：%s   篩選：%s   格式：%s",
+        scan_button = "掃描背包",
+        export_button = "匯出",
+        bags_button = "背包",
+        bank_button = "銀行",
+        gear_button = "裝備",
+        debug_button = "偵錯",
+        select_button = "全選",
+        format_label = "格式：",
+        filter_label = "篩選：",
+        all_q_button = "全部",
+        rare_plus_button = "精良+",
+        epic_button = "史詩",
+        gear_epic_button = "史詩裝備",
+        format_ai_title = "AI 文字",
+        format_json_title = "JSON",
+        format_markdown_title = "Markdown",
+        format_text_title = "文字",
+        status_ready = "AI 匯出文字已選取，按 Ctrl+C 複製。",
+        status_selected = "匯出文字已選取，按 Ctrl+C 複製。",
+        status_generated = "%s 已從本地資料庫產生，篩選：%s。按 Ctrl+C 複製。",
+        export_opened = "%s 已從本地資料庫開啟：背包 %d 件，銀行 %d 件。篩選：%s。",
+        bags_scanned = "背包已掃描",
+        bank_scanned = "銀行已掃描",
+        bags_label = "背包",
+        bank_label = "銀行",
+        scan_summary = "%s：%d 件物品，%d 個欄位，使用 %s，已儲存到本地資料庫",
+        open_bank_hint = "打開銀行後再次掃描即可更新銀行物品。",
+        tooltip_left = "左鍵：匯出已儲存的本地資料庫",
+        tooltip_right = "右鍵：掃描並儲存背包/銀行",
+        help_commands = "命令：/tbcgear export [範圍] [品質|品質+] [ai|json|markdown|text]，/tbcgear gear epic，/tbcgear rare+，/tbcgear scan，/tbcgear debug，/tbcgear clear",
+        clear_done = "此角色已儲存的背包和銀行快照已清除。",
+        loaded = "已載入。%s。點擊小地圖背包圖示或使用 /tbcgear gui。",
+        debug_bag_open_id = "偵錯：背包 %s 已開啟；%s。",
+        debug_bag_open = "偵錯：背包已開啟；%s。",
+        debug_bank_open = "偵錯：銀行已開啟；%s。",
+    },
 }
 
 local STAT_LABELS = {
@@ -696,6 +822,45 @@ local function QualityName(quality)
     return QUALITY_LABELS[quality] or "Unknown"
 end
 
+local function LocalizedQualityName(quality, locale)
+    local qualityID
+    if type(quality) == "number" then
+        qualityID = quality
+    elseif type(quality) == "string" then
+        local normalized = Trim(quality):lower()
+        qualityID = tonumber(normalized) or QUALITY_ALIASES[normalized]
+    end
+    locale = PromptLocale(locale)
+
+    if locale == "zhCN" then
+        return ({
+            [0] = "粗糙",
+            [1] = "普通",
+            [2] = "优秀",
+            [3] = "精良",
+            [4] = "史诗",
+            [5] = "传说",
+            [6] = "神器",
+            [7] = "传家宝",
+        })[qualityID] or "未知"
+    end
+
+    if locale == "zhTW" then
+        return ({
+            [0] = "粗糙",
+            [1] = "普通",
+            [2] = "優秀",
+            [3] = "精良",
+            [4] = "史詩",
+            [5] = "傳說",
+            [6] = "神器",
+            [7] = "傳家寶",
+        })[qualityID] or "未知"
+    end
+
+    return QualityName(qualityID)
+end
+
 local function TitleCase(value)
     return tostring(value or ""):lower():gsub("(%a)([%w']*)", function(first, rest)
         return first:upper() .. rest
@@ -849,9 +1014,6 @@ end
 local function JsonField(key, value, comma)
     return JsonString(key) .. ": " .. JsonValue(value) .. (comma and "," or "")
 end
-
-local ClientLocale
-local PromptLocale
 
 local function ScopeTitle(scope)
     if scope == "gear" then
@@ -1035,20 +1197,20 @@ local function LocalizedExportFilterTitle(filter, locale)
 
     if locale == "zhCN" then
         if filter.qualityID ~= nil then
-            return "仅" .. QualityName(filter.qualityID)
+            return "仅" .. LocalizedQualityName(filter.qualityID, locale)
         end
         if filter.qualityMin ~= nil then
-            return QualityName(filter.qualityMin) .. "及以上"
+            return LocalizedQualityName(filter.qualityMin, locale) .. "及以上"
         end
         return "全部品质"
     end
 
     if locale == "zhTW" then
         if filter.qualityID ~= nil then
-            return "僅" .. QualityName(filter.qualityID)
+            return "僅" .. LocalizedQualityName(filter.qualityID, locale)
         end
         if filter.qualityMin ~= nil then
-            return QualityName(filter.qualityMin) .. "以上"
+            return LocalizedQualityName(filter.qualityMin, locale) .. "以上"
         end
         return "全部品質"
     end
@@ -1183,6 +1345,27 @@ function PromptLocale(locale)
     end
 
     return "enUS"
+end
+
+local function LForLocale(locale, key, ...)
+    local uiLocale = PromptLocale(locale)
+    local strings = UI_STRINGS[uiLocale] or UI_STRINGS.enUS
+    local value = strings[key] or UI_STRINGS.enUS[key] or key
+
+    if select("#", ...) > 0 then
+        return string.format(value, ...)
+    end
+
+    return value
+end
+
+local function L(key, ...)
+    return LForLocale(ClientLocale(), key, ...)
+end
+
+local function LocalizedExportFormatTitle(format, locale)
+    local normalized = NormalizeExportFormat(format)
+    return LForLocale(locale, "format_" .. normalized .. "_title")
 end
 
 local function ClassToken(value)
@@ -1642,18 +1825,18 @@ end
 
 function Addon:FormatScanSummary(label, snapshot)
     snapshot = snapshot or { items = {}, totalSlots = 0, api = ContainerApiName() }
-    return label .. ": " .. #(snapshot.items or {}) .. " items, " .. tostring(snapshot.totalSlots or 0) .. " slots via " .. tostring(snapshot.api or "unknown") .. ", saved to local DB"
+    return L("scan_summary", label, #(snapshot.items or {}), snapshot.totalSlots or 0, tostring(snapshot.api or "unknown"))
 end
 
 function Addon:ScanBagsAndReport(label)
     local snapshot = self:ScanBags()
-    self:Print(self:FormatScanSummary(label or "Bags scanned", snapshot) .. ".")
+    self:Print(self:FormatScanSummary(label or L("bags_scanned"), snapshot) .. ".")
     return snapshot
 end
 
 function Addon:ScanBankAndReport(label)
     local snapshot = self:ScanBank()
-    self:Print(self:FormatScanSummary(label or "Bank scanned", snapshot) .. ".")
+    self:Print(self:FormatScanSummary(label or L("bank_scanned"), snapshot) .. ".")
     return snapshot
 end
 
@@ -2124,10 +2307,10 @@ function Addon:RefreshExport(scope, format, filter)
     self:SelectExportText()
 
     if self.exportFrame.summary then
-        self.exportFrame.summary:SetText("Bags: " .. bagCount .. " items   Bank: " .. bankCount .. " items   Scope: " .. ScopeTitle(self.exportScope) .. "   Filter: " .. ExportFilterTitle(self.exportFilter) .. "   Format: " .. ExportFormatTitle(self.exportFormat))
+        self.exportFrame.summary:SetText(L("summary", bagCount, bankCount, LocalizedScopeTitle(self.exportScope, ClientLocale()), LocalizedExportFilterTitle(self.exportFilter, ClientLocale()), LocalizedExportFormatTitle(self.exportFormat, ClientLocale())))
     end
 
-    self.exportFrame.status:SetText(ExportFormatTitle(self.exportFormat) .. " export generated from saved local DB with filter: " .. ExportFilterTitle(self.exportFilter) .. ". Press Ctrl+C to copy.")
+    self.exportFrame.status:SetText(L("status_generated", LocalizedExportFormatTitle(self.exportFormat, ClientLocale()), LocalizedExportFilterTitle(self.exportFilter, ClientLocale())))
 end
 
 function Addon:CreateExportFrame()
@@ -2163,7 +2346,7 @@ function Addon:CreateExportFrame()
 
     local title = exportFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     title:SetPoint("TOPLEFT", 20, -18)
-    title:SetText("TBC Gear Exporter")
+    title:SetText(L("addon_title"))
 
     local close = CreateFrame("Button", nil, exportFrame, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", -5, -5)
@@ -2172,18 +2355,18 @@ function Addon:CreateExportFrame()
     summary:SetPoint("TOPLEFT", 20, -42)
     summary:SetPoint("TOPRIGHT", -20, -42)
     summary:SetJustifyH("LEFT")
-    summary:SetText("Bags: 0 items   Bank: 0 items   Scope: All")
+    summary:SetText(L("summary_initial"))
 
     local scan = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
     SetFrameSize(scan, 100, 24)
     scan:SetPoint("TOPLEFT", 20, -64)
-    scan:SetText("Scan Bags")
+    scan:SetText(L("scan_button"))
     scan:SetScript("OnClick", function()
-        Addon:ScanBagsAndReport("Bags scanned")
+        Addon:ScanBagsAndReport(L("bags_scanned"))
         if Addon.bankOpen then
-            Addon:ScanBankAndReport("Bank scanned")
+            Addon:ScanBankAndReport(L("bank_scanned"))
         else
-            Addon:Print("Open your bank and scan again to update bank items.")
+            Addon:Print(L("open_bank_hint"))
         end
         Addon:RefreshExport()
     end)
@@ -2191,7 +2374,7 @@ function Addon:CreateExportFrame()
     local export = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
     SetFrameSize(export, 78, 24)
     export:SetPoint("LEFT", scan, "RIGHT", 8, 0)
-    export:SetText("Export")
+    export:SetText(L("export_button"))
     export:SetScript("OnClick", function()
         Addon:ExportSaved("all")
     end)
@@ -2199,7 +2382,7 @@ function Addon:CreateExportFrame()
     local bags = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
     SetFrameSize(bags, 62, 24)
     bags:SetPoint("LEFT", export, "RIGHT", 8, 0)
-    bags:SetText("Bags")
+    bags:SetText(L("bags_button"))
     bags:SetScript("OnClick", function()
         Addon:ExportSaved("bags")
     end)
@@ -2207,7 +2390,7 @@ function Addon:CreateExportFrame()
     local bank = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
     SetFrameSize(bank, 62, 24)
     bank:SetPoint("LEFT", bags, "RIGHT", 8, 0)
-    bank:SetText("Bank")
+    bank:SetText(L("bank_button"))
     bank:SetScript("OnClick", function()
         Addon:ExportSaved("bank")
     end)
@@ -2215,7 +2398,7 @@ function Addon:CreateExportFrame()
     local gear = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
     SetFrameSize(gear, 70, 24)
     gear:SetPoint("LEFT", bank, "RIGHT", 8, 0)
-    gear:SetText("Gear")
+    gear:SetText(L("gear_button"))
     gear:SetScript("OnClick", function()
         Addon:ExportSaved("gear")
     end)
@@ -2223,7 +2406,7 @@ function Addon:CreateExportFrame()
     local debugButton = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
     SetFrameSize(debugButton, 70, 24)
     debugButton:SetPoint("LEFT", gear, "RIGHT", 8, 0)
-    debugButton:SetText("Debug")
+    debugButton:SetText(L("debug_button"))
     debugButton:SetScript("OnClick", function()
         Addon:DebugContainers()
     end)
@@ -2231,15 +2414,15 @@ function Addon:CreateExportFrame()
     local selectButton = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
     SetFrameSize(selectButton, 86, 24)
     selectButton:SetPoint("LEFT", debugButton, "RIGHT", 8, 0)
-    selectButton:SetText("Select")
+    selectButton:SetText(L("select_button"))
     selectButton:SetScript("OnClick", function()
         Addon:SelectExportText()
-        Addon.exportFrame.status:SetText("Export text selected. Press Ctrl+C to copy.")
+        Addon.exportFrame.status:SetText(L("status_selected"))
     end)
 
     local formatLabel = exportFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     formatLabel:SetPoint("TOPLEFT", 20, -96)
-    formatLabel:SetText("Format:")
+    formatLabel:SetText(L("format_label"))
 
     local aiFormat = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
     SetFrameSize(aiFormat, 52, 22)
@@ -2268,19 +2451,19 @@ function Addon:CreateExportFrame()
     local textFormat = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
     SetFrameSize(textFormat, 60, 22)
     textFormat:SetPoint("LEFT", markdownFormat, "RIGHT", 6, 0)
-    textFormat:SetText("Text")
+    textFormat:SetText(L("format_text_title"))
     textFormat:SetScript("OnClick", function()
         Addon:ExportSaved(nil, "text")
     end)
 
     local filterLabel = exportFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     filterLabel:SetPoint("TOPLEFT", 20, -126)
-    filterLabel:SetText("Filter:")
+    filterLabel:SetText(L("filter_label"))
 
     local allQuality = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
     SetFrameSize(allQuality, 62, 22)
     allQuality:SetPoint("LEFT", filterLabel, "RIGHT", 8, 0)
-    allQuality:SetText("All Q")
+    allQuality:SetText(L("all_q_button"))
     allQuality:SetScript("OnClick", function()
         Addon:ExportSaved(nil, nil, "all")
     end)
@@ -2288,7 +2471,7 @@ function Addon:CreateExportFrame()
     local rarePlus = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
     SetFrameSize(rarePlus, 68, 22)
     rarePlus:SetPoint("LEFT", allQuality, "RIGHT", 6, 0)
-    rarePlus:SetText("Rare+")
+    rarePlus:SetText(L("rare_plus_button"))
     rarePlus:SetScript("OnClick", function()
         Addon:ExportSaved(nil, nil, { qualityMin = 3 })
     end)
@@ -2296,7 +2479,7 @@ function Addon:CreateExportFrame()
     local epicQuality = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
     SetFrameSize(epicQuality, 62, 22)
     epicQuality:SetPoint("LEFT", rarePlus, "RIGHT", 6, 0)
-    epicQuality:SetText("Epic")
+    epicQuality:SetText(L("epic_button"))
     epicQuality:SetScript("OnClick", function()
         Addon:ExportSaved(nil, nil, { qualityID = 4 })
     end)
@@ -2304,7 +2487,7 @@ function Addon:CreateExportFrame()
     local gearEpic = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
     SetFrameSize(gearEpic, 94, 22)
     gearEpic:SetPoint("LEFT", epicQuality, "RIGHT", 6, 0)
-    gearEpic:SetText("Gear Epic")
+    gearEpic:SetText(L("gear_epic_button"))
     gearEpic:SetScript("OnClick", function()
         Addon:ExportSaved("gear", nil, { qualityID = 4 })
     end)
@@ -2335,7 +2518,7 @@ function Addon:CreateExportFrame()
     status:SetPoint("BOTTOMLEFT", 20, 24)
     status:SetPoint("BOTTOMRIGHT", -20, 24)
     status:SetJustifyH("LEFT")
-    status:SetText("AI-ready export is selected. Press Ctrl+C to copy.")
+    status:SetText(L("status_ready"))
 
     exportFrame.editBox = editBox
     exportFrame.summary = summary
@@ -2362,7 +2545,7 @@ function Addon:ExportSaved(scope, format, filter)
 
     self:ShowExport(scope or self.exportScope or "all", selectedFormat, filter)
     local bagCount, bankCount = self:SavedItemCounts()
-    self:Print(ExportFormatTitle(self.exportFormat) .. " export opened from local DB: " .. bagCount .. " bag items, " .. bankCount .. " bank items. Filter: " .. ExportFilterTitle(self.exportFilter) .. ".")
+    self:Print(L("export_opened", LocalizedExportFormatTitle(self.exportFormat, ClientLocale()), bagCount, bankCount, LocalizedExportFilterTitle(self.exportFilter, ClientLocale())))
 end
 
 function Addon:CreateMinimapButton()
@@ -2400,11 +2583,11 @@ function Addon:CreateMinimapButton()
 
     button:SetScript("OnClick", function(_, mouseButton)
         if mouseButton == "RightButton" then
-            Addon:ScanBagsAndReport("Bags scanned")
+            Addon:ScanBagsAndReport(L("bags_scanned"))
             if Addon.bankOpen then
-                Addon:ScanBankAndReport("Bank scanned")
+                Addon:ScanBankAndReport(L("bank_scanned"))
             else
-                Addon:Print("Open your bank and scan again to update bank items.")
+                Addon:Print(L("open_bank_hint"))
             end
             return
         end
@@ -2415,9 +2598,9 @@ function Addon:CreateMinimapButton()
     button:SetScript("OnEnter", function(self)
         if GameTooltip then
             GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-            GameTooltip:SetText("TBC Gear Exporter")
-            GameTooltip:AddLine("Left-click: export saved local DB", 1, 1, 1)
-            GameTooltip:AddLine("Right-click: scan and save bags/bank", 0.8, 0.8, 0.8)
+            GameTooltip:SetText(L("addon_title"))
+            GameTooltip:AddLine(L("tooltip_left"), 1, 1, 1)
+            GameTooltip:AddLine(L("tooltip_right"), 0.8, 0.8, 0.8)
             GameTooltip:Show()
         end
     end)
@@ -2450,7 +2633,7 @@ function Addon:ClearProfile()
 end
 
 function Addon:ShowHelp()
-    self:Print("Commands: /tbcgear export [scope] [quality|quality+] [ai|json|markdown|text], /tbcgear gear epic, /tbcgear rare+, /tbcgear scan, /tbcgear debug, /tbcgear clear")
+    self:Print(L("help_commands"))
 end
 
 function Addon:HandleSlash(message)
@@ -2495,11 +2678,11 @@ function Addon:HandleSlash(message)
     end
 
     if command == "scan" then
-        self:ScanBagsAndReport("Bags scanned")
+        self:ScanBagsAndReport(L("bags_scanned"))
         if self.bankOpen then
-            self:ScanBankAndReport("Bank scanned")
+            self:ScanBankAndReport(L("bank_scanned"))
         else
-            self:Print("Open your bank and scan again to update bank items.")
+            self:Print(L("open_bank_hint"))
         end
         return
     end
@@ -2511,7 +2694,7 @@ function Addon:HandleSlash(message)
 
     if command == "clear" then
         self:ClearProfile()
-        self:Print("Saved bag and bank snapshots cleared for this character.")
+        self:Print(L("clear_done"))
         if self.exportFrame and self.exportFrame:IsShown() then
             self:RefreshExport()
         end
@@ -2561,7 +2744,7 @@ function Addon:OnEvent(eventName, ...)
     if eventName == "PLAYER_LOGIN" then
         self:CreateMinimapButton()
         local snapshot = self:ScanBags()
-        self:Print("Loaded. " .. self:FormatScanSummary("Bags", snapshot) .. ". Click the minimap bag icon or use /tbcgear gui.")
+        self:Print(L("loaded", self:FormatScanSummary(L("bags_label"), snapshot)))
         return
     end
 
@@ -2569,9 +2752,9 @@ function Addon:OnEvent(eventName, ...)
         local bagID = ...
         local snapshot = self:ScanBags()
         if bagID ~= nil then
-            self:Print("Debug: bag " .. bagID .. " opened; " .. self:FormatScanSummary("bags", snapshot) .. ".")
+            self:Print(L("debug_bag_open_id", tostring(bagID), self:FormatScanSummary(L("bags_label"), snapshot)))
         else
-            self:Print("Debug: bag opened; " .. self:FormatScanSummary("bags", snapshot) .. ".")
+            self:Print(L("debug_bag_open", self:FormatScanSummary(L("bags_label"), snapshot)))
         end
         return
     end
@@ -2587,7 +2770,7 @@ function Addon:OnEvent(eventName, ...)
     if eventName == "BANKFRAME_OPENED" then
         self.bankOpen = true
         local snapshot = self:ScanBank()
-        self:Print("Debug: bank opened; " .. self:FormatScanSummary("bank", snapshot) .. ".")
+        self:Print(L("debug_bank_open", self:FormatScanSummary(L("bank_label"), snapshot)))
         return
     end
 
@@ -2638,6 +2821,7 @@ if _G.TBCGearExporterTestMode then
         ItemLevelDisplay = ItemLevelDisplay,
         ItemTypeDisplay = ItemTypeDisplay,
         QualityName = QualityName,
+        LocalizedQualityName = LocalizedQualityName,
         TitleCase = TitleCase,
         CleanStatLabel = CleanStatLabel,
         StatLabel = StatLabel,
@@ -2668,6 +2852,9 @@ if _G.TBCGearExporterTestMode then
         SourceLabel = SourceLabel,
         ClientLocale = ClientLocale,
         PromptLocale = PromptLocale,
+        LForLocale = LForLocale,
+        L = L,
+        LocalizedExportFormatTitle = LocalizedExportFormatTitle,
         ClassToken = ClassToken,
         GetPlayerClassInfo = GetPlayerClassInfo,
         ClassRoleContext = ClassRoleContext,
