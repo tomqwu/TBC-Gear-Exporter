@@ -6,9 +6,17 @@ manual-changelog:
 
 enable-nolib-creation: no
 
+move-folders:
+  TBCGearExporter/TBCGearExporter: TBCGearExporter
+
 ignore:
+  - .pkgmeta
   - .gitignore
   - .github
+  - README.md
+  - CHANGELOG.md
+  - assets
+  - docs
   - tests
   - scripts
   - luacov.report.out
