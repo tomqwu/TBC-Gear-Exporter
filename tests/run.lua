@@ -330,6 +330,9 @@ local function installGlobals()
         SetText = function(self, text)
             self.text = text
         end,
+        SetHyperlink = function(self, link)
+            self.hyperlink = link
+        end,
         AddLine = function(self, text)
             self.lines[#self.lines + 1] = text
         end,
@@ -536,6 +539,7 @@ local function resetRuntimeState(Addon)
     if _G.GameTooltip then
         _G.GameTooltip.lines = {}
         _G.GameTooltip.text = nil
+        _G.GameTooltip.hyperlink = nil
         _G.GameTooltip.owner = nil
         _G.GameTooltip.shown = nil
     end
@@ -1472,9 +1476,19 @@ test("RefreshExport no-ops without frame and updates edit box with frame", funct
     Addon:CreateExportFrame()
     Addon:RefreshExport("bags")
     assertContains(Addon.exportFrame.editBox.text, "Super Mana Potion")
-    assertTrue(Addon.exportFrame.editBox.highlighted)
-    assertTrue(Addon.exportFrame.editBox.focused)
-    assertEquals(Addon.exportFrame.status.text, ui("status_generated", private.LocalizedExportFormatTitle("ai", "zhCN"), private.LocalizedExportFilterTitle(nil, "zhCN")))
+    assertEquals(Addon.exportView, "items")
+    assertTrue(Addon.exportFrame.visualScroll:IsShown())
+    assertFalse(Addon.exportFrame.textScroll:IsShown())
+    assertTrue(#Addon.exportFrame.itemRows >= 1)
+    local sawVisualIcon = false
+    for index = 1, #Addon.exportFrame.itemRows do
+        local texture = Addon.exportFrame.itemRows[index].icon.texture
+        if texture == "potion-icon" or texture == "helm-icon" then
+            sawVisualIcon = true
+        end
+    end
+    assertTrue(sawVisualIcon)
+    assertContains(Addon.exportFrame.status.text, "物品图标视图已更新")
     assertContains(Addon.exportFrame.summary.text, "背包：")
 end)
 
@@ -1482,7 +1496,7 @@ test("CreateExportFrame wires UI controls and scripts", function()
     resetRuntimeState(Addon)
     Addon:CreateExportFrame()
     local exportFrame = Addon.exportFrame
-    assertEquals(exportFrame.width, 680)
+    assertEquals(exportFrame.width, 820)
     assertEquals(exportFrame.template, "BackdropTemplate")
     assertFalse(exportFrame:IsShown())
     assertTrue(exportFrame.backdrop ~= nil)
@@ -1491,7 +1505,13 @@ test("CreateExportFrame wires UI controls and scripts", function()
     assertTrue(exportFrame.editBox ~= nil)
     assertTrue(exportFrame.summary ~= nil)
     assertTrue(exportFrame.status ~= nil)
+    assertTrue(exportFrame.sourceLabel ~= nil)
     assertTrue(exportFrame.filterLabel ~= nil)
+    assertTrue(exportFrame.visualScroll ~= nil)
+    assertTrue(exportFrame.textScroll ~= nil)
+    assertTrue(exportFrame.itemListContent ~= nil)
+    assertTrue(exportFrame.visualScroll:IsShown())
+    assertFalse(exportFrame.textScroll:IsShown())
 
     exportFrame.scripts.OnDragStart(exportFrame)
     assertTrue(exportFrame.moving)
@@ -1506,6 +1526,13 @@ test("CreateExportFrame wires UI controls and scripts", function()
     assertTrue(exportFrame.editBox.height >= 300)
 
     exportFrame.editBox.scripts.OnTextChanged({ GetNumLines = function() return 1 end })
+
+    Addon:SetExportView("text")
+    assertFalse(exportFrame.visualScroll:IsShown())
+    assertTrue(exportFrame.textScroll:IsShown())
+    Addon:SetExportView("items")
+    assertTrue(exportFrame.visualScroll:IsShown())
+    assertFalse(exportFrame.textScroll:IsShown())
 end)
 
 test("ShowExport creates once and refreshes selected scope", function()
@@ -1576,6 +1603,14 @@ test("export frame buttons scan and change scopes", function()
     findButtonByText(ui("scan_button")).scripts.OnClick()
     assertAnyMessageContains(ui("bags_scanned"))
     Addon:ScanBank()
+    assertTrue(Addon.exportFrame.visualScroll:IsShown())
+    assertTrue(#Addon.exportFrame.itemRows >= 1)
+    local visualRow = Addon.exportFrame.itemRows[1]
+    visualRow.scripts.OnEnter(visualRow)
+    assertEquals(GameTooltip.hyperlink, visualRow.item.link)
+    assertTrue(GameTooltip.shown)
+    visualRow.scripts.OnLeave(visualRow)
+    assertFalse(GameTooltip.shown)
 
     findButtonByText(ui("export_button")).scripts.OnClick()
     assertEquals(Addon.exportScope, "all")
@@ -1602,7 +1637,17 @@ test("export frame buttons scan and change scopes", function()
     assertAnyMessageContains("API=")
 
     findButtonByText(ui("select_button")).scripts.OnClick()
+    assertEquals(Addon.exportView, "text")
+    assertTrue(Addon.exportFrame.textScroll:IsShown())
+    assertFalse(Addon.exportFrame.visualScroll:IsShown())
     assertEquals(Addon.exportFrame.status.text, ui("status_selected"))
+
+    findButtonByText(ui("items_tab")).scripts.OnClick()
+    assertEquals(Addon.exportView, "items")
+    assertTrue(Addon.exportFrame.visualScroll:IsShown())
+    findButtonByText(ui("text_export_tab")).scripts.OnClick()
+    assertEquals(Addon.exportView, "text")
+    assertTrue(Addon.exportFrame.editBox.highlighted)
 
     findButtonByText("JSON").scripts.OnClick()
     assertEquals(Addon.exportFormat, "json")
