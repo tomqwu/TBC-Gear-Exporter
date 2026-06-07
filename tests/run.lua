@@ -683,6 +683,10 @@ chunk("TBCGearExporter")
 local Addon = assert(_G.TBCGearExporter, "test mode did not expose addon")
 local private = assert(Addon._testing, "test helpers missing")
 
+local function ui(key, ...)
+    return private.LForLocale("zhCN", key, ...)
+end
+
 local function addonRootFrame()
     for index = 1, #mock.frames do
         local frame = mock.frames[index]
@@ -920,11 +924,17 @@ test("class-aware AI prompt covers Druid role lenses and fallback context", func
     assertEquals(private.LocalizedScopeTitle("gear", "zhTW"), "僅裝備")
     assertEquals(private.LocalizedScopeTitle("all", "zhTW"), "全部")
     assertEquals(private.LocalizedScopeTitle("bags", "enUS"), "Bags")
-    assertEquals(private.LocalizedExportFilterTitle({ qualityID = 4 }, "zhCN"), "仅Epic")
-    assertEquals(private.LocalizedExportFilterTitle({ qualityID = 4 }, "zhTW"), "僅Epic")
-    assertEquals(private.LocalizedExportFilterTitle({ qualityMin = 3 }, "zhTW"), "Rare以上")
+    assertEquals(private.LocalizedQualityName(4, "zhCN"), "史诗")
+    assertEquals(private.LocalizedQualityName(3, "zhTW"), "精良")
+    assertEquals(private.LocalizedExportFilterTitle({ qualityID = 4 }, "zhCN"), "仅史诗")
+    assertEquals(private.LocalizedExportFilterTitle({ qualityID = 4 }, "zhTW"), "僅史詩")
+    assertEquals(private.LocalizedExportFilterTitle({ qualityMin = 3 }, "zhTW"), "精良以上")
     assertEquals(private.LocalizedExportFilterTitle(nil, "zhCN"), "全部品质")
     assertEquals(private.LocalizedExportFilterTitle(nil, "zhTW"), "全部品質")
+    assertEquals(private.LForLocale("zhCN", "scan_button"), "扫描背包")
+    assertEquals(private.LForLocale("zhTW", "export_button"), "匯出")
+    assertEquals(private.LForLocale("enGB", "scan_button"), "Scan Bags")
+    assertEquals(private.LocalizedExportFormatTitle("text", "zhCN"), "文本")
     assertEquals(private.ClassToken("death knight"), "DEATH_KNIGHT")
     assertEquals(private.ClassToken(nil), "UNKNOWN")
     assertEquals(private.NormalizeQualityID(99), nil)
@@ -945,7 +955,7 @@ test("class-aware AI prompt covers Druid role lenses and fallback context", func
     assertContains(prompt.text, "角色：Tester - Test Realm（Druid）")
     assertContains(prompt.text, "客户端语言：zhCN")
     assertContains(prompt.text, "导出范围：仅装备")
-    assertContains(prompt.text, "过滤器：仅Epic")
+    assertContains(prompt.text, "过滤器：仅史诗")
     assertContains(prompt.text, "熊形态野性坦克")
     assertContains(prompt.text, "猎豹野性输出")
     assertContains(prompt.text, "恢复治疗")
@@ -1309,19 +1319,19 @@ test("scan reports, saved counts, debug output, and text selection are visible",
     resetRuntimeState(Addon)
     Addon:SelectExportText()
 
-    local bags = Addon:ScanBagsAndReport("Bags scanned")
+    local bags = Addon:ScanBagsAndReport(ui("bags_scanned"))
     assertTrue(#bags.items >= 3)
-    assertAnyMessageContains("Bags scanned:")
-    assertAnyMessageContains("via C_Container")
+    assertAnyMessageContains(ui("bags_scanned"))
+    assertAnyMessageContains("C_Container")
 
-    local bank = Addon:ScanBankAndReport("Bank scanned")
+    local bank = Addon:ScanBankAndReport(ui("bank_scanned"))
     assertTrue(#bank.items >= 2)
-    assertAnyMessageContains("Bank scanned:")
+    assertAnyMessageContains(ui("bank_scanned"))
 
     local bagCount, bankCount = Addon:SavedItemCounts()
     assertEquals(bagCount, #bags.items)
     assertEquals(bankCount, #bank.items)
-    assertContains(Addon:FormatScanSummary("Bags", bags), "items")
+    assertContains(Addon:FormatScanSummary(ui("bags_label"), bags), "件物品")
 
     Addon.lastContainerError = "synthetic failure"
     Addon:DebugContainers()
@@ -1464,8 +1474,8 @@ test("RefreshExport no-ops without frame and updates edit box with frame", funct
     assertContains(Addon.exportFrame.editBox.text, "Super Mana Potion")
     assertTrue(Addon.exportFrame.editBox.highlighted)
     assertTrue(Addon.exportFrame.editBox.focused)
-    assertEquals(Addon.exportFrame.status.text, "AI Text export generated from saved local DB with filter: All qualities. Press Ctrl+C to copy.")
-    assertContains(Addon.exportFrame.summary.text, "Bags:")
+    assertEquals(Addon.exportFrame.status.text, ui("status_generated", private.LocalizedExportFormatTitle("ai", "zhCN"), private.LocalizedExportFilterTitle(nil, "zhCN")))
+    assertContains(Addon.exportFrame.summary.text, "背包：")
 end)
 
 test("CreateExportFrame wires UI controls and scripts", function()
@@ -1523,9 +1533,9 @@ test("minimap button opens export, scans on right click, and shows tooltip", fun
     assertEquals(Addon:CreateMinimapButton(), button)
 
     button.scripts.OnEnter(button)
-    assertEquals(GameTooltip.text, "TBC Gear Exporter")
+    assertEquals(GameTooltip.text, ui("addon_title"))
     assertTrue(GameTooltip.shown)
-    assertContains(GameTooltip.lines[1], "Left-click")
+    assertContains(GameTooltip.lines[1], "左键")
     button.scripts.OnLeave(button)
     assertFalse(GameTooltip.shown)
 
@@ -1533,14 +1543,14 @@ test("minimap button opens export, scans on right click, and shows tooltip", fun
     button.scripts.OnClick(button, "LeftButton")
     assertTrue(Addon.exportFrame:IsShown())
     assertEquals(Addon.exportScope, "all")
-    assertAnyMessageContains("export opened from local DB")
+    assertAnyMessageContains("本地数据库打开")
 
     button.scripts.OnClick(button, "RightButton")
-    assertAnyMessageContains("Bags scanned")
+    assertAnyMessageContains(ui("bags_scanned"))
 
     Addon.bankOpen = true
     button.scripts.OnClick(button, "RightButton")
-    assertAnyMessageContains("Bank scanned")
+    assertAnyMessageContains(ui("bank_scanned"))
 
     local oldMinimap = _G.Minimap
     _G.Minimap = nil
@@ -1563,36 +1573,36 @@ test("export frame buttons scan and change scopes", function()
     resetRuntimeState(Addon)
     Addon:CreateExportFrame()
     Addon.bankOpen = false
-    findButtonByText("Scan Bags").scripts.OnClick()
-    assertAnyMessageContains("Bags scanned")
+    findButtonByText(ui("scan_button")).scripts.OnClick()
+    assertAnyMessageContains(ui("bags_scanned"))
     Addon:ScanBank()
 
-    findButtonByText("Export").scripts.OnClick()
+    findButtonByText(ui("export_button")).scripts.OnClick()
     assertEquals(Addon.exportScope, "all")
-    assertAnyMessageContains("export opened from local DB")
+    assertAnyMessageContains("本地数据库打开")
 
-    findButtonByText("Bags").scripts.OnClick()
+    findButtonByText(ui("bags_button")).scripts.OnClick()
     assertEquals(Addon.exportScope, "bags")
-    assertAnyMessageContains("export opened from local DB")
+    assertAnyMessageContains("本地数据库打开")
 
-    findButtonByText("Bank").scripts.OnClick()
+    findButtonByText(ui("bank_button")).scripts.OnClick()
     assertEquals(Addon.exportScope, "bank")
-    assertAnyMessageContains("export opened from local DB")
+    assertAnyMessageContains("本地数据库打开")
 
     Addon.bankOpen = true
-    findButtonByText("Bank").scripts.OnClick()
+    findButtonByText(ui("bank_button")).scripts.OnClick()
     assertEquals(Addon.exportScope, "bank")
-    assertAnyMessageContains("export opened from local DB")
+    assertAnyMessageContains("本地数据库打开")
 
-    findButtonByText("Gear").scripts.OnClick()
+    findButtonByText(ui("gear_button")).scripts.OnClick()
     assertEquals(Addon.exportScope, "gear")
-    assertAnyMessageContains("export opened from local DB")
+    assertAnyMessageContains("本地数据库打开")
 
-    findButtonByText("Debug").scripts.OnClick()
+    findButtonByText(ui("debug_button")).scripts.OnClick()
     assertAnyMessageContains("API=")
 
-    findButtonByText("Select").scripts.OnClick()
-    assertEquals(Addon.exportFrame.status.text, "Export text selected. Press Ctrl+C to copy.")
+    findButtonByText(ui("select_button")).scripts.OnClick()
+    assertEquals(Addon.exportFrame.status.text, ui("status_selected"))
 
     findButtonByText("JSON").scripts.OnClick()
     assertEquals(Addon.exportFormat, "json")
@@ -1602,7 +1612,7 @@ test("export frame buttons scan and change scopes", function()
     assertEquals(Addon.exportFormat, "markdown")
     assertContains(Addon.exportFrame.editBox.text, "# TBC Gear Exporter")
 
-    findButtonByText("Text").scripts.OnClick()
+    findButtonByText(ui("format_text_title")).scripts.OnClick()
     assertEquals(Addon.exportFormat, "text")
     assertContains(Addon.exportFrame.editBox.text, "TBC Gear Exporter")
 
@@ -1610,28 +1620,28 @@ test("export frame buttons scan and change scopes", function()
     assertEquals(Addon.exportFormat, "ai")
     assertContains(Addon.exportFrame.editBox.text, "AI_READY_WOW_TBC_INVENTORY_EXPORT")
 
-    findButtonByText("Epic").scripts.OnClick()
+    findButtonByText(ui("epic_button")).scripts.OnClick()
     assertEquals(Addon.exportFilter.qualityID, 4)
-    assertContains(Addon.exportFrame.summary.text, "Filter: Epic only")
+    assertContains(Addon.exportFrame.summary.text, "过滤：仅史诗")
     assertContains(Addon.exportFrame.editBox.text, "Arcane Blade")
     assertFalse(Addon.exportFrame.editBox.text:find("Defender Helm", 1, true), "epic filter should omit rare gear in current gear scope")
 
-    findButtonByText("All Q").scripts.OnClick()
+    findButtonByText(ui("all_q_button")).scripts.OnClick()
     assertEquals(Addon.exportFilter.qualityID, nil)
     assertEquals(Addon.exportFilter.qualityMin, nil)
     assertContains(Addon.exportFrame.editBox.text, "Defender Helm")
 
-    findButtonByText("Rare+").scripts.OnClick()
+    findButtonByText(ui("rare_plus_button")).scripts.OnClick()
     assertEquals(Addon.exportFilter.qualityMin, 3)
     assertContains(Addon.exportFrame.editBox.text, "Defender Helm")
 
-    findButtonByText("Gear Epic").scripts.OnClick()
+    findButtonByText(ui("gear_epic_button")).scripts.OnClick()
     assertEquals(Addon.exportScope, "gear")
     assertEquals(Addon.exportFilter.qualityID, 4)
     assertContains(Addon.exportFrame.editBox.text, "Arcane Blade")
     assertFalse(Addon.exportFrame.editBox.text:find("Super Mana Potion", 1, true), "gear epic filter should omit consumables")
 
-    findButtonByText("Scan Bags").scripts.OnClick()
+    findButtonByText(ui("scan_button")).scripts.OnClick()
     assertEquals(Addon.exportScope, "gear")
 end)
 
@@ -1648,7 +1658,7 @@ test("slash commands cover export modes, scan modes, clear, help, and aliases", 
 
     Addon:HandleSlash("")
     assertEquals(Addon.exportScope, "all")
-    assertAnyMessageContains("export opened from local DB")
+    assertAnyMessageContains("本地数据库打开")
     Addon:HandleSlash("gui")
     assertEquals(Addon.exportScope, "all")
     Addon:HandleSlash("show")
@@ -1691,21 +1701,21 @@ test("slash commands cover export modes, scan modes, clear, help, and aliases", 
     Addon:HandleSlash("gear")
     assertEquals(Addon.exportFilter.qualityID, nil)
     Addon:HandleSlash("scan")
-    assertAnyMessageContains("Bags scanned")
+    assertAnyMessageContains(ui("bags_scanned"))
 
     Addon.bankOpen = true
     Addon:HandleSlash("bank")
     Addon:HandleSlash("gear")
     Addon:HandleSlash("scan")
-    assertAnyMessageContains("Bank scanned")
+    assertAnyMessageContains(ui("bank_scanned"))
 
     Addon:HandleSlash("debug")
     assertAnyMessageContains("API=")
 
     Addon:HandleSlash("clear")
-    assertContains(mock.messages[#mock.messages], "cleared")
+    assertContains(mock.messages[#mock.messages], "已清除")
     Addon:HandleSlash("wat")
-    assertContains(mock.messages[#mock.messages], "Commands:")
+    assertContains(mock.messages[#mock.messages], "命令：")
 
     SlashCmdList.TBCGEAREXPORTER("export")
     assertEquals(Addon.exportScope, "all")
@@ -1733,13 +1743,13 @@ test("event dispatcher covers addon, login, bags, bank, and bank slot events", f
     resetRuntimeState(Addon)
     Addon:OnEvent("ADDON_LOADED", "TBCGearExporter")
     Addon:OnEvent("PLAYER_LOGIN")
-    assertContains(mock.messages[#mock.messages], "Loaded")
+    assertContains(mock.messages[#mock.messages], "已加载")
 
     Addon:OnEvent("BAG_OPEN", 0)
-    assertContains(mock.messages[#mock.messages], "Debug: bag 0 opened; bags:")
+    assertContains(mock.messages[#mock.messages], "调试：背包 0 已打开")
 
     Addon:OnEvent("BAG_OPEN")
-    assertContains(mock.messages[#mock.messages], "Debug: bag opened; bags:")
+    assertContains(mock.messages[#mock.messages], "调试：背包已打开")
 
     Addon.bankOpen = false
     Addon:OnEvent("BAG_UPDATE")
@@ -1751,7 +1761,7 @@ test("event dispatcher covers addon, login, bags, bank, and bank slot events", f
 
     Addon:OnEvent("BANKFRAME_OPENED")
     assertTrue(Addon.bankOpen)
-    assertContains(mock.messages[#mock.messages], "Debug: bank opened; bank:")
+    assertContains(mock.messages[#mock.messages], "调试：银行已打开")
 
     Addon:OnEvent("PLAYERBANKSLOTS_CHANGED")
     flushTimers()
@@ -1767,7 +1777,7 @@ test("frame event script delegates to addon event handler", function()
     resetRuntimeState(Addon)
     local rootFrame = addonRootFrame()
     rootFrame.scripts.OnEvent(rootFrame, "PLAYER_LOGIN")
-    assertContains(mock.messages[#mock.messages], "Loaded")
+    assertContains(mock.messages[#mock.messages], "已加载")
 end)
 
 local failures = {}
