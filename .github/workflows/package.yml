@@ -1,0 +1,56 @@
+name: Manual Package
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish_curseforge:
+        description: "Upload to CurseForge after packaging"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Build addon package
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Require CurseForge token for publishing
+        if: ${{ inputs.publish_curseforge }}
+        env:
+          CF_API_KEY: ${{ secrets.CF_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${CF_API_KEY:-}" ]]; then
+            echo "::error::Set the CF_API_KEY repository secret before publishing to CurseForge."
+            exit 1
+          fi
+
+      - name: Package only
+        if: ${{ !inputs.publish_curseforge }}
+        uses: BigWigsMods/packager@master
+        with:
+          args: -d -e -l -r ${{ github.workspace }}/.release/manual
+
+      - name: Package and publish to CurseForge
+        if: ${{ inputs.publish_curseforge }}
+        uses: BigWigsMods/packager@master
+        env:
+          CF_API_KEY: ${{ secrets.CF_API_KEY }}
+        with:
+          args: -e -l -r ${{ github.workspace }}/.release/manual
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TBCGearExporter-package
+          path: .release/manual/*.zip
+          if-no-files-found: error

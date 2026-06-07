@@ -34,6 +34,22 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\install-local.ps1
 
 When I create a GitHub release or tag from this workspace, I also run that local install command so your `F:\World of Warcraft\_anniversary_\Interface\AddOns` copy stays in sync.
 
+## Manual Package
+
+CurseForge tag monitoring is the normal release path. If a manual fallback is needed, run the `Manual Package` GitHub Actions workflow. Leave `publish_curseforge` off to build a downloadable artifact only; turn it on only when the `CF_API_KEY` repository secret is set and you want to upload to CurseForge.
+
+Local build-only fallback:
+
+```bash
+scripts/package-local.sh
+```
+
+Local CurseForge upload fallback:
+
+```bash
+CF_API_KEY=... scripts/package-local.sh --publish-curseforge
+```
+
 ## First-run checklist
 
 ```text
