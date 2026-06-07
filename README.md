@@ -15,6 +15,8 @@
 
 A small World of Warcraft TBC Classic addon that saves the current character's bag and bank items, groups them into categories, lists item stats, adds TBC Wowhead links and quality colors for every item, and shows a localized GUI with an auto-selected AI-ready text export.
 
+Reusable addon listing copy is available in [docs/listing.md](docs/listing.md), including an exact 256-character summary and a full Markdown description.
+
 ## Install
 
 1. Download the latest zip from the [Releases page](https://github.com/tomqwu/TBC-Gear-Exporter/releases).
