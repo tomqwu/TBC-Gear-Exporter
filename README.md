@@ -1,7 +1,7 @@
 # TBC Gear Exporter
 
 <p align="center">
-  <img src="assets/tbc-gear-exporter-logo.png" alt="TBC Gear Exporter logo" width="128">
+  <img src="https://raw.githubusercontent.com/tomqwu/TBC-Gear-Exporter/main/assets/tbc-gear-exporter-logo.png" alt="TBC Gear Exporter logo" width="128">
 </p>
 
 [![Tests](https://github.com/tomqwu/TBC-Gear-Exporter/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/tomqwu/TBC-Gear-Exporter/actions/workflows/test.yml)
