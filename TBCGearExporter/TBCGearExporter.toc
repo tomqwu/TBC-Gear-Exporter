@@ -5,5 +5,6 @@
 ## Author: Codex
 ## Version: 0.1.0
 ## SavedVariables: TBCGearExporterDB
+## X-Curse-Project-ID: 1567147
 
 TBCGearExporter.lua
