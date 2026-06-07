@@ -3,7 +3,7 @@
 ## Title: TBC Gear Exporter
 ## Notes: Saves bag and bank items by category and exports AI-ready copyable text.
 ## Author: Codex
-## Version: 0.1.0
+## Version: 0.1.1
 ## SavedVariables: TBCGearExporterDB
 ## X-Curse-Project-ID: 1567147
 
