@@ -2,11 +2,8 @@ name: Release
 
 on:
   push:
-    branches:
-      - main
     tags:
       - "v*"
-  workflow_dispatch:
 
 permissions:
   contents: write
@@ -15,7 +12,6 @@ jobs:
   release:
     name: Build + publish
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/') || !contains(github.ref_name, '-dev.') }}
 
     steps:
       - name: Check out repository
@@ -27,41 +23,29 @@ jobs:
         id: version
         run: |
           set -euo pipefail
-          base="$(grep '^## Version:' TBCGearExporter/TBCGearExporter.toc | awk '{print $3}')"
-          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-            tag="${GITHUB_REF#refs/tags/}"
-            kind="release"
-            prerelease="false"
-          else
-            tag="v${base}-dev.${GITHUB_RUN_NUMBER}"
-            kind="dev"
+          tag="${GITHUB_REF#refs/tags/}"
+          lower_tag="${tag,,}"
+          if [[ "$lower_tag" == *alpha* || "$lower_tag" == *beta* || "$lower_tag" == *dev* ]]; then
             prerelease="true"
+          else
+            prerelease="false"
           fi
           {
             echo "tag=$tag"
-            echo "kind=$kind"
             echo "prerelease=$prerelease"
           } >> "$GITHUB_OUTPUT"
-          echo "Resolved tag=$tag kind=$kind prerelease=$prerelease"
+          echo "Resolved tag=$tag prerelease=$prerelease"
 
       - name: Extract release notes from CHANGELOG.md
         run: |
           set -euo pipefail
-          if [[ "${{ steps.version.outputs.kind }}" == "release" ]]; then
-            version_no_v="${{ steps.version.outputs.tag }}"
-            version_no_v="${version_no_v#v}"
-            awk -v ver="$version_no_v" '
-              $0 ~ "^## \\[" ver "\\]" { flag = 1; next }
-              flag && /^## \[/         { flag = 0 }
-              flag                     { print }
-            ' CHANGELOG.md > /tmp/notes.md
-          else
-            awk '
-              /^## \[Unreleased\]/ { flag = 1; next }
-              flag && /^## \[/     { flag = 0 }
-              flag                 { print }
-            ' CHANGELOG.md > /tmp/notes.md
-          fi
+          version_no_v="${{ steps.version.outputs.tag }}"
+          version_no_v="${version_no_v#v}"
+          awk -v ver="$version_no_v" '
+            $0 ~ "^## \\[" ver "\\]" { flag = 1; next }
+            flag && /^## \[/         { flag = 0 }
+            flag                     { print }
+          ' CHANGELOG.md > /tmp/notes.md
           if [[ ! -s /tmp/notes.md ]]; then
             printf '_No notes found in CHANGELOG.md. Commit summary:_\n\n%s\n' \
               "$(git log -1 --pretty=format:'%s%n%n%b')" > /tmp/notes.md
@@ -76,15 +60,6 @@ jobs:
             echo "4. Use \`/tbcgear gui\` to open the AI-ready export window."
           } >> /tmp/notes.md
           cat /tmp/notes.md
-
-      - name: Create and push dev tag
-        if: steps.version.outputs.kind == 'dev'
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag "${{ steps.version.outputs.tag }}" "$GITHUB_SHA" 2>/dev/null || echo "Tag already exists locally."
-          git push origin "${{ steps.version.outputs.tag }}" 2>&1 || echo "Tag push failed or tag already exists; continuing."
 
       - name: Build addon zip
         id: zip
