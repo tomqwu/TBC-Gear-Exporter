@@ -1,6 +1,10 @@
 # TBC Gear Exporter
 
-[![Tests](https://github.com/tomqwu/tbc-wow-list-gears/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/tomqwu/tbc-wow-list-gears/actions/workflows/test.yml)
+<p align="center">
+  <img src="assets/tbc-gear-exporter-logo.png" alt="TBC Gear Exporter logo" width="128">
+</p>
+
+[![Tests](https://github.com/tomqwu/TBC-Gear-Exporter/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/tomqwu/TBC-Gear-Exporter/actions/workflows/test.yml)
 ![Lua 5.1](https://img.shields.io/badge/Lua-5.1-2C2D72?logo=lua&logoColor=white)
 ![WoW AddOn](https://img.shields.io/badge/WoW-TBC%20Classic-C69B6D)
 ![TBC Anniversary](https://img.shields.io/badge/client-Anniversary-0E8A16)
@@ -13,7 +17,7 @@ A small World of Warcraft TBC Classic addon that saves the current character's b
 
 ## Install
 
-1. Download the latest zip from the [Releases page](https://github.com/tomqwu/tbc-wow-list-gears/releases).
+1. Download the latest zip from the [Releases page](https://github.com/tomqwu/TBC-Gear-Exporter/releases).
 2. Extract the `TBCGearExporter/` folder, the one containing `TBCGearExporter.toc`, into your WoW AddOns directory:
    - **TBC Classic / Anniversary**: `<WoW install>/_anniversary_/Interface/AddOns/`
    - **Windows example**: `F:\World of Warcraft\_anniversary_\Interface\AddOns\TBCGearExporter`
