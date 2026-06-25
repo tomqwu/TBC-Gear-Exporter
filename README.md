@@ -13,7 +13,7 @@
 ![Coverage Gate](https://img.shields.io/badge/coverage%20gate-99%25-blue)
 ![Local Install](https://img.shields.io/badge/local%20install-PowerShell-5391FE?logo=powershell&logoColor=white)
 
-A small World of Warcraft TBC Classic addon that saves the current character's bag and bank items, groups them into categories, lists item stats, adds TBC Wowhead links and quality colors for every item, and shows a localized GUI with a visual item browser plus AI-ready text export.
+A small World of Warcraft TBC Classic addon that saves the current character's bag, bank, and talent build, groups items into categories, lists item stats, adds TBC Wowhead links and quality colors for every item, and shows a localized GUI with a visual item browser plus AI-ready text export.
 
 Reusable addon listing copy is available in [docs/listing.md](docs/listing.md), including an exact 256-character summary and a full Markdown description.
 
@@ -85,7 +85,9 @@ The minimap bag icon opens the export popup on left-click. Right-click scans and
 
 The export panel pops up from saved `TBCGearExporterDB` data. It shows saved bag/bank counts, scan/debug controls, source buttons for **All**, **Bags**, **Bank**, and **Gear**, format buttons for **AI**, **JSON**, **Markdown**, and **Text**, filter buttons for **All Q**, **Rare+**, **Epic**, and **Gear Epic**, and right-side tabs for a visual item browser or copyable text export. The item browser uses saved item icons, colored names, counts, item levels, locations, quality, type, and item-link tooltips so you can review gear without staring at raw JSON. The text export contains a class-aware AI prompt, character info, local DB metadata, scan timestamps, categories, export filters, items, item links, TBC Wowhead URLs, item level, quality color, colored item names, and stat arrays. GUI labels, status text, tooltips, slash help, and scan chat lines follow the WoW client locale for English, simplified Chinese, and traditional Chinese clients.
 
-AI Text exports begin with an `AI_PROMPT` block before `DATA_JSON`. JSON exports include the same instructions under `ai_prompt`, so external GenAI tools can consume either the prompt text, the structured data, or both. The prompt uses the character class to add role lenses, for example Druid bear mitigation/threat, cat DPS, Restoration healing, and Balance caster analysis. It also follows the client locale from `GetLocale()`: Chinese clients get Chinese prompt wording and localized filter labels, while English clients keep English wording.
+AI Text exports begin with an `AI_PROMPT` block before `DATA_JSON`. JSON exports include the same instructions under `ai_prompt`, so external GenAI tools can consume either the prompt text, the structured data, or both. The prompt uses the character class and current talent build to add role lenses, for example Druid bear mitigation/threat, cat DPS, Restoration healing, and Balance caster analysis. It also follows the client locale from `GetLocale()`: Chinese clients get Chinese prompt wording and localized filter labels, while English clients keep English wording.
+
+Current talents are saved into `current_talents` with tree point summary, primary tree, total/unspent points, and selected talent ranks. Talent snapshots refresh when bags or bank are scanned, when exports are generated, and when WoW fires a talent update event.
 
 Item names use WoW quality colors, such as rare blue and epic purple. Item level remains a numeric field, while item type/category remains a separate classification for AI analysis.
 

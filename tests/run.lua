@@ -109,6 +109,10 @@ mock = {
     badInfoItems = {},
     badStatsItems = {},
     tableInfo = {},
+    talentTabs = {},
+    unspentTalentPoints = 0,
+    badTalentTabs = {},
+    badTalentInfo = {},
 }
 
 local function itemLink(itemID, name, qualityColor)
@@ -295,6 +299,42 @@ local function addItem(item)
     mock.itemLinks[item.id] = item.link
 end
 
+local function resetTalentMock()
+    mock.unspentTalentPoints = 0
+    mock.badTalentTabs = {}
+    mock.badTalentInfo = {}
+    mock.talentTabs = {
+        {
+            name = "Balance",
+            icon = "Interface\\Icons\\Spell_Nature_StarFall",
+            points = 0,
+            background = "DruidBalance",
+            talents = {},
+        },
+        {
+            name = "Feral Combat",
+            icon = "Interface\\Icons\\Ability_Racial_BearForm",
+            points = 46,
+            background = "DruidFeral",
+            talents = {
+                { name = "Ferocity", icon = "Interface\\Icons\\Ability_Hunter_Pet_Hyena", tier = 1, column = 2, rank = 5, maxRank = 5 },
+                { name = "Thick Hide", icon = "Interface\\Icons\\INV_Misc_Pelt_Bear_03", tier = 2, column = 3, rank = 3, maxRank = 3 },
+                { name = "Leader of the Pack", icon = "Interface\\Icons\\Spell_Nature_UnyeildingStamina", tier = 5, column = 2, rank = 1, maxRank = 1, isExceptional = true },
+            },
+        },
+        {
+            name = "Restoration",
+            icon = "Interface\\Icons\\Spell_Nature_HealingTouch",
+            points = 15,
+            background = "DruidRestoration",
+            talents = {
+                { name = "Furor", icon = "Interface\\Icons\\Spell_Holy_BlessingOfStamina", tier = 1, column = 2, rank = 5, maxRank = 5 },
+                { name = "Naturalist", icon = "Interface\\Icons\\Spell_Nature_HealingTouch", tier = 2, column = 3, rank = 5, maxRank = 5 },
+            },
+        },
+    }
+end
+
 local function installGlobals()
     _G.TBCGearExporterTestMode = true
     _G.BANK_CONTAINER = -1
@@ -365,6 +405,58 @@ local function installGlobals()
         end
 
         return "Unknown", "UNKNOWN", nil
+    end
+
+    resetTalentMock()
+
+    _G.GetNumTalentTabs = function()
+        return #mock.talentTabs
+    end
+
+    _G.GetTalentTabInfo = function(tabIndex)
+        if mock.badTalentTabs[tabIndex] then
+            error("talent tab failure")
+        end
+
+        local tab = mock.talentTabs[tabIndex]
+        if not tab then
+            return nil
+        end
+
+        return tab.name, tab.icon, tab.points, tab.background
+    end
+
+    _G.GetNumTalents = function(tabIndex)
+        local tab = mock.talentTabs[tabIndex]
+        return tab and #(tab.talents or {}) or 0
+    end
+
+    _G.GetTalentInfo = function(tabIndex, talentIndex)
+        if mock.badTalentInfo[tabIndex .. ":" .. talentIndex] then
+            error("talent info failure")
+        end
+
+        local tab = mock.talentTabs[tabIndex]
+        local talent = tab and tab.talents and tab.talents[talentIndex]
+        if not talent then
+            return nil
+        end
+
+        return talent.name,
+            talent.icon,
+            talent.tier,
+            talent.column,
+            talent.rank,
+            talent.maxRank,
+            talent.isExceptional,
+            talent.meetsPrereq
+    end
+
+    _G.UnitCharacterPoints = function(unit)
+        if unit == "player" then
+            return mock.unspentTalentPoints
+        end
+        return 0
     end
 
     _G.GetLocale = function()
@@ -526,6 +618,7 @@ end
 local function resetRuntimeState(Addon)
     mock.messages = {}
     mock.timers = {}
+    resetTalentMock()
     _G.TBCGearExporterDB = nil
     Addon.db = nil
     Addon.pendingBagScan = nil
@@ -718,6 +811,7 @@ test("addon registers bag and bank scan events after load", function()
     Addon:OnAddonLoaded("TBCGearExporter")
     assertTrue(addonRootFrame().events.BAG_OPEN, "bag open should be registered")
     assertTrue(addonRootFrame().events.BANKFRAME_OPENED, "bank open should be registered")
+    assertTrue(addonRootFrame().events.PLAYER_TALENT_UPDATE, "talent updates should be registered")
 end)
 
 test("private parsers handle links and nils", function()
@@ -1149,6 +1243,65 @@ test("profile creation uses real and fallback character names", function()
     _G.UnitName = oldUnit
 end)
 
+test("talent snapshot captures current build and fallback paths", function()
+    resetRuntimeState(Addon)
+    mock.unspentTalentPoints = 2
+
+    local snapshot = private.BuildTalentSnapshot()
+    assertTrue(snapshot.available)
+    assertEquals(snapshot.api, "GetTalentInfo")
+    assertEquals(snapshot.summary, "0/46/15")
+    assertEquals(snapshot.totalPoints, 61)
+    assertEquals(snapshot.unspentPoints, 2)
+    assertEquals(snapshot.primaryTab, "Feral Combat")
+    assertEquals(snapshot.primaryTabIndex, 2)
+    assertEquals(#snapshot.tabs, 3)
+    assertEquals(snapshot.tabs[2].talents[1].name, "Ferocity")
+    assertEquals(snapshot.tabs[2].talents[1].rank, 5)
+    assertEquals(snapshot.tabs[2].talents[3].isExceptional, true)
+    assertContains(private.TalentSummaryText(snapshot, "enUS"), "primary=Feral Combat")
+    assertContains(private.TalentSummaryText(snapshot, "zhCN"), "0/46/15")
+
+    mock.badTalentInfo["2:1"] = true
+    snapshot = private.BuildTalentSnapshot()
+    assertEquals(#snapshot.tabs[2].talents, 2)
+    mock.badTalentInfo = {}
+
+    mock.badTalentTabs[2] = true
+    snapshot = private.BuildTalentSnapshot()
+    assertEquals(snapshot.tabs[2].name, "Tree 2")
+    assertEquals(snapshot.tabs[2].points, 0)
+    mock.badTalentTabs = {}
+
+    local oldUnitPoints = _G.UnitCharacterPoints
+    _G.UnitCharacterPoints = nil
+    _G.GetUnspentTalentPoints = function()
+        return 7
+    end
+    snapshot = private.BuildTalentSnapshot()
+    assertEquals(snapshot.unspentPoints, 7)
+    _G.GetUnspentTalentPoints = nil
+
+    local oldTabs = _G.GetNumTalentTabs
+    local oldTabInfo = _G.GetTalentTabInfo
+    local oldNumTalents = _G.GetNumTalents
+    local oldTalentInfo = _G.GetTalentInfo
+    _G.GetNumTalentTabs = nil
+    _G.GetTalentTabInfo = nil
+    _G.GetNumTalents = nil
+    _G.GetTalentInfo = nil
+    snapshot = private.BuildTalentSnapshot()
+    assertFalse(snapshot.available)
+    assertEquals(snapshot.api, "unavailable")
+    assertContains(private.TalentSummaryText(snapshot, "zhCN"), "不可用")
+
+    _G.UnitCharacterPoints = oldUnitPoints
+    _G.GetNumTalentTabs = oldTabs
+    _G.GetTalentTabInfo = oldTabInfo
+    _G.GetNumTalents = oldNumTalents
+    _G.GetTalentInfo = oldTalentInfo
+end)
+
 test("container item values cover missing API, table info, tuple info, and link fallback", function()
     local oldInfo = _G.GetContainerItemInfo
     local oldContainerInfo = _G.C_Container.GetContainerItemInfo
@@ -1335,6 +1488,8 @@ test("scan reports, saved counts, debug output, and text selection are visible",
     local bagCount, bankCount = Addon:SavedItemCounts()
     assertEquals(bagCount, #bags.items)
     assertEquals(bankCount, #bank.items)
+    assertEquals(Addon:GetProfile().talents.summary, "0/46/15")
+    assertEquals(Addon:GetProfile().localDB.talentPrimaryTab, "Feral Combat")
     assertContains(Addon:FormatScanSummary(ui("bags_label"), bags), "件物品")
 
     Addon.lastContainerError = "synthetic failure"
@@ -1354,6 +1509,7 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(allExport, "AI_PROMPT:")
     assertContains(allExport, "职业职责分析视角：")
     assertContains(allExport, "熊形态野性坦克")
+    assertContains(allExport, "当前天赋：0/46/15; primary=Feral Combat; points=61")
     assertTrue(allExport:find("AI_PROMPT:", 1, true) < allExport:find("DATA_JSON:", 1, true))
     assertContains(allExport, "DATA_JSON:")
     assertContains(allExport, "\"ai_prompt\": {")
@@ -1367,8 +1523,18 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(allExport, "\"client_locale\": \"zhCN\"")
     assertContains(allExport, "\"class\": \"Druid\"")
     assertContains(allExport, "\"class_id\": 11")
+    assertContains(allExport, "\"current_talents\": {")
+    assertContains(allExport, "\"summary\": \"0/46/15\"")
+    assertContains(allExport, "\"primary_tree\": \"Feral Combat\"")
+    assertContains(allExport, "\"total_points\": 61")
+    assertContains(allExport, "\"unspent_points\": 0")
+    assertContains(allExport, "\"name\": \"Ferocity\"")
+    assertContains(allExport, "\"rank\": 5")
+    assertContains(allExport, "\"max_rank\": 5")
     assertContains(allExport, "\"local_db\": {")
     assertContains(allExport, "\"name\": \"TBCGearExporterDB\"")
+    assertContains(allExport, "\"talent_summary\": \"0/46/15\"")
+    assertContains(allExport, "\"talent_primary_tree\": \"Feral Combat\"")
     assertContains(allExport, "\"bag_item_count\":")
     assertContains(allExport, "\"name\": \"Gear\"")
     assertContains(allExport, "\"name\": \"Consumables\"")
@@ -1418,6 +1584,7 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(markdownExport, "## AI Prompt")
     assertContains(markdownExport, "熊形态野性坦克")
     assertContains(markdownExport, "## Export Metadata")
+    assertContains(markdownExport, "Current talents: 0/46/15; primary=Feral Combat; points=61")
     assertContains(markdownExport, "Client locale: zhCN")
     assertContains(markdownExport, "## Gear")
     assertContains(markdownExport, "<span style=\"color:#0070DD\"><strong>Defender Helm</strong></span>")
@@ -1431,6 +1598,7 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(textExport, "AI PROMPT")
     assertContains(textExport, "EXPORT METADATA")
     assertContains(textExport, "熊形态野性坦克")
+    assertContains(textExport, "Current talents: 0/46/15; primary=Feral Combat; points=61")
     assertContains(textExport, "Client locale: zhCN")
     assertContains(textExport, "[Gear]")
     assertContains(textExport, "- |cff0070ddDefender Helm|r")
@@ -1789,6 +1957,12 @@ test("event dispatcher covers addon, login, bags, bank, and bank slot events", f
     Addon:OnEvent("ADDON_LOADED", "TBCGearExporter")
     Addon:OnEvent("PLAYER_LOGIN")
     assertContains(mock.messages[#mock.messages], "已加载")
+    assertEquals(Addon:GetProfile().talents.primaryTab, "Feral Combat")
+
+    mock.talentTabs[2].points = 42
+    mock.talentTabs[3].points = 19
+    Addon:OnEvent("PLAYER_TALENT_UPDATE")
+    assertEquals(Addon:GetProfile().talents.summary, "0/42/19")
 
     Addon:OnEvent("BAG_OPEN", 0)
     assertContains(mock.messages[#mock.messages], "调试：背包 0 已打开")
