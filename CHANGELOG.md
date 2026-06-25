@@ -4,6 +4,8 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+- Add current talent snapshots to the saved local DB and AI/JSON/Markdown/Text exports, including tree point summary, primary tree, total/unspent points, and selected talent ranks.
+
 ## [0.1.1] - 2026-06-07
 
 - Redesign the export GUI into a two-column power-user panel with source/filter/format controls, visual item-icon browsing, item-link tooltips, and a separate copyable text-export tab.

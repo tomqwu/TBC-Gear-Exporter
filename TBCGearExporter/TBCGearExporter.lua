@@ -169,6 +169,7 @@ local DEFAULT_ROLE_CONTEXT = {
 
 local AI_OUTPUT_REQUESTS = {
     "Summarize likely class/spec roles represented by the saved items.",
+    "Use current_talents when available to anchor the main-spec recommendation, while still calling out useful offspec items.",
     "For each plausible role, rank strong keepers, weak slots, and upgrade priorities.",
     "Separate mitigation, threat, DPS, healing, caster, and utility value when relevant.",
     "Flag duplicates, offspec pieces, consumables, materials, or items that are probably safe to vendor, bank, disenchant, or keep.",
@@ -222,6 +223,7 @@ local DEFAULT_ROLE_CONTEXT_ZHCN = {
 
 local AI_OUTPUT_REQUESTS_ZHCN = {
     "总结这些已保存物品最可能对应的职业天赋/职责。",
+    "如果 current_talents 可用，请用当前天赋锚定主天赋建议，同时指出有价值的副天赋物品。",
     "针对每个可能职责，列出值得保留的强力装备、薄弱部位和升级优先级。",
     "在相关时分别分析减伤、仇恨、输出、治疗、法系和功能性价值。",
     "标记重复物品、副天赋装备、消耗品、材料，或可能适合出售、存银行、分解、保留的物品。",
@@ -245,6 +247,7 @@ local DEFAULT_ROLE_CONTEXT_ZHTW = {
 
 local AI_OUTPUT_REQUESTS_ZHTW = {
     "總結這些已儲存物品最可能對應的職業天賦/職責。",
+    "如果 current_talents 可用，請用目前天賦錨定主天賦建議，同時指出有價值的副天賦物品。",
     "針對每個可能職責，列出值得保留的強力裝備、薄弱部位和升級優先順序。",
     "在相關時分別分析減傷、仇恨、輸出、治療、法系和功能性價值。",
     "標記重複物品、副天賦裝備、消耗品、材料，或可能適合出售、存銀行、分解、保留的物品。",
@@ -1315,6 +1318,51 @@ local function AppendJsonStringArray(lines, indent, key, values, comma)
     AppendIndented(lines, indent, "]" .. (comma and "," or ""))
 end
 
+local function AppendTalentJson(lines, indent, talents, comma)
+    talents = talents or {}
+    AppendIndented(lines, indent, "\"current_talents\": {")
+    AppendIndented(lines, indent + 2, JsonField("updated_at", FormatTime(talents.updatedAt), true))
+    AppendIndented(lines, indent + 2, JsonField("api", talents.api or "unavailable", true))
+    AppendIndented(lines, indent + 2, JsonField("available", talents.available and true or false, true))
+    AppendIndented(lines, indent + 2, JsonField("summary", talents.summary or "", true))
+    AppendIndented(lines, indent + 2, JsonField("total_points", talents.totalPoints or 0, true))
+    AppendIndented(lines, indent + 2, JsonField("unspent_points", talents.unspentPoints, true))
+    AppendIndented(lines, indent + 2, JsonField("primary_tree", talents.primaryTab, true))
+    AppendIndented(lines, indent + 2, JsonField("primary_tree_index", talents.primaryTabIndex, true))
+    AppendIndented(lines, indent + 2, "\"trees\": [")
+
+    for tabIndex = 1, #(talents.tabs or {}) do
+        local tab = talents.tabs[tabIndex]
+        AppendIndented(lines, indent + 4, "{")
+        AppendIndented(lines, indent + 6, JsonField("index", tab.index, true))
+        AppendIndented(lines, indent + 6, JsonField("name", tab.name, true))
+        AppendIndented(lines, indent + 6, JsonField("points", tab.points or 0, true))
+        AppendIndented(lines, indent + 6, JsonField("icon", tab.icon, true))
+        AppendIndented(lines, indent + 6, JsonField("background", tab.background, true))
+        AppendIndented(lines, indent + 6, "\"talents\": [")
+
+        for talentIndex = 1, #(tab.talents or {}) do
+            local talent = tab.talents[talentIndex]
+            local suffix = talentIndex < #(tab.talents or {}) and "," or ""
+            AppendIndented(lines, indent + 8, "{ "
+                .. JsonField("index", talent.index, true) .. " "
+                .. JsonField("name", talent.name, true) .. " "
+                .. JsonField("tier", talent.tier, true) .. " "
+                .. JsonField("column", talent.column, true) .. " "
+                .. JsonField("rank", talent.rank or 0, true) .. " "
+                .. JsonField("max_rank", talent.maxRank or 0, true) .. " "
+                .. JsonField("icon", talent.icon, false)
+                .. " }" .. suffix)
+        end
+
+        AppendIndented(lines, indent + 6, "]")
+        AppendIndented(lines, indent + 4, "}" .. (tabIndex < #(talents.tabs or {}) and "," or ""))
+    end
+
+    AppendIndented(lines, indent + 2, "]")
+    AppendIndented(lines, indent, "}" .. (comma and "," or ""))
+end
+
 local function LocationLabel(source, bagID, slotID)
     if source == "bags" then
         if bagID == 0 then
@@ -1421,6 +1469,140 @@ local function GetPlayerClassInfo()
     }
 end
 
+local function TalentApiName()
+    if type(GetNumTalentTabs) == "function"
+        and type(GetTalentTabInfo) == "function"
+        and type(GetNumTalents) == "function"
+        and type(GetTalentInfo) == "function" then
+        return "GetTalentInfo"
+    end
+
+    return "unavailable"
+end
+
+local function SafeTalentCall(fn, ...)
+    if type(fn) ~= "function" then
+        return nil
+    end
+
+    local ok, first, second, third, fourth, fifth, sixth, seventh, eighth = pcall(fn, ...)
+    if not ok then
+        return nil
+    end
+
+    return first, second, third, fourth, fifth, sixth, seventh, eighth
+end
+
+local function UnspentTalentPoints()
+    local points = SafeTalentCall(UnitCharacterPoints, "player")
+    points = tonumber(points)
+
+    if points then
+        return points
+    end
+
+    points = SafeTalentCall(GetUnspentTalentPoints)
+    return tonumber(points)
+end
+
+local function BuildTalentSnapshot()
+    local snapshot = {
+        updatedAt = Now(),
+        api = TalentApiName(),
+        available = false,
+        totalPoints = 0,
+        unspentPoints = UnspentTalentPoints(),
+        primaryTab = nil,
+        primaryTabIndex = nil,
+        summary = "",
+        tabs = {},
+    }
+
+    if snapshot.api == "unavailable" then
+        return snapshot
+    end
+
+    local tabCount = tonumber(SafeTalentCall(GetNumTalentTabs)) or 0
+    local summaryParts = {}
+    local primaryPoints = -1
+
+    for tabIndex = 1, tabCount do
+        local name, icon, pointsSpent, background = SafeTalentCall(GetTalentTabInfo, tabIndex)
+        pointsSpent = tonumber(pointsSpent) or 0
+
+        local tab = {
+            index = tabIndex,
+            name = name or ("Tree " .. tostring(tabIndex)),
+            icon = icon,
+            points = pointsSpent,
+            background = background,
+            talents = {},
+        }
+
+        local talentCount = tonumber(SafeTalentCall(GetNumTalents, tabIndex)) or 0
+        for talentIndex = 1, talentCount do
+            local talentName, talentIcon, tier, column, rank, maxRank, isExceptional, meetsPrereq = SafeTalentCall(GetTalentInfo, tabIndex, talentIndex)
+            rank = tonumber(rank) or 0
+            maxRank = tonumber(maxRank) or 0
+
+            if rank > 0 then
+                tab.talents[#tab.talents + 1] = {
+                    index = talentIndex,
+                    name = talentName or ("Talent " .. tostring(talentIndex)),
+                    icon = talentIcon,
+                    tier = tonumber(tier),
+                    column = tonumber(column),
+                    rank = rank,
+                    maxRank = maxRank,
+                    isExceptional = isExceptional and true or false,
+                    meetsPrereq = meetsPrereq ~= false,
+                }
+            end
+        end
+
+        snapshot.available = true
+        snapshot.totalPoints = snapshot.totalPoints + pointsSpent
+        summaryParts[#summaryParts + 1] = tostring(pointsSpent)
+        snapshot.tabs[#snapshot.tabs + 1] = tab
+
+        if pointsSpent > primaryPoints then
+            primaryPoints = pointsSpent
+            snapshot.primaryTab = tab.name
+            snapshot.primaryTabIndex = tab.index
+        end
+    end
+
+    snapshot.summary = table.concat(summaryParts, "/")
+    if primaryPoints <= 0 then
+        snapshot.primaryTab = nil
+        snapshot.primaryTabIndex = nil
+    end
+
+    return snapshot
+end
+
+local function TalentSummaryText(talents, locale)
+    talents = talents or {}
+
+    if not talents.available then
+        return (PromptLocale(locale) == "enUS") and "unavailable" or "不可用"
+    end
+
+    local primary = talents.primaryTab or ((PromptLocale(locale) == "enUS") and "none" or "无")
+    local unspent = talents.unspentPoints
+    local parts = {
+        tostring(talents.summary or ""),
+        "primary=" .. tostring(primary),
+        "points=" .. tostring(talents.totalPoints or 0),
+    }
+
+    if unspent ~= nil then
+        parts[#parts + 1] = "unspent=" .. tostring(unspent)
+    end
+
+    return table.concat(parts, "; ")
+end
+
 local function ClassRoleContext(classToken)
     classToken = ClassToken(classToken)
     return CLASS_ROLE_CONTEXT[classToken] or DEFAULT_ROLE_CONTEXT
@@ -1462,6 +1644,7 @@ local function BuildAIPrompt(profile, scope, filter, itemCount)
     local promptLocale = PromptLocale(locale)
     local roleContext = LocalizedRoleContext(classToken, promptLocale)
     local outputRequests = LocalizedOutputRequests(promptLocale)
+    local talentSummary = TalentSummaryText(profile.talents, promptLocale)
     local lines
 
     if promptLocale == "zhCN" then
@@ -1471,6 +1654,7 @@ local function BuildAIPrompt(profile, scope, filter, itemCount)
             "角色：" .. tostring(profile.player or "Unknown Player") .. " - " .. tostring(profile.realm or "Unknown Realm") .. "（" .. tostring(classDisplay) .. "）。",
             "客户端语言：" .. tostring(locale) .. "；请使用与客户端一致的语言回答，并保留物品原始本地化名称。",
             "导出范围：" .. LocalizedScopeTitle(scope, promptLocale) .. "；过滤器：" .. LocalizedExportFilterTitle(filter, promptLocale) .. "；物品数量：" .. tostring(itemCount or 0) .. "。",
+            "当前天赋：" .. talentSummary .. "。",
             "银行内容是最后一次保存的快照。背包/银行来源只代表库存位置，不代表物品已经装备。",
             "请使用物品属性、物品等级、品质、装备栏位、分类、来源位置和 wowhead_url 字段。不要编造缺失属性，也不要假设隐藏附魔或宝石。",
             "请考虑该职业可能的天赋/职责，不要只假设一个专精。",
@@ -1484,6 +1668,7 @@ local function BuildAIPrompt(profile, scope, filter, itemCount)
             "角色：" .. tostring(profile.player or "Unknown Player") .. " - " .. tostring(profile.realm or "Unknown Realm") .. "（" .. tostring(classDisplay) .. "）。",
             "客戶端語言：" .. tostring(locale) .. "；請使用與客戶端一致的語言回答，並保留物品原始在地化名稱。",
             "匯出範圍：" .. LocalizedScopeTitle(scope, promptLocale) .. "；過濾器：" .. LocalizedExportFilterTitle(filter, promptLocale) .. "；物品數量：" .. tostring(itemCount or 0) .. "。",
+            "目前天賦：" .. talentSummary .. "。",
             "銀行內容是最後一次儲存的快照。背包/銀行來源只代表庫存位置，不代表物品已經裝備。",
             "請使用物品屬性、物品等級、品質、裝備欄位、分類、來源位置和 wowhead_url 欄位。不要編造缺失屬性，也不要假設隱藏附魔或寶石。",
             "請考慮該職業可能的天賦/職責，不要只假設一個專精。",
@@ -1497,6 +1682,7 @@ local function BuildAIPrompt(profile, scope, filter, itemCount)
             "Character: " .. tostring(profile.player or "Unknown Player") .. " - " .. tostring(profile.realm or "Unknown Realm") .. " (" .. tostring(classDisplay) .. ").",
             "Client locale: " .. tostring(locale) .. ". Answer in the client locale when possible and preserve localized item names.",
             "Export scope: " .. LocalizedScopeTitle(scope, promptLocale) .. "; filter: " .. LocalizedExportFilterTitle(filter, promptLocale) .. "; item count: " .. tostring(itemCount or 0) .. ".",
+            "Current talents: " .. talentSummary .. ".",
             "Bank contents are the last saved snapshot. Treat bag and bank source labels as inventory location, not proof that an item is equipped.",
             "Use item stats, item level, quality, equip slot, category, source location, and wowhead_url fields. Do not invent missing stats or assume hidden enchants/gems.",
             "Consider plausible class talents/specs instead of assuming one role.",
@@ -1633,6 +1819,7 @@ function Addon:GetProfile()
         classID = classInfo.id,
         bags = { updatedAt = 0, items = {} },
         bank = { updatedAt = 0, items = {} },
+        talents = { updatedAt = 0, available = false, summary = "", tabs = {} },
     }
 
     local profile = self.db.profiles[key]
@@ -1644,6 +1831,7 @@ function Addon:GetProfile()
     profile.classID = classInfo.id
     profile.bags = profile.bags or { updatedAt = 0, items = {} }
     profile.bank = profile.bank or { updatedAt = 0, items = {} }
+    profile.talents = profile.talents or { updatedAt = 0, available = false, summary = "", tabs = {} }
     profile.localDB = profile.localDB or {
         name = DB_NAME,
         version = 1,
@@ -1834,12 +2022,29 @@ function Addon:SaveSnapshot(source, snapshot)
     return snapshot
 end
 
+function Addon:SaveTalentSnapshot()
+    local profile = self:GetProfile()
+    local snapshot = BuildTalentSnapshot()
+    profile.talents = snapshot
+    profile.localDB = profile.localDB or { name = DB_NAME, version = 1 }
+    profile.localDB.name = DB_NAME
+    profile.localDB.version = 1
+    profile.localDB.savedAt = Now()
+    profile.localDB.talentSavedAt = snapshot.updatedAt
+    profile.localDB.talentSummary = snapshot.summary
+    profile.localDB.talentPrimaryTab = snapshot.primaryTab
+    profile.localDB.talentTotalPoints = snapshot.totalPoints
+    return snapshot
+end
+
 function Addon:ScanBags()
+    self:SaveTalentSnapshot()
     local snapshot = self:ScanContainers("bags", self:GetBagContainers())
     return self:SaveSnapshot("bags", snapshot)
 end
 
 function Addon:ScanBank()
+    self:SaveTalentSnapshot()
     local snapshot = self:ScanContainers("bank", self:GetBankContainers())
     return self:SaveSnapshot("bank", snapshot)
 end
@@ -1978,6 +2183,7 @@ function Addon:BuildMarkdownExport(scope, profile, items, categories, buckets, f
         "",
         "- Character: " .. tostring(profile.player or "Unknown Player") .. " - " .. tostring(profile.realm or "Unknown Realm"),
         "- Class: " .. tostring(profile.classLocalized or profile.classEnglish or "Unknown Class"),
+        "- Current talents: " .. TalentSummaryText(profile.talents, profile.locale),
         "- Client locale: " .. tostring(profile.locale or "enUS"),
         "- Local DB: " .. DB_NAME .. " saved at " .. FormatTime(profile.localDB and profile.localDB.savedAt),
         "- Scope: " .. ScopeTitle(scope),
@@ -2031,6 +2237,7 @@ function Addon:BuildTextExport(scope, profile, items, categories, buckets, filte
         "EXPORT METADATA",
         "Character: " .. tostring(profile.player or "Unknown Player") .. " - " .. tostring(profile.realm or "Unknown Realm"),
         "Class: " .. tostring(profile.classLocalized or profile.classEnglish or "Unknown Class"),
+        "Current talents: " .. TalentSummaryText(profile.talents, profile.locale),
         "Client locale: " .. tostring(profile.locale or "enUS"),
         "Local DB: " .. DB_NAME .. " saved at " .. FormatTime(profile.localDB and profile.localDB.savedAt),
         "Scope: " .. ScopeTitle(scope),
@@ -2082,6 +2289,7 @@ function Addon:BuildExport(scope, format, filter)
     filter = NormalizeExportFilter(filter or self.exportFilter)
 
     local profile = self:GetProfile()
+    profile.talents = self:SaveTalentSnapshot()
     local items = self:CollectExportItems(scope, filter)
     local prompt = BuildAIPrompt(profile, scope, filter, #items)
     local buckets = {}
@@ -2182,11 +2390,15 @@ function Addon:BuildExport(scope, format, filter)
     AppendIndented(lines, 4, JsonField("class_token", profile.classEnglish or "UNKNOWN", true))
     AppendIndented(lines, 4, JsonField("class_id", profile.classID, false))
     AppendIndented(lines, 2, "},")
+    AppendTalentJson(lines, 2, profile.talents, true)
     AppendIndented(lines, 2, "\"local_db\": {")
     AppendIndented(lines, 4, JsonField("name", DB_NAME, true))
     AppendIndented(lines, 4, JsonField("saved_at", FormatTime(profile.localDB and profile.localDB.savedAt), true))
     AppendIndented(lines, 4, JsonField("bag_item_count", profile.localDB and profile.localDB.bagItemCount, true))
-    AppendIndented(lines, 4, JsonField("bank_item_count", profile.localDB and profile.localDB.bankItemCount, false))
+    AppendIndented(lines, 4, JsonField("bank_item_count", profile.localDB and profile.localDB.bankItemCount, true))
+    AppendIndented(lines, 4, JsonField("talent_saved_at", FormatTime(profile.localDB and profile.localDB.talentSavedAt), true))
+    AppendIndented(lines, 4, JsonField("talent_summary", profile.localDB and profile.localDB.talentSummary, true))
+    AppendIndented(lines, 4, JsonField("talent_primary_tree", profile.localDB and profile.localDB.talentPrimaryTab, false))
     AppendIndented(lines, 2, "},")
     AppendIndented(lines, 2, "\"export\": {")
     AppendIndented(lines, 4, JsonField("scope", scope, true))
@@ -2847,12 +3059,17 @@ function Addon:ClearProfile()
     local profile = self:GetProfile()
     profile.bags = { updatedAt = 0, items = {} }
     profile.bank = { updatedAt = 0, items = {} }
+    profile.talents = { updatedAt = 0, available = false, summary = "", tabs = {} }
     profile.localDB = {
         name = DB_NAME,
         version = 1,
         savedAt = 0,
         bagSavedAt = 0,
         bankSavedAt = 0,
+        talentSavedAt = 0,
+        talentSummary = "",
+        talentPrimaryTab = nil,
+        talentTotalPoints = 0,
         bagItemCount = 0,
         bankItemCount = 0,
     }
@@ -2946,6 +3163,7 @@ function Addon:OnAddonLoaded(loadedName)
     self:GetProfile()
 
     SafeRegister("PLAYER_LOGIN")
+    SafeRegister("PLAYER_TALENT_UPDATE")
     SafeRegister("BAG_OPEN")
     SafeRegister("BAG_UPDATE")
     SafeRegister("BAG_UPDATE_DELAYED")
@@ -2971,6 +3189,11 @@ function Addon:OnEvent(eventName, ...)
         self:CreateMinimapButton()
         local snapshot = self:ScanBags()
         self:Print(L("loaded", self:FormatScanSummary(L("bags_label"), snapshot)))
+        return
+    end
+
+    if eventName == "PLAYER_TALENT_UPDATE" then
+        self:SaveTalentSnapshot()
         return
     end
 
@@ -3074,6 +3297,7 @@ if _G.TBCGearExporterTestMode then
         ParseExportOptions = ParseExportOptions,
         AppendIndented = AppendIndented,
         AppendJsonStringArray = AppendJsonStringArray,
+        AppendTalentJson = AppendTalentJson,
         LocationLabel = LocationLabel,
         SourceLabel = SourceLabel,
         ClientLocale = ClientLocale,
@@ -3083,6 +3307,9 @@ if _G.TBCGearExporterTestMode then
         LocalizedExportFormatTitle = LocalizedExportFormatTitle,
         ClassToken = ClassToken,
         GetPlayerClassInfo = GetPlayerClassInfo,
+        TalentApiName = TalentApiName,
+        BuildTalentSnapshot = BuildTalentSnapshot,
+        TalentSummaryText = TalentSummaryText,
         ClassRoleContext = ClassRoleContext,
         LocalizedRoleContext = LocalizedRoleContext,
         LocalizedOutputRequests = LocalizedOutputRequests,

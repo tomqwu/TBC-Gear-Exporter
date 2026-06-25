@@ -2,7 +2,7 @@
 
 ## 256-Character Summary
 
-TBC Gear Exporter saves bag and bank snapshots for TBC Anniversary, groups gear and items, records stats, quality colors, Wowhead links, and exports localized AI-ready JSON, Markdown, or text through an in-game GUI with filters for class/spec PvE gear sets
+TBC Gear Exporter saves bag, bank, and talent snapshots for TBC Anniversary, groups items, records stats, quality colors, Wowhead links, and exports localized AI-ready JSON, Markdown, or text through an in-game GUI with class/spec gear filters and prompts.
 
 Character count: 256
 
@@ -10,13 +10,14 @@ Character count: 256
 
 ![TBC Gear Exporter logo](https://raw.githubusercontent.com/tomqwu/TBC-Gear-Exporter/main/assets/tbc-gear-exporter-logo.png)
 
-**TBC Gear Exporter** is a World of Warcraft TBC Classic / TBC Anniversary addon for saving, reviewing, and exporting your character's bag and bank inventory.
+**TBC Gear Exporter** is a World of Warcraft TBC Classic / TBC Anniversary addon for saving, reviewing, and exporting your character's bag, bank, and current talent build.
 
-It scans visible bags and bank containers, stores the results in `TBCGearExporterDB`, groups items by category, records item stats, preserves WoW quality colors, adds TBC Wowhead links, and gives you a compact in-game GUI for reviewing items visually or exporting everything in AI-friendly formats.
+It scans visible bags, bank containers, and current talents, stores the results in `TBCGearExporterDB`, groups items by category, records item stats, preserves WoW quality colors, adds TBC Wowhead links, and gives you a compact in-game GUI for reviewing items visually or exporting everything in AI-friendly formats.
 
 ### Key Features
 
 - Saves bag and bank snapshots locally per character.
+- Saves current talent tree points, primary tree, total/unspent points, and selected talent ranks.
 - Scans bags when you open your bags, and scans bank contents when the bank is open.
 - Prints scan/debug lines in chat so you know when the local database changed.
 - Groups items into useful categories such as gear, consumables, gems, recipes, reagents, quest items, trade goods, and more.
@@ -35,6 +36,7 @@ The default AI Text export starts with an `AI_PROMPT` section and then includes 
 The prompt includes:
 
 - Character name, realm, class, and client locale.
+- Current talent build summary and selected ranked talents.
 - Export scope and active filter.
 - Class-aware role context, such as tank, DPS, caster, or healer evaluation lenses.
 - Instructions for ranking keepers, weak slots, upgrade priorities, duplicates, offspec pieces, consumables, and vendor/disenchant candidates.
