@@ -4,6 +4,12 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-07-29
+
+- Add live character-sheet stats to exports, including race, group/raid context, attributes, armor, defense, attack power, combat ratings, crit/avoidance chances, spell damage, healing, and mana regen.
+- Add a strategy book export that maps current talents, gear stat totals, class, race, and raid/party context into role models such as mitigation, threat, DPS, healing, and mana longevity.
+- Update AI prompt guidance to use character_stats, chart_stats, and strategy_book before ranking hit, crit, defense, avoidance, threat, mitigation, healing, mana, and DPS value.
+
 ## [0.1.3] - 2026-07-29
 
 - Add chart-ready export stats with source, category, quality, equip-slot, item-level, and aggregate stat totals alongside the per-item stat arrays.
