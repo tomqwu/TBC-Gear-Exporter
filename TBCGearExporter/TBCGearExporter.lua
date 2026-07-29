@@ -406,6 +406,7 @@ local UI_STRINGS = {
         source_label = "Source:",
         local_db_label = "Local DB",
         items_tab = "Items",
+        stats_analysis_tab = "Stats Analysis",
         text_export_tab = "Text Export",
         generate_button = "Generate",
         format_label = "Format:",
@@ -422,6 +423,25 @@ local UI_STRINGS = {
         status_selected = "Export text selected. Press Ctrl+C to copy.",
         status_generated = "%s export generated from saved local DB with filter: %s. Press Ctrl+C to copy.",
         status_visual = "Visual item view updated: %d items. Use Text Export to copy AI-ready data.",
+        status_analysis = "Stats analysis updated: %d role models. Use Text Export to copy AI-ready data.",
+        analysis_title = "Stats Analysis",
+        analysis_unknown = "unknown",
+        analysis_character = "Character: %s (%s), race %s, %s size %s",
+        analysis_talents = "Talents: %s",
+        analysis_defense = "Defense/mitigation: defense %s, armor %s, stamina %s, dodge %s, parry %s, block %s",
+        analysis_hit = "Hit model: melee %s, ranged %s, spell %s, expertise %s",
+        analysis_crit = "Crit model: melee %s, ranged %s, best spell %s",
+        analysis_power = "Power model: attack power %s, ranged AP %s, best spell power %s, healing %s, casting regen %s",
+        analysis_race_note = "Race note: %s",
+        analysis_group_note = "Group note: %s",
+        analysis_roles_title = "Role Strategy",
+        analysis_role = "%s - confidence %s, talent points %s",
+        analysis_models = "Models: %s",
+        analysis_role_hit = "Observed hit/crit: hit melee %s, spell %s; crit melee %s, spell %s",
+        analysis_role_tank = "Tank lens: defense %s, armor %s, known avoidance/block %s",
+        analysis_benchmark = "Benchmark: %s = %s (observed %s; target %s %s)",
+        analysis_highlights = "Gear highlights: %s",
+        analysis_no_roles = "No role models available yet. Scan bags or generate an export to refresh the local DB.",
         item_view_empty = "No saved items match this view.",
         export_opened = "%s export opened from local DB: %d bag items, %d bank items. Filter: %s.",
         bags_scanned = "Bags scanned",
@@ -453,6 +473,7 @@ local UI_STRINGS = {
         source_label = "来源：",
         local_db_label = "本地数据库",
         items_tab = "物品",
+        stats_analysis_tab = "属性分析",
         text_export_tab = "文本导出",
         generate_button = "生成",
         format_label = "格式：",
@@ -469,6 +490,25 @@ local UI_STRINGS = {
         status_selected = "导出文本已选中，按 Ctrl+C 复制。",
         status_generated = "%s 已从本地数据库生成，过滤：%s。按 Ctrl+C 复制。",
         status_visual = "物品图标视图已更新：%d 件。切到文本导出即可复制 AI 数据。",
+        status_analysis = "属性分析已更新：%d 个职责模型。切到文本导出即可复制 AI 数据。",
+        analysis_title = "属性分析",
+        analysis_unknown = "未知",
+        analysis_character = "角色：%s（%s），种族 %s，%s 人数 %s",
+        analysis_talents = "天赋：%s",
+        analysis_defense = "防御/免伤：防御 %s，护甲 %s，耐力 %s，躲闪 %s，招架 %s，格挡 %s",
+        analysis_hit = "命中模型：近战 %s，远程 %s，法术 %s，熟练 %s",
+        analysis_crit = "暴击模型：近战 %s，远程 %s，最佳法术 %s",
+        analysis_power = "强度模型：攻强 %s，远程攻强 %s，最佳法强 %s，治疗 %s，施法回蓝 %s",
+        analysis_race_note = "种族提示：%s",
+        analysis_group_note = "队伍提示：%s",
+        analysis_roles_title = "职责策略",
+        analysis_role = "%s - 置信度 %s，天赋点 %s",
+        analysis_models = "模型：%s",
+        analysis_role_hit = "实测命中/暴击：近战命中 %s，法术命中 %s；近战暴击 %s，法术暴击 %s",
+        analysis_role_tank = "坦克视角：防御 %s，护甲 %s，已知免伤/格挡 %s",
+        analysis_benchmark = "基准：%s = %s（实测 %s；目标 %s %s）",
+        analysis_highlights = "装备属性亮点：%s",
+        analysis_no_roles = "还没有可用的职责模型。扫描背包或生成导出以刷新本地数据库。",
         item_view_empty = "没有已保存物品匹配当前视图。",
         export_opened = "%s 已从本地数据库打开：背包 %d 件，银行 %d 件。过滤：%s。",
         bags_scanned = "背包已扫描",
@@ -500,6 +540,7 @@ local UI_STRINGS = {
         source_label = "來源：",
         local_db_label = "本地資料庫",
         items_tab = "物品",
+        stats_analysis_tab = "屬性分析",
         text_export_tab = "文字匯出",
         generate_button = "產生",
         format_label = "格式：",
@@ -516,6 +557,25 @@ local UI_STRINGS = {
         status_selected = "匯出文字已選取，按 Ctrl+C 複製。",
         status_generated = "%s 已從本地資料庫產生，篩選：%s。按 Ctrl+C 複製。",
         status_visual = "物品圖示檢視已更新：%d 件。切到文字匯出即可複製 AI 資料。",
+        status_analysis = "屬性分析已更新：%d 個職責模型。切到文字匯出即可複製 AI 資料。",
+        analysis_title = "屬性分析",
+        analysis_unknown = "未知",
+        analysis_character = "角色：%s（%s），種族 %s，%s 人數 %s",
+        analysis_talents = "天賦：%s",
+        analysis_defense = "防禦/減傷：防禦 %s，護甲 %s，耐力 %s，閃躲 %s，招架 %s，格擋 %s",
+        analysis_hit = "命中模型：近戰 %s，遠程 %s，法術 %s，熟練 %s",
+        analysis_crit = "致命模型：近戰 %s，遠程 %s，最佳法術 %s",
+        analysis_power = "強度模型：攻強 %s，遠程攻強 %s，最佳法強 %s，治療 %s，施法回魔 %s",
+        analysis_race_note = "種族提示：%s",
+        analysis_group_note = "隊伍提示：%s",
+        analysis_roles_title = "職責策略",
+        analysis_role = "%s - 信心 %s，天賦點 %s",
+        analysis_models = "模型：%s",
+        analysis_role_hit = "實測命中/致命：近戰命中 %s，法術命中 %s；近戰致命 %s，法術致命 %s",
+        analysis_role_tank = "坦克視角：防禦 %s，護甲 %s，已知減傷/格擋 %s",
+        analysis_benchmark = "基準：%s = %s（實測 %s；目標 %s %s）",
+        analysis_highlights = "裝備屬性亮點：%s",
+        analysis_no_roles = "還沒有可用的職責模型。掃描背包或產生匯出以重新整理本地資料庫。",
         item_view_empty = "沒有已儲存物品符合目前檢視。",
         export_opened = "%s 已從本地資料庫開啟：背包 %d 件，銀行 %d 件。篩選：%s。",
         bags_scanned = "背包已掃描",
@@ -3060,6 +3120,120 @@ local function AppendStrategyBookText(lines, strategyBook)
         lines[#lines + 1] = ""
     end
 end
+
+local function AnalysisValue(value, suffix)
+    if type(value) == "number" then
+        return tostring(value) .. (suffix or "")
+    end
+
+    if value ~= nil and value ~= "" then
+        return tostring(value) .. (suffix or "")
+    end
+
+    return L("analysis_unknown")
+end
+
+local function AppendFirstAnalysisNotes(lines, key, notes)
+    for index = 1, math.min(#(notes or {}), 2) do
+        lines[#lines + 1] = L(key, notes[index])
+    end
+end
+
+local function BuildStatsAnalysisText(profile, chartStats, strategyBook)
+    profile = profile or {}
+    local characterStats = profile.characterStats or BuildCharacterStatsSnapshot()
+    chartStats = chartStats or BuildChartStats({})
+    strategyBook = strategyBook or BuildStrategyBook(profile, chartStats)
+
+    local race = characterStats.race or {}
+    local group = characterStats.group or {}
+    local chances = characterStats.chances or {}
+    local spell = characterStats.spell or {}
+    local attackPower = characterStats.attackPower or {}
+    local defense = characterStats.defense or {}
+    local armor = characterStats.armor or {}
+    local lines = {
+        L("analysis_title"),
+        "",
+        L("analysis_character",
+            tostring(profile.player or "Unknown Player"),
+            tostring(profile.classLocalized or profile.classEnglish or "Unknown Class"),
+            tostring(race.localized or race.english or "Unknown Race"),
+            tostring(group.type or "solo"),
+            tostring(group.size or 1)),
+        L("analysis_talents", TalentSummaryText(profile.talents, profile.locale or ClientLocale())),
+        L("analysis_defense",
+            AnalysisValue(defense.effective),
+            AnalysisValue(armor.effective),
+            AnalysisValue(AttributeValue(characterStats, "stamina")),
+            AnalysisValue(chances.dodge, "%"),
+            AnalysisValue(chances.parry, "%"),
+            AnalysisValue(chances.block, "%")),
+        L("analysis_hit",
+            AnalysisValue(RatingBonus(characterStats, "melee_hit"), "%"),
+            AnalysisValue(RatingBonus(characterStats, "ranged_hit"), "%"),
+            AnalysisValue(RatingBonus(characterStats, "spell_hit"), "%"),
+            AnalysisValue(RatingBonus(characterStats, "expertise"), "%")),
+        L("analysis_crit",
+            AnalysisValue(chances.meleeCrit, "%"),
+            AnalysisValue(chances.rangedCrit, "%"),
+            AnalysisValue(BestSpellValue(chances.spellCrit, "crit"), "%")),
+        L("analysis_power",
+            AnalysisValue(attackPower.melee and attackPower.melee.effective),
+            AnalysisValue(attackPower.ranged and attackPower.ranged.effective),
+            AnalysisValue(BestSpellValue(spell.spellDamage, "bonus")),
+            AnalysisValue(spell.healing),
+            AnalysisValue(spell.manaRegenCasting)),
+    }
+
+    AppendFirstAnalysisNotes(lines, "analysis_race_note", race.notes)
+    AppendFirstAnalysisNotes(lines, "analysis_group_note", group.notes)
+
+    lines[#lines + 1] = ""
+    lines[#lines + 1] = L("analysis_roles_title")
+
+    local roles = strategyBook.roles or {}
+    if #roles == 0 then
+        lines[#lines + 1] = L("analysis_no_roles")
+    end
+
+    for roleIndex = 1, math.min(#roles, 3) do
+        local role = roles[roleIndex]
+        local observed = role.observed or {}
+        local hit = observed.hit or {}
+        local crit = observed.crit or {}
+        local tank = observed.tank or {}
+        lines[#lines + 1] = ""
+        lines[#lines + 1] = L("analysis_role", tostring(role.label or role.key or "Role"), AnalysisValue(role.confidence), AnalysisValue(role.talentPoints))
+        lines[#lines + 1] = L("analysis_models", table.concat(role.models or {}, ", "))
+        lines[#lines + 1] = L("analysis_role_hit",
+            AnalysisValue(hit.melee, "%"),
+            AnalysisValue(hit.spell, "%"),
+            AnalysisValue(crit.melee, "%"),
+            AnalysisValue(crit.spellBest, "%"))
+        lines[#lines + 1] = L("analysis_role_tank",
+            AnalysisValue(tank.defense),
+            AnalysisValue(tank.armor),
+            AnalysisValue(tank.knownAvoidanceBlock, "%"))
+
+        for benchmarkIndex = 1, math.min(#(role.benchmarks or {}), 4) do
+            local benchmark = role.benchmarks[benchmarkIndex]
+            lines[#lines + 1] = L("analysis_benchmark",
+                tostring(benchmark.label or benchmark.key or "Benchmark"),
+                tostring(benchmark.status or "unknown"),
+                AnalysisValue(benchmark.observed),
+                AnalysisValue(benchmark.target),
+                tostring(benchmark.unit or ""))
+        end
+
+        if observed.gearStatHighlights and #observed.gearStatHighlights > 0 then
+            lines[#lines + 1] = L("analysis_highlights", FormatStats(observed.gearStatHighlights))
+        end
+    end
+
+    return table.concat(lines, "\n"), #roles
+end
+
 local function CategoryFromInfo(classID, itemType, equipSlot)
     if IsEquippableSlot(equipSlot) then
         return "Gear"
@@ -3889,7 +4063,13 @@ function Addon:SavedItemCounts()
 end
 
 function Addon:SetExportView(view)
-    self.exportView = view == "text" and "text" or "items"
+    if view == "text" then
+        self.exportView = "text"
+    elseif view == "analysis" then
+        self.exportView = "analysis"
+    else
+        self.exportView = "items"
+    end
 
     if not self.exportFrame then
         return
@@ -3900,6 +4080,14 @@ function Addon:SetExportView(view)
             self.exportFrame.visualScroll:Show()
         else
             self.exportFrame.visualScroll:Hide()
+        end
+    end
+
+    if self.exportFrame.analysisScroll then
+        if self.exportView == "analysis" then
+            self.exportFrame.analysisScroll:Show()
+        else
+            self.exportFrame.analysisScroll:Hide()
         end
     end
 
@@ -4020,6 +4208,23 @@ function Addon:RefreshVisualItems(items)
     end
 end
 
+function Addon:RefreshStatsAnalysis(profile, chartStats, strategyBook)
+    if not self.exportFrame or not self.exportFrame.analysisText then
+        return 0
+    end
+
+    local text, roleCount = BuildStatsAnalysisText(profile, chartStats, strategyBook)
+    self.exportFrame.analysisText:SetText(text)
+    self.exportFrame.analysisRoleCount = roleCount
+
+    if self.exportFrame.analysisContent and self.exportFrame.analysisContent.SetHeight then
+        local _, breaks = tostring(text or ""):gsub("\n", "\n")
+        self.exportFrame.analysisContent:SetHeight(math.max(300, ((breaks + 1) * 15) + 24))
+    end
+
+    return roleCount or 0
+end
+
 function Addon:SelectExportText()
     if not self.exportFrame or not self.exportFrame.editBox then
         return
@@ -4047,8 +4252,13 @@ function Addon:RefreshExport(scope, format, filter)
     local text = self:BuildExport(self.exportScope, self.exportFormat, self.exportFilter)
     local items = self:CollectExportItems(self.exportScope, self.exportFilter)
     local bagCount, bankCount = self:SavedItemCounts()
+    local profile = self:GetProfile()
+    local chartStats = BuildChartStats(items)
+    local strategyBook = BuildStrategyBook(profile, chartStats)
+    local analysisRoleCount = 0
     self.exportFrame.editBox:SetText(text)
     self:RefreshVisualItems(items)
+    analysisRoleCount = self:RefreshStatsAnalysis(profile, chartStats, strategyBook)
     self:SetExportView(self.exportView or "items")
 
     if self.exportView == "text" then
@@ -4063,6 +4273,8 @@ function Addon:RefreshExport(scope, format, filter)
 
     if self.exportView == "text" then
         self.exportFrame.status:SetText(L("status_generated", LocalizedExportFormatTitle(self.exportFormat, ClientLocale()), LocalizedExportFilterTitle(self.exportFilter, ClientLocale())))
+    elseif self.exportView == "analysis" then
+        self.exportFrame.status:SetText(L("status_analysis", analysisRoleCount))
     else
         self.exportFrame.status:SetText(L("status_visual", #items))
     end
@@ -4276,9 +4488,18 @@ function Addon:CreateExportFrame()
         Addon.exportFrame.status:SetText(L("status_visual", #(Addon:CollectExportItems(Addon.exportScope or "all", Addon.exportFilter))))
     end)
 
+    local analysisTab = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
+    SetFrameSize(analysisTab, 118, 24)
+    analysisTab:SetPoint("LEFT", itemsTab, "RIGHT", 8, 0)
+    analysisTab:SetText(L("stats_analysis_tab"))
+    analysisTab:SetScript("OnClick", function()
+        Addon:SetExportView("analysis")
+        Addon:RefreshExport()
+    end)
+
     local textTab = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
     SetFrameSize(textTab, 112, 24)
-    textTab:SetPoint("LEFT", itemsTab, "RIGHT", 8, 0)
+    textTab:SetPoint("LEFT", analysisTab, "RIGHT", 8, 0)
     textTab:SetText(L("text_export_tab"))
     textTab:SetScript("OnClick", function()
         Addon:SelectExportText()
@@ -4296,6 +4517,20 @@ function Addon:CreateExportFrame()
     emptyItems:SetPoint("TOPLEFT", 4, -4)
     emptyItems:SetText(L("item_view_empty"))
     emptyItems:Hide()
+
+    local analysisScroll = CreateFrame("ScrollFrame", "TBCGearExporterAnalysisScrollFrame", exportFrame, "UIPanelScrollFrameTemplate")
+    analysisScroll:SetPoint("TOPLEFT", 282, -96)
+    analysisScroll:SetPoint("BOTTOMRIGHT", -38, 48)
+
+    local analysisContent = CreateFrame("Frame", nil, analysisScroll)
+    SetFrameSize(analysisContent, 490, 300)
+    analysisScroll:SetScrollChild(analysisContent)
+
+    local analysisText = analysisContent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    analysisText:SetPoint("TOPLEFT", 4, -4)
+    analysisText:SetPoint("RIGHT", analysisContent, "RIGHT", -8, 0)
+    analysisText:SetJustifyH("LEFT")
+    analysisText:SetText(L("analysis_no_roles"))
 
     local textScroll = CreateFrame("ScrollFrame", "TBCGearExporterScrollFrame", exportFrame, "UIPanelScrollFrameTemplate")
     textScroll:SetPoint("TOPLEFT", 282, -96)
@@ -4333,10 +4568,14 @@ function Addon:CreateExportFrame()
     exportFrame.sourceLabel = sourceLabel
     exportFrame.dbLabel = dbLabel
     exportFrame.itemsTab = itemsTab
+    exportFrame.analysisTab = analysisTab
     exportFrame.textTab = textTab
     exportFrame.visualScroll = visualScroll
+    exportFrame.analysisScroll = analysisScroll
     exportFrame.textScroll = textScroll
     exportFrame.itemListContent = itemListContent
+    exportFrame.analysisContent = analysisContent
+    exportFrame.analysisText = analysisText
     exportFrame.emptyItems = emptyItems
     exportFrame.itemRows = {}
     self.exportFrame = exportFrame
@@ -4712,6 +4951,8 @@ if _G.TBCGearExporterTestMode then
         BuildRoleBenchmarks = BuildRoleBenchmarks,
         StrategyClassRoles = StrategyClassRoles,
         BuildStrategyBook = BuildStrategyBook,
+        BuildStatsAnalysisText = BuildStatsAnalysisText,
+        AnalysisValue = AnalysisValue,
         NormalizedStackCount = NormalizedStackCount,
         RoundedStatNumber = RoundedStatNumber,
         BuildChartStats = BuildChartStats,

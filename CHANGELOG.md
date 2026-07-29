@@ -4,6 +4,11 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-07-29
+
+- Add a localized Stats Analysis GUI page next to the item browser and text export tabs.
+- Show live character stats, role strategy models, benchmark statuses, raid/party notes, and gear stat highlights directly inside the addon window.
+
 ## [0.1.4] - 2026-07-29
 
 - Add live character-sheet stats to exports, including race, group/raid context, attributes, armor, defense, attack power, combat ratings, crit/avoidance chances, spell damage, healing, and mana regen.
