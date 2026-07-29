@@ -316,6 +316,327 @@ local RACE_STRATEGY_NOTES = {
     BLOODELF = { "Arcane Torrent and magic utility can matter for mana/control context." },
 }
 
+local ANALYSIS_LOCALIZATION = {
+    enUS = {
+        models = {
+            role_identification = "Role identification",
+            upgrade_triage = "Upgrade triage",
+            tank_mitigation = "Tank mitigation",
+            tank_threat = "Tank threat",
+            melee_dps = "Melee DPS",
+            threat_awareness = "Threat awareness",
+            healing_throughput = "Healing throughput",
+            mana_longevity = "Mana longevity",
+            caster_dps = "Caster DPS",
+            weapon_selection = "Weapon selection",
+            spell_threat = "Spell threat",
+            utility_dps = "Utility DPS",
+            mana_support = "Mana support",
+            ranged_dps = "Ranged DPS",
+            pet_synergy = "Pet synergy",
+            survivability = "Survivability",
+        },
+        statuses = {
+            meets_or_exceeds = "Meets / exceeds",
+            near = "Near target",
+            below = "Below target",
+            unknown = "Unknown",
+        },
+        groupTypes = {
+            raid = "Raid",
+            party = "Party",
+            solo = "Solo",
+        },
+    },
+    zhCN = {
+        roles = {
+            general_inventory = "通用背包策略",
+            bear_tank = "熊形态野性坦克",
+            cat_dps = "猎豹野性输出",
+            restoration_healer = "恢复治疗",
+            balance_caster = "平衡法系输出",
+            protection_tank = "防护坦克",
+            arms_fury_dps = "武器/狂暴输出",
+            holy_healer = "神圣治疗",
+            retribution_dps = "惩戒输出",
+            healing = "戒律/神圣治疗",
+            shadow_dps = "暗影输出",
+            elemental_dps = "元素输出",
+            enhancement_dps = "增强输出",
+            ranged_dps = "远程输出",
+            melee_dps = "近战输出",
+            caster_dps = "法系输出",
+        },
+        models = {
+            role_identification = "职责识别",
+            upgrade_triage = "升级优先级",
+            tank_mitigation = "坦克免伤",
+            tank_threat = "坦克仇恨",
+            melee_dps = "近战输出",
+            threat_awareness = "仇恨控制",
+            healing_throughput = "治疗量",
+            mana_longevity = "法力续航",
+            caster_dps = "法系输出",
+            weapon_selection = "武器选择",
+            spell_threat = "法术仇恨",
+            utility_dps = "功能性输出",
+            mana_support = "法力支援",
+            ranged_dps = "远程输出",
+            pet_synergy = "宠物协同",
+            survivability = "生存能力",
+        },
+        benchmarks = {
+            defense_crit_immunity = "防御免暴基准",
+            melee_special_hit = "近战技能命中基准",
+            ranged_hit = "远程命中基准",
+            spell_hit = "法术命中基准",
+            expertise_dodge = "熟练降低躲闪基准",
+            avoidance_table = "免伤/格挡表覆盖基准",
+        },
+        statuses = {
+            meets_or_exceeds = "达标",
+            near = "接近目标",
+            below = "低于目标",
+            unknown = "未知",
+        },
+        units = {
+            ["defense skill"] = "防御技能",
+            ["% hit"] = "% 命中",
+            ["% dodge reduction"] = "% 躲闪降低",
+            ["% known avoidance/block table"] = "% 已知免伤/格挡表",
+        },
+        groupTypes = {
+            raid = "团队",
+            party = "队伍",
+            solo = "单人",
+        },
+        classes = {
+            DRUID = "德鲁伊",
+            WARRIOR = "战士",
+            PALADIN = "圣骑士",
+            PRIEST = "牧师",
+            SHAMAN = "萨满祭司",
+            HUNTER = "猎人",
+            ROGUE = "潜行者",
+            MAGE = "法师",
+            WARLOCK = "术士",
+        },
+        races = {
+            HUMAN = "人类",
+            NIGHTELF = "暗夜精灵",
+            DWARF = "矮人",
+            GNOME = "侏儒",
+            DRAENEI = "德莱尼",
+            ORC = "兽人",
+            TAUREN = "牛头人",
+            TROLL = "巨魔",
+            SCOURGE = "亡灵",
+            UNDEAD = "亡灵",
+            BLOODELF = "血精灵",
+        },
+        raceNotes = {
+            HUMAN = { "武器和精神种族特长会影响近战仇恨/输出，以及与法力相关的评估。" },
+            NIGHTELF = { "闪避类种族特长和影遁会影响免伤和单人场景。" },
+            DWARF = { "石像形态、武器和远程种族特长会影响防御功能性和武器选择。" },
+            GNOME = { "智力和逃脱大师会影响法系收益和控制压力较高的战斗。" },
+            DRAENEI = { "队伍命中光环会改变 TBC 队伍/团队中的命中规划。" },
+            ORC = { "血性狂怒、武器、宠物和抗昏迷种族特长会影响仇恨、输出和宠物职业。" },
+            TAUREN = { "耐力和战争践踏会影响坦克和控制评估。" },
+            TROLL = { "狂暴和远程种族特长会影响爆发窗口和远程武器选择。" },
+            SCOURGE = { "亡灵意志会影响 PvP 或控制压力较高的战斗。" },
+            UNDEAD = { "亡灵意志会影响 PvP 或控制压力较高的战斗。" },
+            BLOODELF = { "奥术洪流和魔法功能性会影响法力与控制场景。" },
+        },
+        groupNotes = {
+            raid = {
+                "团队场景：基准使用常见首领等级参考，但 TBC 团队小队仍会影响队伍光环和种族加成。",
+                "请确认命中、法力、仇恨或功能性增益是否真的存在于角色所在小队。",
+            },
+            party = {
+                "队伍场景：队伍光环和种族加成会改变命中、仇恨、法力与功能性规划。",
+                "如果当前有队伍增益，导出的实时属性应按已增益状态理解。",
+            },
+            solo = {
+                "单人场景：实时属性可能缺少团队/队伍增益、减益和队伍种族光环。",
+            },
+        },
+        stats = {
+            ITEM_MOD_STAMINA_SHORT = "耐力",
+            ITEM_MOD_ARMOR = "护甲",
+            ITEM_MOD_BONUS_ARMOR_SHORT = "额外护甲",
+            ITEM_MOD_DEFENSE_SKILL_RATING_SHORT = "防御等级",
+            ITEM_MOD_DODGE_RATING_SHORT = "躲闪等级",
+            ITEM_MOD_PARRY_RATING_SHORT = "招架等级",
+            ITEM_MOD_BLOCK_RATING_SHORT = "格挡等级",
+            ITEM_MOD_BLOCK_VALUE_SHORT = "格挡值",
+            ITEM_MOD_AGILITY_SHORT = "敏捷",
+            ITEM_MOD_STRENGTH_SHORT = "力量",
+            ITEM_MOD_INTELLECT_SHORT = "智力",
+            ITEM_MOD_SPIRIT_SHORT = "精神",
+            ITEM_MOD_ATTACK_POWER_SHORT = "攻击强度",
+            ITEM_MOD_RANGED_ATTACK_POWER_SHORT = "远程攻击强度",
+            ITEM_MOD_FERAL_ATTACK_POWER_SHORT = "野性攻击强度",
+            ITEM_MOD_HIT_RATING_SHORT = "命中等级",
+            ITEM_MOD_HIT_MELEE_RATING_SHORT = "近战命中等级",
+            ITEM_MOD_HIT_RANGED_RATING_SHORT = "远程命中等级",
+            ITEM_MOD_HIT_SPELL_RATING_SHORT = "法术命中等级",
+            ITEM_MOD_CRIT_RATING_SHORT = "暴击等级",
+            ITEM_MOD_CRIT_MELEE_RATING_SHORT = "近战暴击等级",
+            ITEM_MOD_CRIT_RANGED_RATING_SHORT = "远程暴击等级",
+            ITEM_MOD_CRIT_SPELL_RATING_SHORT = "法术暴击等级",
+            ITEM_MOD_HASTE_SPELL_RATING_SHORT = "法术急速等级",
+            ITEM_MOD_EXPERTISE_RATING_SHORT = "熟练等级",
+            ITEM_MOD_SPELL_POWER_SHORT = "法术强度",
+            ITEM_MOD_SPELL_DAMAGE_DONE_SHORT = "法术伤害",
+            ITEM_MOD_SPELL_HEALING_DONE_SHORT = "治疗",
+            ITEM_MOD_MANA_REGENERATION_SHORT = "法力回复",
+        },
+    },
+    zhTW = {
+        roles = {
+            general_inventory = "通用背包策略",
+            bear_tank = "熊形態野性坦克",
+            cat_dps = "獵豹野性輸出",
+            restoration_healer = "恢復治療",
+            balance_caster = "平衡法系輸出",
+            protection_tank = "防護坦克",
+            arms_fury_dps = "武器/狂怒輸出",
+            holy_healer = "神聖治療",
+            retribution_dps = "懲戒輸出",
+            healing = "戒律/神聖治療",
+            shadow_dps = "暗影輸出",
+            elemental_dps = "元素輸出",
+            enhancement_dps = "增強輸出",
+            ranged_dps = "遠程輸出",
+            melee_dps = "近戰輸出",
+            caster_dps = "法系輸出",
+        },
+        models = {
+            role_identification = "職責識別",
+            upgrade_triage = "升級優先順序",
+            tank_mitigation = "坦克減傷",
+            tank_threat = "坦克仇恨",
+            melee_dps = "近戰輸出",
+            threat_awareness = "仇恨控制",
+            healing_throughput = "治療量",
+            mana_longevity = "法力續航",
+            caster_dps = "法系輸出",
+            weapon_selection = "武器選擇",
+            spell_threat = "法術仇恨",
+            utility_dps = "功能性輸出",
+            mana_support = "法力支援",
+            ranged_dps = "遠程輸出",
+            pet_synergy = "寵物協同",
+            survivability = "生存能力",
+        },
+        benchmarks = {
+            defense_crit_immunity = "防禦免暴基準",
+            melee_special_hit = "近戰技能命中基準",
+            ranged_hit = "遠程命中基準",
+            spell_hit = "法術命中基準",
+            expertise_dodge = "熟練降低閃躲基準",
+            avoidance_table = "減傷/格擋表覆蓋基準",
+        },
+        statuses = {
+            meets_or_exceeds = "達標",
+            near = "接近目標",
+            below = "低於目標",
+            unknown = "未知",
+        },
+        units = {
+            ["defense skill"] = "防禦技能",
+            ["% hit"] = "% 命中",
+            ["% dodge reduction"] = "% 閃躲降低",
+            ["% known avoidance/block table"] = "% 已知減傷/格擋表",
+        },
+        groupTypes = {
+            raid = "團隊",
+            party = "隊伍",
+            solo = "單人",
+        },
+        classes = {
+            DRUID = "德魯伊",
+            WARRIOR = "戰士",
+            PALADIN = "聖騎士",
+            PRIEST = "牧師",
+            SHAMAN = "薩滿祭司",
+            HUNTER = "獵人",
+            ROGUE = "盜賊",
+            MAGE = "法師",
+            WARLOCK = "術士",
+        },
+        races = {
+            HUMAN = "人類",
+            NIGHTELF = "夜精靈",
+            DWARF = "矮人",
+            GNOME = "地精",
+            DRAENEI = "德萊尼",
+            ORC = "獸人",
+            TAUREN = "牛頭人",
+            TROLL = "食人妖",
+            SCOURGE = "不死族",
+            UNDEAD = "不死族",
+            BLOODELF = "血精靈",
+        },
+        raceNotes = {
+            HUMAN = { "武器和精神種族特長會影響近戰仇恨/輸出，以及與法力相關的評估。" },
+            NIGHTELF = { "閃避類種族特長和影遁會影響減傷與單人場景。" },
+            DWARF = { "石像形態、武器和遠程種族特長會影響防禦功能性和武器選擇。" },
+            GNOME = { "智力和逃脫大師會影響法系收益與控制壓力較高的戰鬥。" },
+            DRAENEI = { "隊伍命中光環會改變 TBC 隊伍/團隊中的命中規劃。" },
+            ORC = { "血性狂怒、武器、寵物和抗昏迷種族特長會影響仇恨、輸出和寵物職業。" },
+            TAUREN = { "耐力和戰爭踐踏會影響坦克和控制評估。" },
+            TROLL = { "狂暴和遠程種族特長會影響爆發窗口和遠程武器選擇。" },
+            SCOURGE = { "亡靈意志會影響 PvP 或控制壓力較高的戰鬥。" },
+            UNDEAD = { "亡靈意志會影響 PvP 或控制壓力較高的戰鬥。" },
+            BLOODELF = { "奧術洪流和魔法功能性會影響法力與控制場景。" },
+        },
+        groupNotes = {
+            raid = {
+                "團隊場景：基準使用常見首領等級參考，但 TBC 團隊小隊仍會影響隊伍光環和種族加成。",
+                "請確認命中、法力、仇恨或功能性增益是否真的存在於角色所在小隊。",
+            },
+            party = {
+                "隊伍場景：隊伍光環和種族加成會改變命中、仇恨、法力與功能性規劃。",
+                "如果目前有隊伍增益，匯出的即時屬性應按已增益狀態理解。",
+            },
+            solo = {
+                "單人場景：即時屬性可能缺少團隊/隊伍增益、減益和隊伍種族光環。",
+            },
+        },
+        stats = {
+            ITEM_MOD_STAMINA_SHORT = "耐力",
+            ITEM_MOD_ARMOR = "護甲",
+            ITEM_MOD_BONUS_ARMOR_SHORT = "額外護甲",
+            ITEM_MOD_DEFENSE_SKILL_RATING_SHORT = "防禦等級",
+            ITEM_MOD_DODGE_RATING_SHORT = "閃躲等級",
+            ITEM_MOD_PARRY_RATING_SHORT = "招架等級",
+            ITEM_MOD_BLOCK_RATING_SHORT = "格擋等級",
+            ITEM_MOD_BLOCK_VALUE_SHORT = "格擋值",
+            ITEM_MOD_AGILITY_SHORT = "敏捷",
+            ITEM_MOD_STRENGTH_SHORT = "力量",
+            ITEM_MOD_INTELLECT_SHORT = "智力",
+            ITEM_MOD_SPIRIT_SHORT = "精神",
+            ITEM_MOD_ATTACK_POWER_SHORT = "攻擊強度",
+            ITEM_MOD_RANGED_ATTACK_POWER_SHORT = "遠程攻擊強度",
+            ITEM_MOD_FERAL_ATTACK_POWER_SHORT = "野性攻擊強度",
+            ITEM_MOD_HIT_RATING_SHORT = "命中等級",
+            ITEM_MOD_HIT_MELEE_RATING_SHORT = "近戰命中等級",
+            ITEM_MOD_HIT_RANGED_RATING_SHORT = "遠程命中等級",
+            ITEM_MOD_HIT_SPELL_RATING_SHORT = "法術命中等級",
+            ITEM_MOD_CRIT_RATING_SHORT = "致命等級",
+            ITEM_MOD_CRIT_MELEE_RATING_SHORT = "近戰致命等級",
+            ITEM_MOD_CRIT_RANGED_RATING_SHORT = "遠程致命等級",
+            ITEM_MOD_CRIT_SPELL_RATING_SHORT = "法術致命等級",
+            ITEM_MOD_HASTE_SPELL_RATING_SHORT = "法術加速等級",
+            ITEM_MOD_EXPERTISE_RATING_SHORT = "熟練等級",
+            ITEM_MOD_SPELL_POWER_SHORT = "法術強度",
+            ITEM_MOD_SPELL_DAMAGE_DONE_SHORT = "法術傷害",
+            ITEM_MOD_SPELL_HEALING_DONE_SHORT = "治療",
+            ITEM_MOD_MANA_REGENERATION_SHORT = "法力回復",
+        },
+    },
+}
 local DEFAULT_STRATEGY_ROLES = {
     {
         key = "general_inventory",
@@ -3121,7 +3442,21 @@ local function AppendStrategyBookText(lines, strategyBook)
     end
 end
 
-local function AnalysisValue(value, suffix)
+local function AnalysisLocale(locale)
+    return PromptLocale(locale or ClientLocale())
+end
+
+local function AnalysisLocalization(locale)
+    return ANALYSIS_LOCALIZATION[AnalysisLocale(locale)]
+end
+
+local function AnalysisLookup(locale, section, key, fallback)
+    local localized = AnalysisLocalization(locale)
+    local values = localized and localized[section]
+    return (values and values[key]) or fallback or key
+end
+
+local function AnalysisValue(value, suffix, locale)
     if type(value) == "number" then
         return tostring(value) .. (suffix or "")
     end
@@ -3130,17 +3465,94 @@ local function AnalysisValue(value, suffix)
         return tostring(value) .. (suffix or "")
     end
 
-    return L("analysis_unknown")
+    return LForLocale(locale or ClientLocale(), "analysis_unknown")
 end
 
-local function AppendFirstAnalysisNotes(lines, key, notes)
-    for index = 1, math.min(#(notes or {}), 2) do
-        lines[#lines + 1] = L(key, notes[index])
+local function AnalysisClassName(profile, locale)
+    local classToken = ClassToken(profile and (profile.classEnglish or profile.class))
+    return AnalysisLookup(locale, "classes", classToken, profile and (profile.classLocalized or profile.classEnglish) or nil) or "Unknown Class"
+end
+
+local function AnalysisRaceName(race, locale)
+    local token = RaceToken(race and (race.english or race.localized))
+    return AnalysisLookup(locale, "races", token, race and (race.localized or race.english) or nil) or "Unknown Race"
+end
+
+local function AnalysisGroupType(groupType, locale)
+    return AnalysisLookup(locale, "groupTypes", groupType or "solo", groupType or "solo")
+end
+
+local function AnalysisRoleLabel(role, locale)
+    return AnalysisLookup(locale, "roles", role and role.key, role and (role.label or role.key) or "Role")
+end
+
+local function AnalysisModelLabels(models, locale)
+    local labels = {}
+
+    for index = 1, #(models or {}) do
+        labels[#labels + 1] = AnalysisLookup(locale, "models", models[index], models[index])
     end
+
+    return table.concat(labels, ", ")
+end
+
+local function AnalysisBenchmarkLabel(benchmark, locale)
+    return AnalysisLookup(locale, "benchmarks", benchmark and benchmark.key, benchmark and (benchmark.label or benchmark.key) or "Benchmark")
+end
+
+local function AnalysisBenchmarkStatus(status, locale)
+    return AnalysisLookup(locale, "statuses", status or "unknown", status or "unknown")
+end
+
+local function AnalysisBenchmarkUnit(unit, locale)
+    return AnalysisLookup(locale, "units", unit or "", unit or "")
+end
+
+local function AnalysisRaceNotes(race, locale)
+    local localized = AnalysisLocalization(locale)
+    local token = RaceToken(race and (race.english or race.localized))
+    return localized and localized.raceNotes and localized.raceNotes[token] or race and race.notes or {}
+end
+
+local function AnalysisGroupNotes(group, locale)
+    local localized = AnalysisLocalization(locale)
+    local groupType = group and group.type or "solo"
+    return localized and localized.groupNotes and localized.groupNotes[groupType] or group and group.notes or {}
+end
+
+local function AppendFirstAnalysisNotes(lines, locale, key, notes)
+    for index = 1, math.min(#(notes or {}), 2) do
+        lines[#lines + 1] = LForLocale(locale, key, notes[index])
+    end
+end
+
+local function AnalysisStatLabel(stat, locale)
+    return AnalysisLookup(locale, "stats", stat and stat.token, stat and stat.label or nil) or "Unknown Stat"
+end
+
+local function FormatAnalysisStats(stats, locale)
+    if not stats or #stats == 0 then
+        return "none"
+    end
+
+    local parts = {}
+    for index = 1, #stats do
+        local stat = stats[index]
+        local value = stat and stat.value
+        local label = AnalysisStatLabel(stat, locale)
+        if value and value < 0 then
+            parts[#parts + 1] = tostring(value) .. " " .. label
+        else
+            parts[#parts + 1] = "+" .. tostring(value or 0) .. " " .. label
+        end
+    end
+
+    return table.concat(parts, ", ")
 end
 
 local function BuildStatsAnalysisText(profile, chartStats, strategyBook)
     profile = profile or {}
+    local locale = AnalysisLocale(profile.locale or ClientLocale())
     local characterStats = profile.characterStats or BuildCharacterStatsSnapshot()
     chartStats = chartStats or BuildChartStats({})
     strategyBook = strategyBook or BuildStrategyBook(profile, chartStats)
@@ -3153,48 +3565,48 @@ local function BuildStatsAnalysisText(profile, chartStats, strategyBook)
     local defense = characterStats.defense or {}
     local armor = characterStats.armor or {}
     local lines = {
-        L("analysis_title"),
+        LForLocale(locale, "analysis_title"),
         "",
-        L("analysis_character",
+        LForLocale(locale, "analysis_character",
             tostring(profile.player or "Unknown Player"),
-            tostring(profile.classLocalized or profile.classEnglish or "Unknown Class"),
-            tostring(race.localized or race.english or "Unknown Race"),
-            tostring(group.type or "solo"),
+            AnalysisClassName(profile, locale),
+            AnalysisRaceName(race, locale),
+            AnalysisGroupType(group.type or "solo", locale),
             tostring(group.size or 1)),
-        L("analysis_talents", TalentSummaryText(profile.talents, profile.locale or ClientLocale())),
-        L("analysis_defense",
-            AnalysisValue(defense.effective),
-            AnalysisValue(armor.effective),
-            AnalysisValue(AttributeValue(characterStats, "stamina")),
-            AnalysisValue(chances.dodge, "%"),
-            AnalysisValue(chances.parry, "%"),
-            AnalysisValue(chances.block, "%")),
-        L("analysis_hit",
-            AnalysisValue(RatingBonus(characterStats, "melee_hit"), "%"),
-            AnalysisValue(RatingBonus(characterStats, "ranged_hit"), "%"),
-            AnalysisValue(RatingBonus(characterStats, "spell_hit"), "%"),
-            AnalysisValue(RatingBonus(characterStats, "expertise"), "%")),
-        L("analysis_crit",
-            AnalysisValue(chances.meleeCrit, "%"),
-            AnalysisValue(chances.rangedCrit, "%"),
-            AnalysisValue(BestSpellValue(chances.spellCrit, "crit"), "%")),
-        L("analysis_power",
-            AnalysisValue(attackPower.melee and attackPower.melee.effective),
-            AnalysisValue(attackPower.ranged and attackPower.ranged.effective),
-            AnalysisValue(BestSpellValue(spell.spellDamage, "bonus")),
-            AnalysisValue(spell.healing),
-            AnalysisValue(spell.manaRegenCasting)),
+        LForLocale(locale, "analysis_talents", TalentSummaryText(profile.talents, locale)),
+        LForLocale(locale, "analysis_defense",
+            AnalysisValue(defense.effective, nil, locale),
+            AnalysisValue(armor.effective, nil, locale),
+            AnalysisValue(AttributeValue(characterStats, "stamina"), nil, locale),
+            AnalysisValue(chances.dodge, "%", locale),
+            AnalysisValue(chances.parry, "%", locale),
+            AnalysisValue(chances.block, "%", locale)),
+        LForLocale(locale, "analysis_hit",
+            AnalysisValue(RatingBonus(characterStats, "melee_hit"), "%", locale),
+            AnalysisValue(RatingBonus(characterStats, "ranged_hit"), "%", locale),
+            AnalysisValue(RatingBonus(characterStats, "spell_hit"), "%", locale),
+            AnalysisValue(RatingBonus(characterStats, "expertise"), "%", locale)),
+        LForLocale(locale, "analysis_crit",
+            AnalysisValue(chances.meleeCrit, "%", locale),
+            AnalysisValue(chances.rangedCrit, "%", locale),
+            AnalysisValue(BestSpellValue(chances.spellCrit, "crit"), "%", locale)),
+        LForLocale(locale, "analysis_power",
+            AnalysisValue(attackPower.melee and attackPower.melee.effective, nil, locale),
+            AnalysisValue(attackPower.ranged and attackPower.ranged.effective, nil, locale),
+            AnalysisValue(BestSpellValue(spell.spellDamage, "bonus"), nil, locale),
+            AnalysisValue(spell.healing, nil, locale),
+            AnalysisValue(spell.manaRegenCasting, nil, locale)),
     }
 
-    AppendFirstAnalysisNotes(lines, "analysis_race_note", race.notes)
-    AppendFirstAnalysisNotes(lines, "analysis_group_note", group.notes)
+    AppendFirstAnalysisNotes(lines, locale, "analysis_race_note", AnalysisRaceNotes(race, locale))
+    AppendFirstAnalysisNotes(lines, locale, "analysis_group_note", AnalysisGroupNotes(group, locale))
 
     lines[#lines + 1] = ""
-    lines[#lines + 1] = L("analysis_roles_title")
+    lines[#lines + 1] = LForLocale(locale, "analysis_roles_title")
 
     local roles = strategyBook.roles or {}
     if #roles == 0 then
-        lines[#lines + 1] = L("analysis_no_roles")
+        lines[#lines + 1] = LForLocale(locale, "analysis_no_roles")
     end
 
     for roleIndex = 1, math.min(#roles, 3) do
@@ -3204,30 +3616,30 @@ local function BuildStatsAnalysisText(profile, chartStats, strategyBook)
         local crit = observed.crit or {}
         local tank = observed.tank or {}
         lines[#lines + 1] = ""
-        lines[#lines + 1] = L("analysis_role", tostring(role.label or role.key or "Role"), AnalysisValue(role.confidence), AnalysisValue(role.talentPoints))
-        lines[#lines + 1] = L("analysis_models", table.concat(role.models or {}, ", "))
-        lines[#lines + 1] = L("analysis_role_hit",
-            AnalysisValue(hit.melee, "%"),
-            AnalysisValue(hit.spell, "%"),
-            AnalysisValue(crit.melee, "%"),
-            AnalysisValue(crit.spellBest, "%"))
-        lines[#lines + 1] = L("analysis_role_tank",
-            AnalysisValue(tank.defense),
-            AnalysisValue(tank.armor),
-            AnalysisValue(tank.knownAvoidanceBlock, "%"))
+        lines[#lines + 1] = LForLocale(locale, "analysis_role", AnalysisRoleLabel(role, locale), AnalysisValue(role.confidence, nil, locale), AnalysisValue(role.talentPoints, nil, locale))
+        lines[#lines + 1] = LForLocale(locale, "analysis_models", AnalysisModelLabels(role.models, locale))
+        lines[#lines + 1] = LForLocale(locale, "analysis_role_hit",
+            AnalysisValue(hit.melee, "%", locale),
+            AnalysisValue(hit.spell, "%", locale),
+            AnalysisValue(crit.melee, "%", locale),
+            AnalysisValue(crit.spellBest, "%", locale))
+        lines[#lines + 1] = LForLocale(locale, "analysis_role_tank",
+            AnalysisValue(tank.defense, nil, locale),
+            AnalysisValue(tank.armor, nil, locale),
+            AnalysisValue(tank.knownAvoidanceBlock, "%", locale))
 
         for benchmarkIndex = 1, math.min(#(role.benchmarks or {}), 4) do
             local benchmark = role.benchmarks[benchmarkIndex]
-            lines[#lines + 1] = L("analysis_benchmark",
-                tostring(benchmark.label or benchmark.key or "Benchmark"),
-                tostring(benchmark.status or "unknown"),
-                AnalysisValue(benchmark.observed),
-                AnalysisValue(benchmark.target),
-                tostring(benchmark.unit or ""))
+            lines[#lines + 1] = LForLocale(locale, "analysis_benchmark",
+                AnalysisBenchmarkLabel(benchmark, locale),
+                AnalysisBenchmarkStatus(benchmark and benchmark.status, locale),
+                AnalysisValue(benchmark and benchmark.observed, nil, locale),
+                AnalysisValue(benchmark and benchmark.target, nil, locale),
+                AnalysisBenchmarkUnit(benchmark and benchmark.unit, locale))
         end
 
         if observed.gearStatHighlights and #observed.gearStatHighlights > 0 then
-            lines[#lines + 1] = L("analysis_highlights", FormatStats(observed.gearStatHighlights))
+            lines[#lines + 1] = LForLocale(locale, "analysis_highlights", FormatAnalysisStats(observed.gearStatHighlights, locale))
         end
     end
 

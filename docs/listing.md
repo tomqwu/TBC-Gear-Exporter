@@ -25,7 +25,7 @@ It scans visible bags, bank containers, current talents, and character-sheet sta
 - Records item name, count, location, item level, quality, quality color, item type, equip slot, stats, item link, item string, and TBC Wowhead URL.
 - Exports chart-ready totals by source, category, quality, equip slot, item level, and aggregate stat values.
 - Builds a strategy book that maps class, race, current talents, raid/party context, live stats, and gear totals to mitigation, threat, DPS, healing, and mana models.
-- Shows a Stats Analysis GUI page with character stats, role models, benchmark statuses, race/group notes, and gear stat highlights without leaving the game.
+- Shows a localized Stats Analysis GUI page with character stats, role models, benchmark statuses, race/group notes, and gear stat highlights without leaving the game.
 - Filters exports by scope: all saved items, bags only, bank only, or gear only.
 - Filters by quality, including rare-or-better, epic-only, and epic gear-only views.
 - Exports as AI Text, JSON, Markdown, or plain text.
