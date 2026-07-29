@@ -828,6 +828,7 @@ local function resetRuntimeState(Addon)
     Addon.exportScope = nil
     Addon.exportFormat = nil
     Addon.exportFilter = nil
+    Addon.exportView = nil
     Addon.minimapButton = nil
     if _G.GameTooltip then
         _G.GameTooltip.lines = {}
@@ -1686,6 +1687,16 @@ test("strategy book ranks role models from talents gear race and raid context", 
     assertEquals(private.BenchmarkStatus("melee_special_hit", observed).status, "near")
     assertEquals(private.BenchmarkStatus("unknown", observed).status, "unknown")
     assertEquals(private.BuildRoleBenchmarks({ benchmarkKeys = { "defense_crit_immunity" } }, observed)[1].target, 490)
+    assertEquals(private.AnalysisValue(nil), "未知")
+    assertEquals(private.AnalysisValue(8.5, "%"), "8.5%")
+    local analysisText, roleCount = private.BuildStatsAnalysisText(profile, chartStats, strategyBook)
+    assertEquals(roleCount, #strategyBook.roles)
+    assertContains(analysisText, "属性分析")
+    assertContains(analysisText, "防御/免伤")
+    assertContains(analysisText, "Bear Feral Tank")
+    assertContains(analysisText, "tank_mitigation")
+    assertContains(analysisText, "meets_or_exceeds")
+    assertContains(analysisText, "装备属性亮点")
 
     mock.talentTabs[1].points = 0
     mock.talentTabs[2].points = 0
@@ -2090,8 +2101,11 @@ test("RefreshExport no-ops without frame and updates edit box with frame", funct
     assertContains(Addon.exportFrame.editBox.text, "Super Mana Potion")
     assertEquals(Addon.exportView, "items")
     assertTrue(Addon.exportFrame.visualScroll:IsShown())
+    assertFalse(Addon.exportFrame.analysisScroll:IsShown())
     assertFalse(Addon.exportFrame.textScroll:IsShown())
     assertTrue(#Addon.exportFrame.itemRows >= 1)
+    assertContains(Addon.exportFrame.analysisText.text, "属性分析")
+    assertContains(Addon.exportFrame.analysisText.text, "Bear Feral Tank")
     local sawVisualIcon = false
     for index = 1, #Addon.exportFrame.itemRows do
         local texture = Addon.exportFrame.itemRows[index].icon.texture
@@ -2101,6 +2115,13 @@ test("RefreshExport no-ops without frame and updates edit box with frame", funct
     end
     assertTrue(sawVisualIcon)
     assertContains(Addon.exportFrame.status.text, "物品图标视图已更新")
+    Addon:SetExportView("analysis")
+    Addon:RefreshExport("bags")
+    assertTrue(Addon.exportFrame.analysisScroll:IsShown())
+    assertFalse(Addon.exportFrame.visualScroll:IsShown())
+    assertFalse(Addon.exportFrame.textScroll:IsShown())
+    assertContains(Addon.exportFrame.status.text, "属性分析已更新")
+    assertContains(Addon.exportFrame.analysisText.text, "实测命中")
     assertContains(Addon.exportFrame.summary.text, "背包：")
 end)
 
@@ -2120,9 +2141,13 @@ test("CreateExportFrame wires UI controls and scripts", function()
     assertTrue(exportFrame.sourceLabel ~= nil)
     assertTrue(exportFrame.filterLabel ~= nil)
     assertTrue(exportFrame.visualScroll ~= nil)
+    assertTrue(exportFrame.analysisScroll ~= nil)
     assertTrue(exportFrame.textScroll ~= nil)
     assertTrue(exportFrame.itemListContent ~= nil)
+    assertTrue(exportFrame.analysisContent ~= nil)
+    assertTrue(exportFrame.analysisText ~= nil)
     assertTrue(exportFrame.visualScroll:IsShown())
+    assertFalse(exportFrame.analysisScroll:IsShown())
     assertFalse(exportFrame.textScroll:IsShown())
 
     exportFrame.scripts.OnDragStart(exportFrame)
@@ -2141,9 +2166,15 @@ test("CreateExportFrame wires UI controls and scripts", function()
 
     Addon:SetExportView("text")
     assertFalse(exportFrame.visualScroll:IsShown())
+    assertFalse(exportFrame.analysisScroll:IsShown())
     assertTrue(exportFrame.textScroll:IsShown())
-    Addon:SetExportView("items")
+    Addon:SetExportView("analysis")
+    assertFalse(exportFrame.visualScroll:IsShown())
+    assertTrue(exportFrame.analysisScroll:IsShown())
+    assertFalse(exportFrame.textScroll:IsShown())
+    Addon:SetExportView("bogus")
     assertTrue(exportFrame.visualScroll:IsShown())
+    assertFalse(exportFrame.analysisScroll:IsShown())
     assertFalse(exportFrame.textScroll:IsShown())
 end)
 
@@ -2257,6 +2288,13 @@ test("export frame buttons scan and change scopes", function()
     findButtonByText(ui("items_tab")).scripts.OnClick()
     assertEquals(Addon.exportView, "items")
     assertTrue(Addon.exportFrame.visualScroll:IsShown())
+    findButtonByText(ui("stats_analysis_tab")).scripts.OnClick()
+    assertEquals(Addon.exportView, "analysis")
+    assertTrue(Addon.exportFrame.analysisScroll:IsShown())
+    assertFalse(Addon.exportFrame.visualScroll:IsShown())
+    assertFalse(Addon.exportFrame.textScroll:IsShown())
+    assertContains(Addon.exportFrame.status.text, "属性分析已更新")
+    assertContains(Addon.exportFrame.analysisText.text, "Bear Feral Tank")
     findButtonByText(ui("text_export_tab")).scripts.OnClick()
     assertEquals(Addon.exportView, "text")
     assertTrue(Addon.exportFrame.editBox.highlighted)
