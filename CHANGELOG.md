@@ -4,6 +4,11 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-07-29
+
+- Localize the Stats Analysis GUI display for Chinese clients so role names, model names, benchmark labels/statuses, group/race notes, and gear stat highlights no longer show English/internal tokens.
+- Make English Stats Analysis wording use natural display labels instead of internal model/status tokens.
+
 ## [0.1.5] - 2026-07-29
 
 - Add a localized Stats Analysis GUI page next to the item browser and text export tabs.

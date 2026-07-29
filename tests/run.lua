@@ -1692,11 +1692,30 @@ test("strategy book ranks role models from talents gear race and raid context", 
     local analysisText, roleCount = private.BuildStatsAnalysisText(profile, chartStats, strategyBook)
     assertEquals(roleCount, #strategyBook.roles)
     assertContains(analysisText, "属性分析")
+    assertContains(analysisText, "德鲁伊")
+    assertContains(analysisText, "牛头人")
+    assertContains(analysisText, "团队")
     assertContains(analysisText, "防御/免伤")
-    assertContains(analysisText, "Bear Feral Tank")
-    assertContains(analysisText, "tank_mitigation")
-    assertContains(analysisText, "meets_or_exceeds")
+    assertContains(analysisText, "熊形态野性坦克")
+    assertContains(analysisText, "坦克免伤")
+    assertContains(analysisText, "达标")
+    assertContains(analysisText, "防御免暴基准")
+    assertContains(analysisText, "耐力和战争践踏")
     assertContains(analysisText, "装备属性亮点")
+    assertContains(analysisText, "+27 耐力")
+    assertFalse(analysisText:find("Bear Feral Tank", 1, true), "Chinese analysis should not show English role labels")
+    assertFalse(analysisText:find("tank_mitigation", 1, true), "Chinese analysis should not show internal model tokens")
+    assertFalse(analysisText:find("meets_or_exceeds", 1, true), "Chinese analysis should not show internal status tokens")
+
+    profile.locale = "enUS"
+    local englishAnalysis = private.BuildStatsAnalysisText(profile, chartStats, strategyBook)
+    assertContains(englishAnalysis, "Stats Analysis")
+    assertContains(englishAnalysis, "Bear Feral Tank")
+    assertContains(englishAnalysis, "Tank mitigation")
+    assertContains(englishAnalysis, "Meets / exceeds")
+    assertFalse(englishAnalysis:find("tank_mitigation", 1, true), "English analysis should not show internal model tokens")
+    assertFalse(englishAnalysis:find("meets_or_exceeds", 1, true), "English analysis should not show internal status tokens")
+    profile.locale = "zhCN"
 
     mock.talentTabs[1].points = 0
     mock.talentTabs[2].points = 0
@@ -2105,7 +2124,8 @@ test("RefreshExport no-ops without frame and updates edit box with frame", funct
     assertFalse(Addon.exportFrame.textScroll:IsShown())
     assertTrue(#Addon.exportFrame.itemRows >= 1)
     assertContains(Addon.exportFrame.analysisText.text, "属性分析")
-    assertContains(Addon.exportFrame.analysisText.text, "Bear Feral Tank")
+    assertContains(Addon.exportFrame.analysisText.text, "熊形态野性坦克")
+    assertFalse(Addon.exportFrame.analysisText.text:find("Bear Feral Tank", 1, true), "GUI analysis should localize role labels")
     local sawVisualIcon = false
     for index = 1, #Addon.exportFrame.itemRows do
         local texture = Addon.exportFrame.itemRows[index].icon.texture
@@ -2122,6 +2142,8 @@ test("RefreshExport no-ops without frame and updates edit box with frame", funct
     assertFalse(Addon.exportFrame.textScroll:IsShown())
     assertContains(Addon.exportFrame.status.text, "属性分析已更新")
     assertContains(Addon.exportFrame.analysisText.text, "实测命中")
+    assertContains(Addon.exportFrame.analysisText.text, "达标")
+    assertFalse(Addon.exportFrame.analysisText.text:find("meets_or_exceeds", 1, true), "GUI analysis should localize benchmark status")
     assertContains(Addon.exportFrame.summary.text, "背包：")
 end)
 
@@ -2294,7 +2316,9 @@ test("export frame buttons scan and change scopes", function()
     assertFalse(Addon.exportFrame.visualScroll:IsShown())
     assertFalse(Addon.exportFrame.textScroll:IsShown())
     assertContains(Addon.exportFrame.status.text, "属性分析已更新")
-    assertContains(Addon.exportFrame.analysisText.text, "Bear Feral Tank")
+    assertContains(Addon.exportFrame.analysisText.text, "熊形态野性坦克")
+    assertContains(Addon.exportFrame.analysisText.text, "坦克免伤")
+    assertFalse(Addon.exportFrame.analysisText.text:find("tank_mitigation", 1, true), "GUI analysis should localize model names")
     findButtonByText(ui("text_export_tab")).scripts.OnClick()
     assertEquals(Addon.exportView, "text")
     assertTrue(Addon.exportFrame.editBox.highlighted)
