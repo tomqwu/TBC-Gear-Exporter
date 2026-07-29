@@ -1013,6 +1013,7 @@ test("addon registers bag and bank scan events after load", function()
     assertTrue(addonRootFrame().events.BAG_OPEN, "bag open should be registered")
     assertTrue(addonRootFrame().events.BANKFRAME_OPENED, "bank open should be registered")
     assertTrue(addonRootFrame().events.PLAYER_TALENT_UPDATE, "talent updates should be registered")
+    assertTrue(addonRootFrame().events.CHARACTER_POINTS_CHANGED, "character point changes should be registered")
 end)
 
 test("private parsers handle links and nils", function()
@@ -1490,15 +1491,28 @@ test("talent snapshot captures current build and fallback paths", function()
     assertEquals(snapshot.api, "GetTalentInfo")
     assertEquals(snapshot.summary, "0/46/15")
     assertEquals(snapshot.totalPoints, 61)
+    assertEquals(snapshot.pointsSpent, 61)
     assertEquals(snapshot.unspentPoints, 2)
     assertEquals(snapshot.primaryTab, "Feral Combat")
     assertEquals(snapshot.primaryTabIndex, 2)
     assertEquals(#snapshot.tabs, 3)
+    assertEquals(#snapshot.treePoints, 3)
+    assertEquals(snapshot.treePoints[2].pointsSpent, 46)
+    assertTrue(snapshot.treePoints[2].isPrimary)
+    assertEquals(snapshot.tabs[2].pointsSpent, 46)
     assertEquals(snapshot.tabs[2].talents[1].name, "Ferocity")
     assertEquals(snapshot.tabs[2].talents[1].rank, 5)
+    assertEquals(snapshot.tabs[2].talents[1].points, 5)
+    assertEquals(snapshot.tabs[2].talents[1].pointsSpent, 5)
+    assertEquals(snapshot.tabs[2].talents[1].currentRank, 5)
     assertEquals(snapshot.tabs[2].talents[3].isExceptional, true)
     assertContains(private.TalentSummaryText(snapshot, "enUS"), "primary=Feral Combat")
+    assertContains(private.TalentSummaryText(snapshot, "enUS"), "trees=Balance 0, Feral Combat 46, Restoration 15")
     assertContains(private.TalentSummaryText(snapshot, "zhCN"), "0/46/15")
+    assertContains(private.TalentTreePointsText(snapshot, "zhCN"), "Feral Combat 46")
+    assertContains(private.TalentSelectedPointsText(snapshot, "enUS", 1), "Ferocity 5/5")
+    assertContains(private.TalentSelectedPointsText(snapshot, "enUS", 1), "+4 more")
+    assertContains(private.TalentSelectedPointsText(snapshot, "zhCN", 1), "另 4 个")
 
     mock.badTalentInfo["2:1"] = true
     snapshot = private.BuildTalentSnapshot()
@@ -1508,7 +1522,7 @@ test("talent snapshot captures current build and fallback paths", function()
     mock.badTalentTabs[2] = true
     snapshot = private.BuildTalentSnapshot()
     assertEquals(snapshot.tabs[2].name, "Tree 2")
-    assertEquals(snapshot.tabs[2].points, 0)
+    assertEquals(snapshot.tabs[2].points, 9)
     mock.badTalentTabs = {}
 
     local oldUnitPoints = _G.UnitCharacterPoints
@@ -1532,12 +1546,45 @@ test("talent snapshot captures current build and fallback paths", function()
     assertFalse(snapshot.available)
     assertEquals(snapshot.api, "unavailable")
     assertContains(private.TalentSummaryText(snapshot, "zhCN"), "不可用")
+    assertContains(private.TalentTreePointsText(snapshot, "zhCN"), "不可用")
+    assertContains(private.TalentSelectedPointsText(snapshot, "enUS"), "unavailable")
 
     _G.UnitCharacterPoints = oldUnitPoints
     _G.GetNumTalentTabs = oldTabs
     _G.GetTalentTabInfo = oldTabInfo
     _G.GetNumTalents = oldNumTalents
     _G.GetTalentInfo = oldTalentInfo
+end)
+
+test("saved talent snapshot keeps previous spent points when refresh returns zero", function()
+    resetRuntimeState(Addon)
+
+    local saved = Addon:SaveTalentSnapshot()
+    assertEquals(saved.totalPoints, 61)
+    assertTrue(private.TalentSnapshotHasSpentPoints(saved))
+
+    mock.talentTabs[1].points = 0
+    mock.talentTabs[2].points = 0
+    mock.talentTabs[2].talents = {}
+    mock.talentTabs[3].points = 0
+    mock.talentTabs[3].talents = {}
+
+    local fallback = Addon:SaveTalentSnapshot()
+    assertEquals(fallback.totalPoints, 61)
+    assertEquals(Addon:GetProfile().talents.summary, "0/46/15")
+    assertEquals(Addon:GetProfile().localDB.talentPointsSpent, 61)
+    assertContains(Addon:GetProfile().localDB.talentTreePoints, "Feral Combat 46")
+
+    mock.unspentTalentPoints = 61
+    local realReset = Addon:SaveTalentSnapshot()
+    assertEquals(realReset.totalPoints, 0)
+    assertEquals(realReset.unspentPoints, 61)
+    assertEquals(Addon:GetProfile().localDB.talentPointsSpent, 0)
+
+    local tabOnly = private.TalentTreePoints({ available = true, primaryTabIndex = 2, tabs = { { index = 2, name = "Feral Combat", points = 42 } } })
+    assertEquals(tabOnly[1].pointsSpent, 42)
+    assertTrue(tabOnly[1].isPrimary)
+    assertFalse(private.TalentSnapshotHasSpentPoints({ totalPoints = 0 }))
 end)
 
 test("character stats snapshot captures paper doll stats and fallbacks", function()
@@ -1696,6 +1743,8 @@ test("strategy book ranks role models from talents gear race and raid context", 
     assertContains(analysisText, "牛头人")
     assertContains(analysisText, "团队")
     assertContains(analysisText, "防御/免伤")
+    assertContains(analysisText, "天赋点：Balance 0, Feral Combat 46, Restoration 15")
+    assertContains(analysisText, "已点天赋：Ferocity 5/5")
     assertContains(analysisText, "熊形态野性坦克")
     assertContains(analysisText, "坦克免伤")
     assertContains(analysisText, "达标")
@@ -1710,6 +1759,8 @@ test("strategy book ranks role models from talents gear race and raid context", 
     profile.locale = "enUS"
     local englishAnalysis = private.BuildStatsAnalysisText(profile, chartStats, strategyBook)
     assertContains(englishAnalysis, "Stats Analysis")
+    assertContains(englishAnalysis, "Talent points: Balance 0, Feral Combat 46, Restoration 15")
+    assertContains(englishAnalysis, "selected talents: Ferocity 5/5")
     assertContains(englishAnalysis, "Bear Feral Tank")
     assertContains(englishAnalysis, "Tank mitigation")
     assertContains(englishAnalysis, "Meets / exceeds")
@@ -1719,10 +1770,14 @@ test("strategy book ranks role models from talents gear race and raid context", 
 
     mock.talentTabs[1].points = 0
     mock.talentTabs[2].points = 0
+    mock.talentTabs[2].talents = {}
     mock.talentTabs[3].points = 0
+    mock.talentTabs[3].talents = {}
     local emptyTalents = private.BuildTalentSnapshot()
     assertEquals(emptyTalents.primaryTab, nil)
     assertEquals(emptyTalents.primaryTabIndex, nil)
+    assertContains(private.TalentTreePointsText(emptyTalents, "enUS"), "Balance 0")
+    assertEquals(private.TalentSelectedPointsText(emptyTalents, "enUS"), "none")
 end)
 
 test("container item values cover missing API, table info, tuple info, and link fallback", function()
@@ -1959,14 +2014,25 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(allExport, "\"summary\": \"0/46/15\"")
     assertContains(allExport, "\"primary_tree\": \"Feral Combat\"")
     assertContains(allExport, "\"total_points\": 61")
+    assertContains(allExport, "\"points_spent\": 61")
+    assertContains(allExport, "\"tree_points\": [")
+    assertContains(allExport, "\"points_spent\": 46")
+    assertContains(allExport, "\"is_primary\": true")
     assertContains(allExport, "\"unspent_points\": 0")
     assertContains(allExport, "\"name\": \"Ferocity\"")
     assertContains(allExport, "\"rank\": 5")
+    assertContains(allExport, "\"current_rank\": 5")
+    assertContains(allExport, "\"points\": 5")
+    assertContains(allExport, "\"points_spent\": 5")
     assertContains(allExport, "\"max_rank\": 5")
+    assertContains(allExport, "\"is_exceptional\": true")
     assertContains(allExport, "\"local_db\": {")
     assertContains(allExport, "\"name\": \"TBCGearExporterDB\"")
     assertContains(allExport, "\"talent_summary\": \"0/46/15\"")
     assertContains(allExport, "\"talent_primary_tree\": \"Feral Combat\"")
+    assertContains(allExport, "\"talent_total_points\": 61")
+    assertContains(allExport, "\"talent_points_spent\": 61")
+    assertContains(allExport, "\"talent_tree_points\": \"Balance 0, Feral Combat 46, Restoration 15\"")
     assertContains(allExport, "\"character_stats_saved_at\":")
     assertContains(allExport, "\"bag_item_count\":")
     assertContains(allExport, "\"name\": \"Gear\"")
@@ -2468,6 +2534,7 @@ test("event dispatcher covers addon, login, bags, bank, and bank slot events", f
     mock.talentTabs[2].points = 42
     mock.talentTabs[3].points = 19
     Addon:OnEvent("PLAYER_TALENT_UPDATE")
+    Addon:OnEvent("CHARACTER_POINTS_CHANGED")
     assertEquals(Addon:GetProfile().talents.summary, "0/42/19")
 
     Addon:OnEvent("BAG_OPEN", 0)

@@ -4,6 +4,12 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-07-29
+
+- Export explicit talent point fields, including `current_talents.points_spent`, `tree_points`, per-tree `points_spent`, and per-talent `points_spent`/`current_rank`.
+- Rebuild talent tree totals from selected talent ranks when the tree API reports zero, and keep the last valid saved talent snapshot instead of overwriting it with a transient zero-point refresh.
+- Show localized talent tree points and selected ranked talents on the in-game Stats Analysis page and in Markdown/Text export metadata.
+
 ## [0.1.6] - 2026-07-29
 
 - Localize the Stats Analysis GUI display for Chinese clients so role names, model names, benchmark labels/statuses, group/race notes, and gear stat highlights no longer show English/internal tokens.
