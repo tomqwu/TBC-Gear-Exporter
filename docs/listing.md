@@ -2,7 +2,7 @@
 
 ## 256-Character Summary
 
-TBC Gear Exporter saves bag, bank, and talent snapshots for TBC Anniversary, groups items, records stats, quality colors, Wowhead links, and exports localized AI-ready JSON, Markdown, or text through an in-game GUI with class/spec gear filters and prompts.
+TBC Gear Exporter saves bags, bank, talents for TBC Anniversary, groups items, records stats, chart totals, quality colors, Wowhead links, and exports localized AI-ready JSON, Markdown, or text through an in-game GUI with class/spec filters and UI prompts.
 
 Character count: 256
 
@@ -12,7 +12,7 @@ Character count: 256
 
 **TBC Gear Exporter** is a World of Warcraft TBC Classic / TBC Anniversary addon for saving, reviewing, and exporting your character's bag, bank, and current talent build.
 
-It scans visible bags, bank containers, and current talents, stores the results in `TBCGearExporterDB`, groups items by category, records item stats, preserves WoW quality colors, adds TBC Wowhead links, and gives you a compact in-game GUI for reviewing items visually or exporting everything in AI-friendly formats.
+It scans visible bags, bank containers, and current talents, stores the results in `TBCGearExporterDB`, groups items by category, records item stats, exports chart-ready aggregate totals, preserves WoW quality colors, adds TBC Wowhead links, and gives you a compact in-game GUI for reviewing items visually or exporting everything in AI-friendly formats.
 
 ### Key Features
 
@@ -22,6 +22,7 @@ It scans visible bags, bank containers, and current talents, stores the results 
 - Prints scan/debug lines in chat so you know when the local database changed.
 - Groups items into useful categories such as gear, consumables, gems, recipes, reagents, quest items, trade goods, and more.
 - Records item name, count, location, item level, quality, quality color, item type, equip slot, stats, item link, item string, and TBC Wowhead URL.
+- Exports chart-ready totals by source, category, quality, equip slot, item level, and aggregate stat values.
 - Filters exports by scope: all saved items, bags only, bank only, or gear only.
 - Filters by quality, including rare-or-better, epic-only, and epic gear-only views.
 - Exports as AI Text, JSON, Markdown, or plain text.

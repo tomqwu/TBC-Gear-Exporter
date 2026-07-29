@@ -170,6 +170,7 @@ local DEFAULT_ROLE_CONTEXT = {
 local AI_OUTPUT_REQUESTS = {
     "Summarize likely class/spec roles represented by the saved items.",
     "Use current_talents when available to anchor the main-spec recommendation, while still calling out useful offspec items.",
+    "Use chart_stats for high-level totals by source, category, quality, equip slot, item level, and stat totals before drilling into individual items.",
     "For each plausible role, rank strong keepers, weak slots, and upgrade priorities.",
     "Separate mitigation, threat, DPS, healing, caster, and utility value when relevant.",
     "Flag duplicates, offspec pieces, consumables, materials, or items that are probably safe to vendor, bank, disenchant, or keep.",
@@ -224,6 +225,7 @@ local DEFAULT_ROLE_CONTEXT_ZHCN = {
 local AI_OUTPUT_REQUESTS_ZHCN = {
     "总结这些已保存物品最可能对应的职业天赋/职责。",
     "如果 current_talents 可用，请用当前天赋锚定主天赋建议，同时指出有价值的副天赋物品。",
+    "在逐件分析前，请先使用 chart_stats 按来源、分类、品质、装备栏位、物品等级和属性总计做整体对比。",
     "针对每个可能职责，列出值得保留的强力装备、薄弱部位和升级优先级。",
     "在相关时分别分析减伤、仇恨、输出、治疗、法系和功能性价值。",
     "标记重复物品、副天赋装备、消耗品、材料，或可能适合出售、存银行、分解、保留的物品。",
@@ -248,6 +250,7 @@ local DEFAULT_ROLE_CONTEXT_ZHTW = {
 local AI_OUTPUT_REQUESTS_ZHTW = {
     "總結這些已儲存物品最可能對應的職業天賦/職責。",
     "如果 current_talents 可用，請用目前天賦錨定主天賦建議，同時指出有價值的副天賦物品。",
+    "在逐件分析前，請先使用 chart_stats 按來源、分類、品質、裝備欄位、物品等級和屬性總計做整體比較。",
     "針對每個可能職責，列出值得保留的強力裝備、薄弱部位和升級優先順序。",
     "在相關時分別分析減傷、仇恨、輸出、治療、法系和功能性價值。",
     "標記重複物品、副天賦裝備、消耗品、材料，或可能適合出售、存銀行、分解、保留的物品。",
@@ -1724,6 +1727,378 @@ local function IsEquippableSlot(equipSlot)
     return true
 end
 
+local function NormalizedStackCount(count)
+    count = tonumber(count)
+
+    if not count or count < 1 then
+        return 1
+    end
+
+    return count
+end
+
+local function AddChartCount(map, key, defaults, stackCount)
+    key = tostring(key or "Unknown")
+
+    if key == "" then
+        key = "Unknown"
+    end
+
+    local entry = map[key]
+    if not entry then
+        entry = defaults or {}
+        entry.itemCount = 0
+        entry.stackCount = 0
+        map[key] = entry
+    end
+
+    entry.itemCount = entry.itemCount + 1
+    entry.stackCount = entry.stackCount + stackCount
+    return entry
+end
+
+local function SortedChartEntries(map, sorter)
+    local entries = {}
+
+    for _, entry in pairs(map or {}) do
+        entries[#entries + 1] = entry
+    end
+
+    table.sort(entries, sorter)
+    return entries
+end
+
+local function CategoryRank(category)
+    for index = 1, #CATEGORY_ORDER do
+        if CATEGORY_ORDER[index] == category then
+            return index
+        end
+    end
+
+    return 1000
+end
+
+local function RoundedStatNumber(value)
+    return math.floor((value * 100) + 0.5) / 100
+end
+
+local function BuildChartStats(items)
+    local sourceMap = {}
+    local categoryMap = {}
+    local qualityMap = {}
+    local equipSlotMap = {}
+    local statMap = {}
+    local summary = {
+        itemCount = #(items or {}),
+        stackCount = 0,
+        gearItemCount = 0,
+        gearStackCount = 0,
+        equippableItemCount = 0,
+        itemLevel = { count = 0, min = nil, max = nil, average = nil },
+        sourceCounts = {},
+        categoryCounts = {},
+        qualityCounts = {},
+        equipSlotCounts = {},
+        statTotals = {},
+    }
+
+    for index = 1, #(items or {}) do
+        local item = items[index] or {}
+        local stackCount = NormalizedStackCount(item.count)
+        local source = item.source or "Unknown"
+        local category = item.category or "Other"
+        local qualityID = ItemQualityID(item)
+        local qualityKey = qualityID ~= nil and tostring(qualityID) or tostring(item.qualityName or "Unknown")
+        local itemLevel = tonumber(item.itemLevel)
+
+        summary.stackCount = summary.stackCount + stackCount
+        AddChartCount(sourceMap, source, { source = source, sourceLabel = SourceLabel(source) }, stackCount)
+        AddChartCount(categoryMap, category, { name = category }, stackCount)
+        AddChartCount(qualityMap, qualityKey, {
+            qualityID = qualityID,
+            quality = qualityID ~= nil and QualityName(qualityID) or tostring(item.qualityName or "Unknown"),
+            color = ItemQualityColorHex(item),
+        }, stackCount)
+
+        if category == "Gear" then
+            summary.gearItemCount = summary.gearItemCount + 1
+            summary.gearStackCount = summary.gearStackCount + stackCount
+        end
+
+        if IsEquippableSlot(item.equipSlot) then
+            summary.equippableItemCount = summary.equippableItemCount + 1
+            AddChartCount(equipSlotMap, item.equipSlot, { slot = item.equipSlot }, stackCount)
+        end
+
+        if itemLevel then
+            local itemLevelSummary = summary.itemLevel
+            itemLevelSummary.count = itemLevelSummary.count + 1
+            itemLevelSummary.total = (itemLevelSummary.total or 0) + itemLevel
+            itemLevelSummary.min = itemLevelSummary.min and math.min(itemLevelSummary.min, itemLevel) or itemLevel
+            itemLevelSummary.max = itemLevelSummary.max and math.max(itemLevelSummary.max, itemLevel) or itemLevel
+        end
+
+        for statIndex = 1, #(item.stats or {}) do
+            local stat = item.stats[statIndex]
+            local value = stat and tonumber(stat.value)
+
+            if value and value ~= 0 then
+                local token = tostring(stat.token or stat.label or "Unknown Stat")
+                local entry = statMap[token]
+                if not entry then
+                    entry = {
+                        token = token,
+                        label = stat.label or StatLabel(token),
+                        value = 0,
+                        itemCount = 0,
+                        stackCount = 0,
+                    }
+                    statMap[token] = entry
+                end
+
+                entry.value = entry.value + (value * stackCount)
+                entry.itemCount = entry.itemCount + 1
+                entry.stackCount = entry.stackCount + stackCount
+            end
+        end
+    end
+
+    if summary.itemLevel.count > 0 then
+        summary.itemLevel.average = RoundedStatNumber((summary.itemLevel.total or 0) / summary.itemLevel.count)
+    end
+
+    summary.itemLevel.total = nil
+    summary.sourceCounts = SortedChartEntries(sourceMap, function(left, right)
+        local sourceOrder = { bags = 1, bank = 2 }
+        local leftRank = sourceOrder[left.source] or 100
+        local rightRank = sourceOrder[right.source] or 100
+
+        if leftRank ~= rightRank then
+            return leftRank < rightRank
+        end
+
+        return tostring(left.sourceLabel or left.source) < tostring(right.sourceLabel or right.source)
+    end)
+    summary.categoryCounts = SortedChartEntries(categoryMap, function(left, right)
+        local leftRank = CategoryRank(left.name)
+        local rightRank = CategoryRank(right.name)
+
+        if leftRank ~= rightRank then
+            return leftRank < rightRank
+        end
+
+        return tostring(left.name) < tostring(right.name)
+    end)
+    summary.qualityCounts = SortedChartEntries(qualityMap, function(left, right)
+        local leftQuality = left.qualityID ~= nil and left.qualityID or 100
+        local rightQuality = right.qualityID ~= nil and right.qualityID or 100
+
+        if leftQuality ~= rightQuality then
+            return leftQuality < rightQuality
+        end
+
+        return tostring(left.quality) < tostring(right.quality)
+    end)
+    summary.equipSlotCounts = SortedChartEntries(equipSlotMap, function(left, right)
+        return tostring(left.slot) < tostring(right.slot)
+    end)
+    summary.statTotals = SortedChartEntries(statMap, function(left, right)
+        local leftRank = STAT_ORDER_INDEX[left.token] or 1000
+        local rightRank = STAT_ORDER_INDEX[right.token] or 1000
+
+        if leftRank ~= rightRank then
+            return leftRank < rightRank
+        end
+
+        return tostring(left.label or left.token) < tostring(right.label or right.token)
+    end)
+
+    return summary
+end
+
+local function AppendJsonObjectArray(lines, indent, key, entries, fields, comma)
+    AppendIndented(lines, indent, JsonString(key) .. ": [")
+
+    for index = 1, #(entries or {}) do
+        local entry = entries[index]
+        AppendIndented(lines, indent + 2, "{")
+
+        for fieldIndex = 1, #fields do
+            local field = fields[fieldIndex]
+            AppendIndented(lines, indent + 4, JsonField(field.name, entry[field.value], fieldIndex < #fields))
+        end
+
+        AppendIndented(lines, indent + 2, "}" .. (index < #(entries or {}) and "," or ""))
+    end
+
+    AppendIndented(lines, indent, "]" .. (comma and "," or ""))
+end
+
+local function AppendChartStatsJson(lines, indent, chartStats, comma)
+    chartStats = chartStats or BuildChartStats({})
+    AppendIndented(lines, indent, "\"chart_stats\": {")
+    AppendIndented(lines, indent + 2, JsonField("item_count", chartStats.itemCount or 0, true))
+    AppendIndented(lines, indent + 2, JsonField("stack_count", chartStats.stackCount or 0, true))
+    AppendIndented(lines, indent + 2, JsonField("gear_item_count", chartStats.gearItemCount or 0, true))
+    AppendIndented(lines, indent + 2, JsonField("gear_stack_count", chartStats.gearStackCount or 0, true))
+    AppendIndented(lines, indent + 2, JsonField("equippable_item_count", chartStats.equippableItemCount or 0, true))
+    AppendIndented(lines, indent + 2, "\"item_level\": {")
+    AppendIndented(lines, indent + 4, JsonField("measured_items", chartStats.itemLevel and chartStats.itemLevel.count or 0, true))
+    AppendIndented(lines, indent + 4, JsonField("min", chartStats.itemLevel and chartStats.itemLevel.min, true))
+    AppendIndented(lines, indent + 4, JsonField("max", chartStats.itemLevel and chartStats.itemLevel.max, true))
+    AppendIndented(lines, indent + 4, JsonField("average", chartStats.itemLevel and chartStats.itemLevel.average, false))
+    AppendIndented(lines, indent + 2, "},")
+    AppendJsonObjectArray(lines, indent + 2, "source_counts", chartStats.sourceCounts, {
+        { name = "source", value = "source" },
+        { name = "source_label", value = "sourceLabel" },
+        { name = "item_count", value = "itemCount" },
+        { name = "stack_count", value = "stackCount" },
+    }, true)
+    AppendJsonObjectArray(lines, indent + 2, "category_counts", chartStats.categoryCounts, {
+        { name = "name", value = "name" },
+        { name = "item_count", value = "itemCount" },
+        { name = "stack_count", value = "stackCount" },
+    }, true)
+    AppendJsonObjectArray(lines, indent + 2, "quality_counts", chartStats.qualityCounts, {
+        { name = "quality_id", value = "qualityID" },
+        { name = "quality", value = "quality" },
+        { name = "color", value = "color" },
+        { name = "item_count", value = "itemCount" },
+        { name = "stack_count", value = "stackCount" },
+    }, true)
+    AppendJsonObjectArray(lines, indent + 2, "equip_slot_counts", chartStats.equipSlotCounts, {
+        { name = "slot", value = "slot" },
+        { name = "item_count", value = "itemCount" },
+        { name = "stack_count", value = "stackCount" },
+    }, true)
+    AppendJsonObjectArray(lines, indent + 2, "stat_totals", chartStats.statTotals, {
+        { name = "token", value = "token" },
+        { name = "label", value = "label" },
+        { name = "value", value = "value" },
+        { name = "item_count", value = "itemCount" },
+        { name = "stack_count", value = "stackCount" },
+    }, false)
+    AppendIndented(lines, indent, "}" .. (comma and "," or ""))
+end
+
+local function ChartCountLine(label, entry)
+    return tostring(label) .. ": " .. tostring(entry.itemCount or 0) .. " item lines; stack " .. tostring(entry.stackCount or 0)
+end
+
+local function ChartStatLine(entry)
+    return FormatStats({ entry }) .. " (" .. tostring(entry.itemCount or 0) .. " item lines; stack " .. tostring(entry.stackCount or 0) .. ")"
+end
+
+local function AppendMarkdownChartCountSection(lines, title, entries, labeler)
+    lines[#lines + 1] = "### " .. title
+    lines[#lines + 1] = ""
+
+    if #(entries or {}) == 0 then
+        lines[#lines + 1] = "_None._"
+    else
+        for index = 1, #entries do
+            lines[#lines + 1] = "- " .. ChartCountLine(labeler(entries[index]), entries[index])
+        end
+    end
+
+    lines[#lines + 1] = ""
+end
+
+local function AppendChartStatsMarkdown(lines, chartStats)
+    chartStats = chartStats or BuildChartStats({})
+    lines[#lines + 1] = "## Chart Stats"
+    lines[#lines + 1] = ""
+    lines[#lines + 1] = "- Item lines: " .. tostring(chartStats.itemCount or 0)
+    lines[#lines + 1] = "- Total stack count: " .. tostring(chartStats.stackCount or 0)
+    lines[#lines + 1] = "- Gear item lines: " .. tostring(chartStats.gearItemCount or 0) .. "; gear stack count: " .. tostring(chartStats.gearStackCount or 0)
+    lines[#lines + 1] = "- Equippable item lines: " .. tostring(chartStats.equippableItemCount or 0)
+
+    if chartStats.itemLevel and chartStats.itemLevel.count and chartStats.itemLevel.count > 0 then
+        lines[#lines + 1] = "- Item level: min " .. tostring(chartStats.itemLevel.min) .. "; max " .. tostring(chartStats.itemLevel.max) .. "; average " .. tostring(chartStats.itemLevel.average) .. " across " .. tostring(chartStats.itemLevel.count) .. " item lines"
+    else
+        lines[#lines + 1] = "- Item level: none"
+    end
+
+    lines[#lines + 1] = ""
+    AppendMarkdownChartCountSection(lines, "Source Counts", chartStats.sourceCounts, function(entry)
+        return entry.sourceLabel or entry.source
+    end)
+    AppendMarkdownChartCountSection(lines, "Category Counts", chartStats.categoryCounts, function(entry)
+        return entry.name
+    end)
+    AppendMarkdownChartCountSection(lines, "Quality Counts", chartStats.qualityCounts, function(entry)
+        return tostring(entry.quality or "Unknown") .. (entry.color and " (" .. entry.color .. ")" or "")
+    end)
+    AppendMarkdownChartCountSection(lines, "Equip Slot Counts", chartStats.equipSlotCounts, function(entry)
+        return entry.slot
+    end)
+    lines[#lines + 1] = "### Stat Totals"
+    lines[#lines + 1] = ""
+
+    if #(chartStats.statTotals or {}) == 0 then
+        lines[#lines + 1] = "_No item stats recorded._"
+    else
+        for index = 1, #chartStats.statTotals do
+            lines[#lines + 1] = "- " .. ChartStatLine(chartStats.statTotals[index])
+        end
+    end
+
+    lines[#lines + 1] = ""
+end
+
+local function AppendTextChartCountSection(lines, title, entries, labeler)
+    lines[#lines + 1] = title
+
+    if #(entries or {}) == 0 then
+        lines[#lines + 1] = "None"
+    else
+        for index = 1, #entries do
+            lines[#lines + 1] = "- " .. ChartCountLine(labeler(entries[index]), entries[index])
+        end
+    end
+
+    lines[#lines + 1] = ""
+end
+
+local function AppendChartStatsText(lines, chartStats)
+    chartStats = chartStats or BuildChartStats({})
+    lines[#lines + 1] = "CHART STATS"
+    lines[#lines + 1] = "Item lines: " .. tostring(chartStats.itemCount or 0)
+    lines[#lines + 1] = "Total stack count: " .. tostring(chartStats.stackCount or 0)
+    lines[#lines + 1] = "Gear item lines: " .. tostring(chartStats.gearItemCount or 0) .. "; gear stack count: " .. tostring(chartStats.gearStackCount or 0)
+    lines[#lines + 1] = "Equippable item lines: " .. tostring(chartStats.equippableItemCount or 0)
+
+    if chartStats.itemLevel and chartStats.itemLevel.count and chartStats.itemLevel.count > 0 then
+        lines[#lines + 1] = "Item level: min " .. tostring(chartStats.itemLevel.min) .. "; max " .. tostring(chartStats.itemLevel.max) .. "; average " .. tostring(chartStats.itemLevel.average) .. " across " .. tostring(chartStats.itemLevel.count) .. " item lines"
+    else
+        lines[#lines + 1] = "Item level: none"
+    end
+
+    lines[#lines + 1] = ""
+    AppendTextChartCountSection(lines, "Source Counts", chartStats.sourceCounts, function(entry)
+        return entry.sourceLabel or entry.source
+    end)
+    AppendTextChartCountSection(lines, "Category Counts", chartStats.categoryCounts, function(entry)
+        return entry.name
+    end)
+    AppendTextChartCountSection(lines, "Quality Counts", chartStats.qualityCounts, function(entry)
+        return tostring(entry.quality or "Unknown") .. (entry.color and " (" .. entry.color .. ")" or "")
+    end)
+    AppendTextChartCountSection(lines, "Equip Slot Counts", chartStats.equipSlotCounts, function(entry)
+        return entry.slot
+    end)
+    lines[#lines + 1] = "Stat Totals"
+
+    if #(chartStats.statTotals or {}) == 0 then
+        lines[#lines + 1] = "No item stats recorded."
+    else
+        for index = 1, #chartStats.statTotals do
+            lines[#lines + 1] = "- " .. ChartStatLine(chartStats.statTotals[index])
+        end
+    end
+
+    lines[#lines + 1] = ""
+end
 local function CategoryFromInfo(classID, itemType, equipSlot)
     if IsEquippableSlot(equipSlot) then
         return "Gear"
@@ -2169,7 +2544,7 @@ function Addon:CollectExportItems(scope, filter)
     return items
 end
 
-function Addon:BuildMarkdownExport(scope, profile, items, categories, buckets, filter, prompt)
+function Addon:BuildMarkdownExport(scope, profile, items, categories, buckets, filter, prompt, chartStats)
     local lines = {
         "# TBC Gear Exporter",
         "",
@@ -2193,6 +2568,8 @@ function Addon:BuildMarkdownExport(scope, profile, items, categories, buckets, f
         "- Bank scan: " .. FormatTime(profile.bank and profile.bank.updatedAt),
         "",
     }
+
+    AppendChartStatsMarkdown(lines, chartStats)
 
     if #items == 0 then
         lines[#lines + 1] = "_No saved items are available. Use `/tbcgear scan` to save bags, and open the bank while scanning to save bank items._"
@@ -2227,7 +2604,7 @@ function Addon:BuildMarkdownExport(scope, profile, items, categories, buckets, f
     return table.concat(lines, "\n")
 end
 
-function Addon:BuildTextExport(scope, profile, items, categories, buckets, filter, prompt)
+function Addon:BuildTextExport(scope, profile, items, categories, buckets, filter, prompt, chartStats)
     local lines = {
         "TBC Gear Exporter",
         "",
@@ -2247,6 +2624,8 @@ function Addon:BuildTextExport(scope, profile, items, categories, buckets, filte
         "Bank scan: " .. FormatTime(profile.bank and profile.bank.updatedAt),
         "",
     }
+
+    AppendChartStatsText(lines, chartStats)
 
     if #items == 0 then
         lines[#lines + 1] = "No saved items are available. Use /tbcgear scan to save bags."
@@ -2363,6 +2742,8 @@ function Addon:BuildExport(scope, format, filter)
         end)
     end
 
+    local chartStats = BuildChartStats(items)
+
     local lines = {
         "AI_READY_WOW_TBC_INVENTORY_EXPORT v1",
         "Paste this entire selected text into an AI chat. It contains a prompt plus structured JSON for TBC bag and bank gear analysis.",
@@ -2432,6 +2813,7 @@ function Addon:BuildExport(scope, format, filter)
     end
 
     AppendIndented(lines, 2, "],")
+    AppendChartStatsJson(lines, 2, chartStats, true)
     AppendIndented(lines, 2, "\"items\": [")
 
     local itemPosition = 0
@@ -2494,11 +2876,11 @@ function Addon:BuildExport(scope, format, filter)
     end
 
     if format == "markdown" then
-        return self:BuildMarkdownExport(scope, profile, items, categories, buckets, filter, prompt)
+        return self:BuildMarkdownExport(scope, profile, items, categories, buckets, filter, prompt, chartStats)
     end
 
     if format == "text" then
-        return self:BuildTextExport(scope, profile, items, categories, buckets, filter, prompt)
+        return self:BuildTextExport(scope, profile, items, categories, buckets, filter, prompt, chartStats)
     end
 
     return aiText
@@ -3314,6 +3696,11 @@ if _G.TBCGearExporterTestMode then
         LocalizedRoleContext = LocalizedRoleContext,
         LocalizedOutputRequests = LocalizedOutputRequests,
         BuildAIPrompt = BuildAIPrompt,
+        NormalizedStackCount = NormalizedStackCount,
+        RoundedStatNumber = RoundedStatNumber,
+        BuildChartStats = BuildChartStats,
+        ChartCountLine = ChartCountLine,
+        ChartStatLine = ChartStatLine,
         IsEquippableSlot = IsEquippableSlot,
         CategoryFromInfo = CategoryFromInfo,
         CopyItems = CopyItems,
