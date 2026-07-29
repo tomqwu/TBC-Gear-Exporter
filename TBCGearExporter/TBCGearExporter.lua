@@ -225,7 +225,7 @@ local DEFAULT_ROLE_CONTEXT_ZHCN = {
 local AI_OUTPUT_REQUESTS_ZHCN = {
     "总结这些已保存物品最可能对应的职业天赋/职责。",
     "如果 current_talents 可用，请用当前天赋锚定主天赋建议，同时指出有价值的副天赋物品。",
-    "在逐件分析前，请先使用 chart_stats 按来源、分类、品质、装备栏位、物品等级和属性总计做整体对比。",
+    "在逐件分析前，请先使用 character_stats、chart_stats 和 strategy_book 按当前天赋、职业、种族、队伍/团队环境、命中、暴击、防御、免伤、仇恨、治疗、续航和输出价值做整体对比。",
     "针对每个可能职责，列出值得保留的强力装备、薄弱部位和升级优先级。",
     "在相关时分别分析减伤、仇恨、输出、治疗、法系和功能性价值。",
     "标记重复物品、副天赋装备、消耗品、材料，或可能适合出售、存银行、分解、保留的物品。",
@@ -250,7 +250,7 @@ local DEFAULT_ROLE_CONTEXT_ZHTW = {
 local AI_OUTPUT_REQUESTS_ZHTW = {
     "總結這些已儲存物品最可能對應的職業天賦/職責。",
     "如果 current_talents 可用，請用目前天賦錨定主天賦建議，同時指出有價值的副天賦物品。",
-    "在逐件分析前，請先使用 chart_stats 按來源、分類、品質、裝備欄位、物品等級和屬性總計做整體比較。",
+    "在逐件分析前，請先使用 character_stats、chart_stats 和 strategy_book 按目前天賦、職業、種族、隊伍/團隊環境、命中、致命、防禦、減傷、仇恨、治療、續航和輸出價值做整體比較。",
     "針對每個可能職責，列出值得保留的強力裝備、薄弱部位和升級優先順序。",
     "在相關時分別分析減傷、仇恨、輸出、治療、法系和功能性價值。",
     "標記重複物品、副天賦裝備、消耗品、材料，或可能適合出售、存銀行、分解、保留的物品。",
@@ -258,6 +258,132 @@ local AI_OUTPUT_REQUESTS_ZHTW = {
     "只有當匯出資料無法判斷時，才提出簡短的追問。",
 }
 
+local CHARACTER_ATTRIBUTE_SPECS = {
+    { index = 1, key = "strength", label = "Strength" },
+    { index = 2, key = "agility", label = "Agility" },
+    { index = 3, key = "stamina", label = "Stamina" },
+    { index = 4, key = "intellect", label = "Intellect" },
+    { index = 5, key = "spirit", label = "Spirit" },
+}
+
+local SPELL_SCHOOL_SPECS = {
+    { index = 2, key = "holy", label = "Holy" },
+    { index = 3, key = "fire", label = "Fire" },
+    { index = 4, key = "nature", label = "Nature" },
+    { index = 5, key = "frost", label = "Frost" },
+    { index = 6, key = "shadow", label = "Shadow" },
+    { index = 7, key = "arcane", label = "Arcane" },
+}
+
+local COMBAT_RATING_SPECS = {
+    { key = "defense", label = "Defense Rating", global = "CR_DEFENSE_SKILL" },
+    { key = "dodge", label = "Dodge Rating", global = "CR_DODGE" },
+    { key = "parry", label = "Parry Rating", global = "CR_PARRY" },
+    { key = "block", label = "Block Rating", global = "CR_BLOCK" },
+    { key = "melee_hit", label = "Melee Hit", global = "CR_HIT_MELEE" },
+    { key = "ranged_hit", label = "Ranged Hit", global = "CR_HIT_RANGED" },
+    { key = "spell_hit", label = "Spell Hit", global = "CR_HIT_SPELL" },
+    { key = "melee_crit", label = "Melee Crit", global = "CR_CRIT_MELEE" },
+    { key = "ranged_crit", label = "Ranged Crit", global = "CR_CRIT_RANGED" },
+    { key = "spell_crit", label = "Spell Crit", global = "CR_CRIT_SPELL" },
+    { key = "melee_haste", label = "Melee Haste", global = "CR_HASTE_MELEE" },
+    { key = "ranged_haste", label = "Ranged Haste", global = "CR_HASTE_RANGED" },
+    { key = "spell_haste", label = "Spell Haste", global = "CR_HASTE_SPELL" },
+    { key = "expertise", label = "Expertise", global = "CR_EXPERTISE" },
+    { key = "resilience", label = "Resilience", global = "CR_RESILIENCE_PLAYER_DAMAGE_TAKEN" },
+}
+
+local TBC_BENCHMARKS = {
+    defense_crit_immunity = { label = "Defense crit-immunity benchmark", value = 490, unit = "defense skill", note = "Common level-70 raid-boss tank reference." },
+    melee_special_hit = { label = "Melee special hit benchmark", value = 9, unit = "% hit", note = "Common boss-level yellow-hit reference." },
+    ranged_hit = { label = "Ranged hit benchmark", value = 9, unit = "% hit", note = "Common boss-level ranged-hit reference." },
+    spell_hit = { label = "Spell hit benchmark", value = 16, unit = "% hit", note = "Common TBC boss-level spell-hit reference before class/talent debuffs." },
+    expertise_dodge = { label = "Expertise dodge benchmark", value = 6.5, unit = "% dodge reduction", note = "Common boss dodge reduction reference where expertise exists." },
+    avoidance_table = { label = "Shield table coverage benchmark", value = 102.4, unit = "% known avoidance/block table", note = "Useful for warrior/paladin mitigation models; exported value omits unreported miss when the API cannot expose it." },
+}
+
+local RACE_STRATEGY_NOTES = {
+    HUMAN = { "Weapon and spirit racials can affect melee threat/DPS and mana-adjacent evaluations." },
+    NIGHTELF = { "Quickness-style avoidance and Shadowmeld utility can matter for mitigation and solo context." },
+    DWARF = { "Stoneform and weapon/ranged racials can matter for defensive utility and weapon choice." },
+    GNOME = { "Intellect and Escape Artist utility can matter for caster throughput and control-heavy encounters." },
+    DRAENEI = { "Party-local hit aura context can change raid/party hit planning in TBC groups." },
+    ORC = { "Blood Fury, weapon, pet, and stun-resist racials can affect threat, DPS, and pet classes." },
+    TAUREN = { "Stamina and War Stomp utility can affect tank and control evaluations." },
+    TROLL = { "Berserking and ranged racials can affect throughput windows and ranged weapon choices." },
+    SCOURGE = { "Will of the Forsaken utility can matter for PvP/control-heavy encounters." },
+    UNDEAD = { "Will of the Forsaken utility can matter for PvP/control-heavy encounters." },
+    BLOODELF = { "Arcane Torrent and magic utility can matter for mana/control context." },
+}
+
+local DEFAULT_STRATEGY_ROLES = {
+    {
+        key = "general_inventory",
+        label = "General Inventory Strategy",
+        talentTabs = {},
+        models = { "role_identification", "upgrade_triage" },
+        priorities = { "item level", "quality", "primary stats", "role-specific secondary stats", "useful on-use/proc effects" },
+        benchmarkKeys = {},
+        statTokens = { "ITEM_MOD_STAMINA_SHORT", "ITEM_MOD_HIT_RATING_SHORT", "ITEM_MOD_CRIT_RATING_SHORT", "ITEM_MOD_SPELL_POWER_SHORT", "ITEM_MOD_SPELL_HEALING_DONE_SHORT" },
+    },
+}
+
+local CLASS_STRATEGY_BOOK = {
+    DRUID = {
+        roles = {
+            { key = "bear_tank", label = "Bear Feral Tank", talentTabs = { 2 }, models = { "tank_mitigation", "tank_threat" }, priorities = { "armor", "stamina", "defense/resilience", "dodge", "agility", "hit/expertise where available", "feral attack power", "threat trinkets" }, benchmarkKeys = { "defense_crit_immunity", "melee_special_hit", "expertise_dodge" }, statTokens = { "ITEM_MOD_STAMINA_SHORT", "ITEM_MOD_ARMOR", "ITEM_MOD_BONUS_ARMOR_SHORT", "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT", "ITEM_MOD_DODGE_RATING_SHORT", "ITEM_MOD_AGILITY_SHORT", "ITEM_MOD_FERAL_ATTACK_POWER_SHORT", "ITEM_MOD_HIT_RATING_SHORT" } },
+            { key = "cat_dps", label = "Cat Feral DPS", talentTabs = { 2 }, models = { "melee_dps", "threat_awareness" }, priorities = { "agility", "strength", "attack power", "crit", "hit/expertise", "feral attack power", "set synergy" }, benchmarkKeys = { "melee_special_hit", "expertise_dodge" }, statTokens = { "ITEM_MOD_AGILITY_SHORT", "ITEM_MOD_STRENGTH_SHORT", "ITEM_MOD_ATTACK_POWER_SHORT", "ITEM_MOD_FERAL_ATTACK_POWER_SHORT", "ITEM_MOD_CRIT_RATING_SHORT", "ITEM_MOD_HIT_RATING_SHORT" } },
+            { key = "restoration_healer", label = "Restoration Healing", talentTabs = { 3 }, models = { "healing_throughput", "mana_longevity" }, priorities = { "bonus healing", "spirit", "intellect", "mp5", "haste", "mana longevity" }, benchmarkKeys = {}, statTokens = { "ITEM_MOD_SPELL_HEALING_DONE_SHORT", "ITEM_MOD_SPIRIT_SHORT", "ITEM_MOD_INTELLECT_SHORT", "ITEM_MOD_MANA_REGENERATION_SHORT", "ITEM_MOD_HASTE_SPELL_RATING_SHORT" } },
+            { key = "balance_caster", label = "Balance Caster DPS", talentTabs = { 1 }, models = { "caster_dps", "mana_longevity" }, priorities = { "spell damage", "spell hit", "spell crit", "haste", "intellect", "mana sustain" }, benchmarkKeys = { "spell_hit" }, statTokens = { "ITEM_MOD_SPELL_POWER_SHORT", "ITEM_MOD_SPELL_DAMAGE_DONE_SHORT", "ITEM_MOD_HIT_SPELL_RATING_SHORT", "ITEM_MOD_CRIT_SPELL_RATING_SHORT", "ITEM_MOD_HASTE_SPELL_RATING_SHORT", "ITEM_MOD_INTELLECT_SHORT" } },
+        },
+    },
+    WARRIOR = {
+        roles = {
+            { key = "protection_tank", label = "Protection Tank", talentTabs = { 3 }, models = { "tank_mitigation", "tank_threat" }, priorities = { "stamina", "armor", "defense", "avoidance", "shield block/value", "hit/expertise", "threat stats" }, benchmarkKeys = { "defense_crit_immunity", "avoidance_table", "melee_special_hit", "expertise_dodge" }, statTokens = { "ITEM_MOD_STAMINA_SHORT", "ITEM_MOD_ARMOR", "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT", "ITEM_MOD_DODGE_RATING_SHORT", "ITEM_MOD_PARRY_RATING_SHORT", "ITEM_MOD_BLOCK_RATING_SHORT", "ITEM_MOD_BLOCK_VALUE_SHORT", "ITEM_MOD_HIT_RATING_SHORT" } },
+            { key = "arms_fury_dps", label = "Arms/Fury DPS", talentTabs = { 1, 2 }, models = { "melee_dps", "weapon_selection" }, priorities = { "weapon damage/speed", "strength", "attack power", "crit", "hit/expertise", "set bonuses" }, benchmarkKeys = { "melee_special_hit", "expertise_dodge" }, statTokens = { "ITEM_MOD_STRENGTH_SHORT", "ITEM_MOD_ATTACK_POWER_SHORT", "ITEM_MOD_CRIT_RATING_SHORT", "ITEM_MOD_HIT_RATING_SHORT", "ITEM_MOD_EXPERTISE_RATING_SHORT" } },
+        },
+    },
+    PALADIN = {
+        roles = {
+            { key = "protection_tank", label = "Protection Tank", talentTabs = { 2 }, models = { "tank_mitigation", "spell_threat" }, priorities = { "stamina", "defense", "avoidance", "block value", "spell damage/threat", "mana sustain" }, benchmarkKeys = { "defense_crit_immunity", "avoidance_table", "spell_hit" }, statTokens = { "ITEM_MOD_STAMINA_SHORT", "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT", "ITEM_MOD_BLOCK_VALUE_SHORT", "ITEM_MOD_SPELL_POWER_SHORT", "ITEM_MOD_MANA_REGENERATION_SHORT" } },
+            { key = "holy_healer", label = "Holy Healing", talentTabs = { 1 }, models = { "healing_throughput", "mana_longevity" }, priorities = { "bonus healing", "intellect", "mp5", "spell crit", "mana longevity" }, benchmarkKeys = {}, statTokens = { "ITEM_MOD_SPELL_HEALING_DONE_SHORT", "ITEM_MOD_INTELLECT_SHORT", "ITEM_MOD_MANA_REGENERATION_SHORT", "ITEM_MOD_CRIT_SPELL_RATING_SHORT" } },
+            { key = "retribution_dps", label = "Retribution DPS", talentTabs = { 3 }, models = { "melee_dps", "utility_dps" }, priorities = { "weapon quality", "strength", "attack power", "crit", "hit/expertise", "set synergy" }, benchmarkKeys = { "melee_special_hit", "expertise_dodge" }, statTokens = { "ITEM_MOD_STRENGTH_SHORT", "ITEM_MOD_ATTACK_POWER_SHORT", "ITEM_MOD_CRIT_RATING_SHORT", "ITEM_MOD_HIT_RATING_SHORT" } },
+        },
+    },
+    PRIEST = {
+        roles = {
+            { key = "healing", label = "Discipline/Holy Healing", talentTabs = { 1, 2 }, models = { "healing_throughput", "mana_longevity" }, priorities = { "bonus healing", "spirit", "intellect", "mp5", "haste", "mana longevity" }, benchmarkKeys = {}, statTokens = { "ITEM_MOD_SPELL_HEALING_DONE_SHORT", "ITEM_MOD_SPIRIT_SHORT", "ITEM_MOD_INTELLECT_SHORT", "ITEM_MOD_MANA_REGENERATION_SHORT", "ITEM_MOD_HASTE_SPELL_RATING_SHORT" } },
+            { key = "shadow_dps", label = "Shadow DPS", talentTabs = { 3 }, models = { "caster_dps", "mana_support" }, priorities = { "shadow damage", "spell hit", "spell crit", "haste", "mana sustain" }, benchmarkKeys = { "spell_hit" }, statTokens = { "ITEM_MOD_SPELL_POWER_SHORT", "ITEM_MOD_SPELL_DAMAGE_DONE_SHORT", "ITEM_MOD_HIT_SPELL_RATING_SHORT", "ITEM_MOD_CRIT_SPELL_RATING_SHORT", "ITEM_MOD_HASTE_SPELL_RATING_SHORT" } },
+        },
+    },
+    SHAMAN = {
+        roles = {
+            { key = "restoration_healer", label = "Restoration Healing", talentTabs = { 3 }, models = { "healing_throughput", "mana_longevity" }, priorities = { "bonus healing", "mp5", "intellect", "crit", "haste", "mana longevity" }, benchmarkKeys = {}, statTokens = { "ITEM_MOD_SPELL_HEALING_DONE_SHORT", "ITEM_MOD_MANA_REGENERATION_SHORT", "ITEM_MOD_INTELLECT_SHORT", "ITEM_MOD_CRIT_SPELL_RATING_SHORT" } },
+            { key = "elemental_dps", label = "Elemental DPS", talentTabs = { 1 }, models = { "caster_dps", "mana_longevity" }, priorities = { "spell damage", "spell hit", "spell crit", "haste", "mana sustain" }, benchmarkKeys = { "spell_hit" }, statTokens = { "ITEM_MOD_SPELL_POWER_SHORT", "ITEM_MOD_HIT_SPELL_RATING_SHORT", "ITEM_MOD_CRIT_SPELL_RATING_SHORT", "ITEM_MOD_HASTE_SPELL_RATING_SHORT" } },
+            { key = "enhancement_dps", label = "Enhancement DPS", talentTabs = { 2 }, models = { "melee_dps", "weapon_selection" }, priorities = { "weapon options", "attack power", "agility", "strength", "crit", "hit/expertise" }, benchmarkKeys = { "melee_special_hit", "expertise_dodge" }, statTokens = { "ITEM_MOD_ATTACK_POWER_SHORT", "ITEM_MOD_AGILITY_SHORT", "ITEM_MOD_STRENGTH_SHORT", "ITEM_MOD_CRIT_RATING_SHORT", "ITEM_MOD_HIT_RATING_SHORT" } },
+        },
+    },
+    HUNTER = {
+        roles = {
+            { key = "ranged_dps", label = "Ranged DPS", talentTabs = { 1, 2, 3 }, models = { "ranged_dps", "pet_synergy" }, priorities = { "ranged weapon", "agility", "attack power", "crit", "hit", "ammo/quiver support", "set bonuses" }, benchmarkKeys = { "ranged_hit" }, statTokens = { "ITEM_MOD_AGILITY_SHORT", "ITEM_MOD_ATTACK_POWER_SHORT", "ITEM_MOD_RANGED_ATTACK_POWER_SHORT", "ITEM_MOD_CRIT_RANGED_RATING_SHORT", "ITEM_MOD_HIT_RANGED_RATING_SHORT", "ITEM_MOD_HIT_RATING_SHORT" } },
+        },
+    },
+    ROGUE = {
+        roles = {
+            { key = "melee_dps", label = "Melee DPS", talentTabs = { 1, 2, 3 }, models = { "melee_dps", "weapon_selection" }, priorities = { "weapon speed/type", "agility", "attack power", "crit", "hit/expertise", "set bonuses" }, benchmarkKeys = { "melee_special_hit", "expertise_dodge" }, statTokens = { "ITEM_MOD_AGILITY_SHORT", "ITEM_MOD_ATTACK_POWER_SHORT", "ITEM_MOD_CRIT_RATING_SHORT", "ITEM_MOD_HIT_RATING_SHORT", "ITEM_MOD_EXPERTISE_RATING_SHORT" } },
+        },
+    },
+    MAGE = {
+        roles = {
+            { key = "caster_dps", label = "Caster DPS", talentTabs = { 1, 2, 3 }, models = { "caster_dps", "mana_longevity" }, priorities = { "spell damage", "spell hit", "spell crit", "haste", "intellect", "school-specific bonuses" }, benchmarkKeys = { "spell_hit" }, statTokens = { "ITEM_MOD_SPELL_POWER_SHORT", "ITEM_MOD_SPELL_DAMAGE_DONE_SHORT", "ITEM_MOD_HIT_SPELL_RATING_SHORT", "ITEM_MOD_CRIT_SPELL_RATING_SHORT", "ITEM_MOD_HASTE_SPELL_RATING_SHORT", "ITEM_MOD_INTELLECT_SHORT" } },
+        },
+    },
+    WARLOCK = {
+        roles = {
+            { key = "caster_dps", label = "Caster DPS", talentTabs = { 1, 2, 3 }, models = { "caster_dps", "pet_synergy", "survivability" }, priorities = { "spell damage", "spell hit", "spell crit", "haste", "stamina", "intellect", "shadow/fire bonuses" }, benchmarkKeys = { "spell_hit" }, statTokens = { "ITEM_MOD_SPELL_POWER_SHORT", "ITEM_MOD_SPELL_DAMAGE_DONE_SHORT", "ITEM_MOD_HIT_SPELL_RATING_SHORT", "ITEM_MOD_CRIT_SPELL_RATING_SHORT", "ITEM_MOD_HASTE_SPELL_RATING_SHORT", "ITEM_MOD_STAMINA_SHORT", "ITEM_MOD_INTELLECT_SHORT" } },
+        },
+    },
+}
 local EXPORT_FORMAT_LABELS = {
     ai = "AI Text",
     json = "JSON",
@@ -1472,6 +1598,296 @@ local function GetPlayerClassInfo()
     }
 end
 
+local function SafeApiCall(fn, ...)
+    if type(fn) ~= "function" then
+        return nil
+    end
+
+    local ok, first, second, third, fourth, fifth, sixth, seventh, eighth = pcall(fn, ...)
+    if not ok then
+        return nil
+    end
+
+    return first, second, third, fourth, fifth, sixth, seventh, eighth
+end
+
+local function SafeNumber(value)
+    value = tonumber(value)
+
+    if value == nil then
+        return nil
+    end
+
+    return value
+end
+
+local function SumKnown(...)
+    local total = 0
+    local seen = false
+
+    for index = 1, select("#", ...) do
+        local value = select(index, ...)
+        if type(value) == "number" then
+            total = total + value
+            seen = true
+        end
+    end
+
+    return seen and total or nil
+end
+
+local function RaceToken(value)
+    value = Trim(value or ""):upper()
+    value = value:gsub("%s+", "")
+    value = value:gsub("_", "")
+
+    if value == "BLOODELF" or value == "BLOODELVES" then
+        return "BLOODELF"
+    end
+
+    if value == "NIGHTELF" or value == "NIGHTELVES" then
+        return "NIGHTELF"
+    end
+
+    if value == "UNDEAD" or value == "SCOURGE" then
+        return value
+    end
+
+    if value == "" then
+        return "UNKNOWN"
+    end
+
+    return value
+end
+
+local function GetPlayerRaceInfo()
+    local localizedRace, englishRace, raceID
+
+    if type(UnitRace) == "function" then
+        local ok, localized, english, id = pcall(UnitRace, "player")
+        if ok then
+            localizedRace = localized
+            englishRace = english
+            raceID = id
+        end
+    end
+
+    local factionToken, factionLocalized
+    if type(UnitFactionGroup) == "function" then
+        local ok, faction, localized = pcall(UnitFactionGroup, "player")
+        if ok then
+            factionToken = faction
+            factionLocalized = localized or faction
+        end
+    end
+
+    local token = RaceToken(englishRace or localizedRace)
+    return {
+        localized = localizedRace or englishRace or "Unknown Race",
+        english = token,
+        id = raceID,
+        faction = factionToken,
+        factionLocalized = factionLocalized,
+        notes = RACE_STRATEGY_NOTES[token] or {},
+    }
+end
+
+local function GetGroupContext()
+    local inRaid = SafeApiCall(IsInRaid)
+    local inGroup = SafeApiCall(IsInGroup)
+    local raidCount = SafeNumber(SafeApiCall(GetNumGroupMembers)) or SafeNumber(SafeApiCall(GetNumRaidMembers)) or 0
+    local partyCount = SafeNumber(SafeApiCall(GetNumSubgroupMembers)) or SafeNumber(SafeApiCall(GetNumPartyMembers)) or 0
+    local groupType = "solo"
+    local size = 1
+
+    if inRaid or raidCount > 0 then
+        groupType = "raid"
+        size = math.max(raidCount, 1)
+    elseif inGroup or partyCount > 0 then
+        groupType = "party"
+        size = math.max(partyCount + 1, 1)
+    end
+
+    local notes
+    if groupType == "raid" then
+        notes = {
+            "Raid context: benchmark checks use common boss-level references, but TBC party groups inside raids still affect party-local buffs and racials.",
+            "Confirm whether hit, mana, threat, or utility buffs are active in the player's actual raid subgroup.",
+        }
+    elseif groupType == "party" then
+        notes = {
+            "Party context: party-local buffs and racials can change hit, threat, mana, and utility planning.",
+            "Treat exported live stats as currently buffed if party buffs are active.",
+        }
+    else
+        notes = {
+            "Solo context: exported live stats may be missing raid/party buffs, debuffs, and party-local racial auras.",
+        }
+    end
+
+    return {
+        type = groupType,
+        size = size,
+        partyMembers = partyCount,
+        raidMembers = raidCount,
+        notes = notes,
+    }
+end
+
+local function BuildAttributeSnapshot()
+    local attributes = {}
+
+    for index = 1, #CHARACTER_ATTRIBUTE_SPECS do
+        local spec = CHARACTER_ATTRIBUTE_SPECS[index]
+        local base, effective, positive, negative = SafeApiCall(UnitStat, "player", spec.index)
+        attributes[#attributes + 1] = {
+            key = spec.key,
+            label = spec.label,
+            base = SafeNumber(base),
+            effective = SafeNumber(effective),
+            positive = SafeNumber(positive),
+            negative = SafeNumber(negative),
+        }
+    end
+
+    return attributes
+end
+
+local function BuildArmorSnapshot()
+    local base, effective, armor, positive, negative = SafeApiCall(UnitArmor, "player")
+    return {
+        base = SafeNumber(base),
+        effective = SafeNumber(effective or armor),
+        armor = SafeNumber(armor),
+        positive = SafeNumber(positive),
+        negative = SafeNumber(negative),
+    }
+end
+
+local function BuildDefenseSnapshot()
+    local base, modifier = SafeApiCall(UnitDefense, "player")
+    base = SafeNumber(base)
+    modifier = SafeNumber(modifier)
+
+    return {
+        base = base,
+        modifier = modifier,
+        effective = SumKnown(base, modifier),
+    }
+end
+
+local function BuildAttackPowerSnapshot()
+    local base, positive, negative = SafeApiCall(UnitAttackPower, "player")
+    local rangedBase, rangedPositive, rangedNegative = SafeApiCall(UnitRangedAttackPower, "player")
+    base = SafeNumber(base)
+    positive = SafeNumber(positive)
+    negative = SafeNumber(negative)
+    rangedBase = SafeNumber(rangedBase)
+    rangedPositive = SafeNumber(rangedPositive)
+    rangedNegative = SafeNumber(rangedNegative)
+
+    return {
+        melee = {
+            base = base,
+            positive = positive,
+            negative = negative,
+            effective = SumKnown(base, positive, negative),
+        },
+        ranged = {
+            base = rangedBase,
+            positive = rangedPositive,
+            negative = rangedNegative,
+            effective = SumKnown(rangedBase, rangedPositive, rangedNegative),
+        },
+    }
+end
+
+local function BuildCombatRatingSnapshot()
+    local ratings = {}
+
+    for index = 1, #COMBAT_RATING_SPECS do
+        local spec = COMBAT_RATING_SPECS[index]
+        local ratingID = _G and _G[spec.global]
+        local rating, bonus
+
+        if type(ratingID) == "number" then
+            rating = SafeNumber(SafeApiCall(GetCombatRating, ratingID))
+            bonus = SafeNumber(SafeApiCall(GetCombatRatingBonus, ratingID))
+        end
+
+        ratings[#ratings + 1] = {
+            key = spec.key,
+            label = spec.label,
+            global = spec.global,
+            rating_id = ratingID,
+            rating = rating,
+            bonus = bonus,
+        }
+    end
+
+    return ratings
+end
+
+local function BuildChanceSnapshot()
+    local spellCrit = {}
+
+    for index = 1, #SPELL_SCHOOL_SPECS do
+        local spec = SPELL_SCHOOL_SPECS[index]
+        spellCrit[#spellCrit + 1] = {
+            key = spec.key,
+            label = spec.label,
+            crit = SafeNumber(SafeApiCall(GetSpellCritChance, spec.index)),
+        }
+    end
+
+    return {
+        meleeCrit = SafeNumber(SafeApiCall(GetCritChance)),
+        rangedCrit = SafeNumber(SafeApiCall(GetRangedCritChance)),
+        dodge = SafeNumber(SafeApiCall(GetDodgeChance)),
+        parry = SafeNumber(SafeApiCall(GetParryChance)),
+        block = SafeNumber(SafeApiCall(GetBlockChance)),
+        spellCrit = spellCrit,
+    }
+end
+
+local function BuildSpellSnapshot()
+    local spellDamage = {}
+
+    for index = 1, #SPELL_SCHOOL_SPECS do
+        local spec = SPELL_SCHOOL_SPECS[index]
+        spellDamage[#spellDamage + 1] = {
+            key = spec.key,
+            label = spec.label,
+            bonus = SafeNumber(SafeApiCall(GetSpellBonusDamage, spec.index)),
+        }
+    end
+
+    local manaRegenCasting, manaRegenNotCasting = SafeApiCall(GetManaRegen)
+    return {
+        healing = SafeNumber(SafeApiCall(GetSpellBonusHealing)),
+        manaRegenCasting = SafeNumber(manaRegenCasting),
+        manaRegenNotCasting = SafeNumber(manaRegenNotCasting),
+        spellDamage = spellDamage,
+    }
+end
+
+local function BuildCharacterStatsSnapshot()
+    local race = GetPlayerRaceInfo()
+    return {
+        updatedAt = Now(),
+        api = "paper_doll",
+        level = SafeNumber(SafeApiCall(UnitLevel, "player")),
+        race = race,
+        group = GetGroupContext(),
+        attributes = BuildAttributeSnapshot(),
+        armor = BuildArmorSnapshot(),
+        defense = BuildDefenseSnapshot(),
+        attackPower = BuildAttackPowerSnapshot(),
+        ratings = BuildCombatRatingSnapshot(),
+        chances = BuildChanceSnapshot(),
+        spell = BuildSpellSnapshot(),
+    }
+end
 local function TalentApiName()
     if type(GetNumTalentTabs) == "function"
         and type(GetTalentTabInfo) == "function"
@@ -1484,16 +1900,7 @@ local function TalentApiName()
 end
 
 local function SafeTalentCall(fn, ...)
-    if type(fn) ~= "function" then
-        return nil
-    end
-
-    local ok, first, second, third, fourth, fifth, sixth, seventh, eighth = pcall(fn, ...)
-    if not ok then
-        return nil
-    end
-
-    return first, second, third, fourth, fifth, sixth, seventh, eighth
+    return SafeApiCall(fn, ...)
 end
 
 local function UnspentTalentPoints()
@@ -1659,7 +2066,7 @@ local function BuildAIPrompt(profile, scope, filter, itemCount)
             "导出范围：" .. LocalizedScopeTitle(scope, promptLocale) .. "；过滤器：" .. LocalizedExportFilterTitle(filter, promptLocale) .. "；物品数量：" .. tostring(itemCount or 0) .. "。",
             "当前天赋：" .. talentSummary .. "。",
             "银行内容是最后一次保存的快照。背包/银行来源只代表库存位置，不代表物品已经装备。",
-            "请使用物品属性、物品等级、品质、装备栏位、分类、来源位置和 wowhead_url 字段。不要编造缺失属性，也不要假设隐藏附魔或宝石。",
+            "请使用 character_stats、chart_stats、strategy_book、物品属性、物品等级、品质、装备栏位、分类、来源位置和 wowhead_url 字段。不要编造缺失属性，也不要假设隐藏附魔或宝石。",
             "请考虑该职业可能的天赋/职责，不要只假设一个专精。",
             "",
             "职业职责分析视角：",
@@ -1673,7 +2080,7 @@ local function BuildAIPrompt(profile, scope, filter, itemCount)
             "匯出範圍：" .. LocalizedScopeTitle(scope, promptLocale) .. "；過濾器：" .. LocalizedExportFilterTitle(filter, promptLocale) .. "；物品數量：" .. tostring(itemCount or 0) .. "。",
             "目前天賦：" .. talentSummary .. "。",
             "銀行內容是最後一次儲存的快照。背包/銀行來源只代表庫存位置，不代表物品已經裝備。",
-            "請使用物品屬性、物品等級、品質、裝備欄位、分類、來源位置和 wowhead_url 欄位。不要編造缺失屬性，也不要假設隱藏附魔或寶石。",
+            "請使用 character_stats、chart_stats、strategy_book、物品屬性、物品等級、品質、裝備欄位、分類、來源位置和 wowhead_url 欄位。不要編造缺失屬性，也不要假設隱藏附魔或寶石。",
             "請考慮該職業可能的天賦/職責，不要只假設一個專精。",
             "",
             "職業職責分析視角：",
@@ -1687,7 +2094,7 @@ local function BuildAIPrompt(profile, scope, filter, itemCount)
             "Export scope: " .. LocalizedScopeTitle(scope, promptLocale) .. "; filter: " .. LocalizedExportFilterTitle(filter, promptLocale) .. "; item count: " .. tostring(itemCount or 0) .. ".",
             "Current talents: " .. talentSummary .. ".",
             "Bank contents are the last saved snapshot. Treat bag and bank source labels as inventory location, not proof that an item is equipped.",
-            "Use item stats, item level, quality, equip slot, category, source location, and wowhead_url fields. Do not invent missing stats or assume hidden enchants/gems.",
+            "Use character_stats, chart_stats, strategy_book, item stats, item level, quality, equip slot, category, source location, and wowhead_url fields. Do not invent missing stats or assume hidden enchants/gems.",
             "Consider plausible class talents/specs instead of assuming one role.",
             "",
             "Class role lenses:",
@@ -2099,6 +2506,560 @@ local function AppendChartStatsText(lines, chartStats)
 
     lines[#lines + 1] = ""
 end
+local function FindEntryByKey(entries, key)
+    for index = 1, #(entries or {}) do
+        if entries[index] and entries[index].key == key then
+            return entries[index]
+        end
+    end
+
+    return nil
+end
+
+local function AttributeValue(characterStats, key)
+    local entry = FindEntryByKey(characterStats and characterStats.attributes, key)
+    return entry and entry.effective or nil
+end
+
+local function RatingBonus(characterStats, key)
+    local entry = FindEntryByKey(characterStats and characterStats.ratings, key)
+    return entry and entry.bonus or nil
+end
+
+local function BestSpellValue(entries, valueKey)
+    local best
+
+    for index = 1, #(entries or {}) do
+        local value = entries[index] and entries[index][valueKey]
+        if type(value) == "number" and (not best or value > best) then
+            best = value
+        end
+    end
+
+    return best
+end
+
+local function KnownAvoidanceBlock(chances)
+    chances = chances or {}
+    local total = 0
+    local seen = false
+
+    for _, value in ipairs({ chances.dodge, chances.parry, chances.block }) do
+        if type(value) == "number" then
+            total = total + value
+            seen = true
+        end
+    end
+
+    return seen and total or nil
+end
+
+local function ChartStatTotal(chartStats, token)
+    for index = 1, #((chartStats and chartStats.statTotals) or {}) do
+        local stat = chartStats.statTotals[index]
+        if stat and stat.token == token then
+            return stat
+        end
+    end
+
+    return nil
+end
+
+local function RoleGearHighlights(role, chartStats)
+    local highlights = {}
+
+    for index = 1, #(role.statTokens or {}) do
+        local stat = ChartStatTotal(chartStats, role.statTokens[index])
+        if stat then
+            highlights[#highlights + 1] = stat
+        end
+    end
+
+    return highlights
+end
+
+local function TalentPointsForTabs(talents, tabIndexes)
+    local total = 0
+
+    for index = 1, #(talents and talents.tabs or {}) do
+        local tab = talents.tabs[index]
+        for tabIndex = 1, #(tabIndexes or {}) do
+            if tab and tab.index == tabIndexes[tabIndex] then
+                total = total + (tonumber(tab.points) or 0)
+            end
+        end
+    end
+
+    return total
+end
+
+local function TalentPrimaryMatches(talents, tabIndexes)
+    local primaryIndex = talents and talents.primaryTabIndex
+
+    if not primaryIndex then
+        return false
+    end
+
+    for index = 1, #(tabIndexes or {}) do
+        if primaryIndex == tabIndexes[index] then
+            return true
+        end
+    end
+
+    return false
+end
+
+local function RoleConfidence(role, talents)
+    if not talents or not talents.available then
+        return 25
+    end
+
+    local talentPoints = TalentPointsForTabs(talents, role.talentTabs)
+    local confidence = 20 + math.min(60, talentPoints * 2)
+
+    if TalentPrimaryMatches(talents, role.talentTabs) then
+        confidence = confidence + 20
+    end
+
+    if confidence > 100 then
+        confidence = 100
+    end
+
+    return confidence
+end
+
+local function BuildRoleObservedStats(role, characterStats, chartStats)
+    local chances = characterStats and characterStats.chances or {}
+    local spell = characterStats and characterStats.spell or {}
+    local attackPower = characterStats and characterStats.attackPower or {}
+    local defense = characterStats and characterStats.defense or {}
+    local armor = characterStats and characterStats.armor or {}
+
+    return {
+        hit = {
+            melee = RatingBonus(characterStats, "melee_hit"),
+            ranged = RatingBonus(characterStats, "ranged_hit"),
+            spell = RatingBonus(characterStats, "spell_hit"),
+            expertise = RatingBonus(characterStats, "expertise"),
+        },
+        crit = {
+            melee = chances.meleeCrit,
+            ranged = chances.rangedCrit,
+            spellBest = BestSpellValue(chances.spellCrit, "crit"),
+        },
+        tank = {
+            defense = defense.effective,
+            armor = armor.effective,
+            stamina = AttributeValue(characterStats, "stamina"),
+            dodge = chances.dodge,
+            parry = chances.parry,
+            block = chances.block,
+            knownAvoidanceBlock = KnownAvoidanceBlock(chances),
+        },
+        power = {
+            attackPower = attackPower.melee and attackPower.melee.effective or nil,
+            rangedAttackPower = attackPower.ranged and attackPower.ranged.effective or nil,
+            spellPowerBest = BestSpellValue(spell.spellDamage, "bonus"),
+            healing = spell.healing,
+            manaRegenCasting = spell.manaRegenCasting,
+        },
+        gearStatHighlights = RoleGearHighlights(role, chartStats),
+    }
+end
+
+local function BenchmarkObservedValue(key, observed)
+    observed = observed or {}
+
+    if key == "defense_crit_immunity" then
+        return observed.tank and observed.tank.defense or nil
+    end
+
+    if key == "melee_special_hit" then
+        return observed.hit and observed.hit.melee or nil
+    end
+
+    if key == "ranged_hit" then
+        return observed.hit and observed.hit.ranged or nil
+    end
+
+    if key == "spell_hit" then
+        return observed.hit and observed.hit.spell or nil
+    end
+
+    if key == "expertise_dodge" then
+        return observed.hit and observed.hit.expertise or nil
+    end
+
+    if key == "avoidance_table" then
+        return observed.tank and observed.tank.knownAvoidanceBlock or nil
+    end
+
+    return nil
+end
+
+local function BenchmarkStatus(key, observed)
+    local benchmark = TBC_BENCHMARKS[key]
+    local value = BenchmarkObservedValue(key, observed)
+    local status = "unknown"
+
+    if type(value) == "number" and benchmark then
+        if value >= benchmark.value then
+            status = "meets_or_exceeds"
+        elseif value >= (benchmark.value * 0.9) then
+            status = "near"
+        else
+            status = "below"
+        end
+    end
+
+    return {
+        key = key,
+        label = benchmark and benchmark.label or key,
+        observed = value,
+        target = benchmark and benchmark.value or nil,
+        unit = benchmark and benchmark.unit or nil,
+        status = status,
+        note = benchmark and benchmark.note or nil,
+    }
+end
+
+local function BuildRoleBenchmarks(role, observed)
+    local benchmarks = {}
+
+    for index = 1, #(role.benchmarkKeys or {}) do
+        benchmarks[#benchmarks + 1] = BenchmarkStatus(role.benchmarkKeys[index], observed)
+    end
+
+    return benchmarks
+end
+
+local function StrategyClassRoles(classToken)
+    local classBook = CLASS_STRATEGY_BOOK[ClassToken(classToken)]
+    return (classBook and classBook.roles) or DEFAULT_STRATEGY_ROLES
+end
+
+local function BuildStrategyBook(profile, chartStats)
+    local classToken = ClassToken(profile and profile.classEnglish or "UNKNOWN")
+    local characterStats = profile and profile.characterStats or BuildCharacterStatsSnapshot()
+    local race = characterStats and characterStats.race or GetPlayerRaceInfo()
+    local group = characterStats and characterStats.group or GetGroupContext()
+    local roles = {}
+    local sourceRoles = StrategyClassRoles(classToken)
+
+    for index = 1, #sourceRoles do
+        local role = sourceRoles[index]
+        local observed = BuildRoleObservedStats(role, characterStats, chartStats)
+        local talentPoints = TalentPointsForTabs(profile and profile.talents, role.talentTabs)
+        local primaryMatch = TalentPrimaryMatches(profile and profile.talents, role.talentTabs)
+        roles[#roles + 1] = {
+            key = role.key,
+            label = role.label,
+            confidence = RoleConfidence(role, profile and profile.talents),
+            talentPoints = talentPoints,
+            primaryTalentMatch = primaryMatch,
+            models = role.models or {},
+            priorities = role.priorities or {},
+            observed = observed,
+            benchmarks = BuildRoleBenchmarks(role, observed),
+            notes = {
+                "Mapped from class, race, current talent distribution, live character stats, and exported gear stat totals.",
+                "Use confidence as a role-lens hint, not a final spec declaration.",
+            },
+        }
+    end
+
+    table.sort(roles, function(left, right)
+        if left.confidence ~= right.confidence then
+            return left.confidence > right.confidence
+        end
+
+        return tostring(left.label) < tostring(right.label)
+    end)
+
+    return {
+        version = 1,
+        generatedAt = Now(),
+        classToken = classToken,
+        raceToken = race and race.english or "UNKNOWN",
+        groupType = group and group.type or "solo",
+        raceNotes = race and race.notes or {},
+        groupNotes = group and group.notes or {},
+        benchmarkReferences = TBC_BENCHMARKS,
+        roles = roles,
+    }
+end
+
+local function AppendCharacterStatsJson(lines, indent, characterStats, comma)
+    characterStats = characterStats or BuildCharacterStatsSnapshot()
+    AppendIndented(lines, indent, "\"character_stats\": {")
+    AppendIndented(lines, indent + 2, JsonField("updated_at", FormatTime(characterStats.updatedAt), true))
+    AppendIndented(lines, indent + 2, JsonField("api", characterStats.api or "paper_doll", true))
+    AppendIndented(lines, indent + 2, JsonField("level", characterStats.level, true))
+    AppendIndented(lines, indent + 2, "\"race\": {")
+    AppendIndented(lines, indent + 4, JsonField("localized", characterStats.race and characterStats.race.localized, true))
+    AppendIndented(lines, indent + 4, JsonField("token", characterStats.race and characterStats.race.english, true))
+    AppendIndented(lines, indent + 4, JsonField("id", characterStats.race and characterStats.race.id, true))
+    AppendIndented(lines, indent + 4, JsonField("faction", characterStats.race and characterStats.race.faction, true))
+    AppendIndented(lines, indent + 4, JsonField("faction_localized", characterStats.race and characterStats.race.factionLocalized, false))
+    AppendIndented(lines, indent + 2, "},")
+    AppendIndented(lines, indent + 2, "\"group\": {")
+    AppendIndented(lines, indent + 4, JsonField("type", characterStats.group and characterStats.group.type, true))
+    AppendIndented(lines, indent + 4, JsonField("size", characterStats.group and characterStats.group.size, true))
+    AppendIndented(lines, indent + 4, JsonField("party_members", characterStats.group and characterStats.group.partyMembers, true))
+    AppendIndented(lines, indent + 4, JsonField("raid_members", characterStats.group and characterStats.group.raidMembers, false))
+    AppendIndented(lines, indent + 2, "},")
+    AppendJsonObjectArray(lines, indent + 2, "attributes", characterStats.attributes, {
+        { name = "key", value = "key" },
+        { name = "label", value = "label" },
+        { name = "base", value = "base" },
+        { name = "effective", value = "effective" },
+        { name = "positive", value = "positive" },
+        { name = "negative", value = "negative" },
+    }, true)
+    AppendIndented(lines, indent + 2, "\"armor\": {")
+    AppendIndented(lines, indent + 4, JsonField("base", characterStats.armor and characterStats.armor.base, true))
+    AppendIndented(lines, indent + 4, JsonField("effective", characterStats.armor and characterStats.armor.effective, true))
+    AppendIndented(lines, indent + 4, JsonField("positive", characterStats.armor and characterStats.armor.positive, true))
+    AppendIndented(lines, indent + 4, JsonField("negative", characterStats.armor and characterStats.armor.negative, false))
+    AppendIndented(lines, indent + 2, "},")
+    AppendIndented(lines, indent + 2, "\"defense\": {")
+    AppendIndented(lines, indent + 4, JsonField("base", characterStats.defense and characterStats.defense.base, true))
+    AppendIndented(lines, indent + 4, JsonField("modifier", characterStats.defense and characterStats.defense.modifier, true))
+    AppendIndented(lines, indent + 4, JsonField("effective", characterStats.defense and characterStats.defense.effective, false))
+    AppendIndented(lines, indent + 2, "},")
+    AppendIndented(lines, indent + 2, "\"attack_power\": {")
+    AppendIndented(lines, indent + 4, JsonField("melee", characterStats.attackPower and characterStats.attackPower.melee and characterStats.attackPower.melee.effective, true))
+    AppendIndented(lines, indent + 4, JsonField("ranged", characterStats.attackPower and characterStats.attackPower.ranged and characterStats.attackPower.ranged.effective, false))
+    AppendIndented(lines, indent + 2, "},")
+    AppendJsonObjectArray(lines, indent + 2, "ratings", characterStats.ratings, {
+        { name = "key", value = "key" },
+        { name = "label", value = "label" },
+        { name = "global", value = "global" },
+        { name = "rating_id", value = "rating_id" },
+        { name = "rating", value = "rating" },
+        { name = "bonus", value = "bonus" },
+    }, true)
+    AppendIndented(lines, indent + 2, "\"chances\": {")
+    AppendIndented(lines, indent + 4, JsonField("melee_crit", characterStats.chances and characterStats.chances.meleeCrit, true))
+    AppendIndented(lines, indent + 4, JsonField("ranged_crit", characterStats.chances and characterStats.chances.rangedCrit, true))
+    AppendIndented(lines, indent + 4, JsonField("dodge", characterStats.chances and characterStats.chances.dodge, true))
+    AppendIndented(lines, indent + 4, JsonField("parry", characterStats.chances and characterStats.chances.parry, true))
+    AppendIndented(lines, indent + 4, JsonField("block", characterStats.chances and characterStats.chances.block, true))
+    AppendJsonObjectArray(lines, indent + 4, "spell_crit", characterStats.chances and characterStats.chances.spellCrit, {
+        { name = "key", value = "key" },
+        { name = "label", value = "label" },
+        { name = "crit", value = "crit" },
+    }, false)
+    AppendIndented(lines, indent + 2, "},")
+    AppendIndented(lines, indent + 2, "\"spell\": {")
+    AppendIndented(lines, indent + 4, JsonField("healing", characterStats.spell and characterStats.spell.healing, true))
+    AppendIndented(lines, indent + 4, JsonField("mana_regen_casting", characterStats.spell and characterStats.spell.manaRegenCasting, true))
+    AppendIndented(lines, indent + 4, JsonField("mana_regen_not_casting", characterStats.spell and characterStats.spell.manaRegenNotCasting, true))
+    AppendJsonObjectArray(lines, indent + 4, "spell_damage", characterStats.spell and characterStats.spell.spellDamage, {
+        { name = "key", value = "key" },
+        { name = "label", value = "label" },
+        { name = "bonus", value = "bonus" },
+    }, false)
+    AppendIndented(lines, indent + 2, "}")
+    AppendIndented(lines, indent, "}" .. (comma and "," or ""))
+end
+
+local function AppendObservedStatsJson(lines, indent, observed)
+    observed = observed or {}
+    AppendIndented(lines, indent, "\"observed\": {")
+    AppendIndented(lines, indent + 2, "\"hit\": {")
+    AppendIndented(lines, indent + 4, JsonField("melee", observed.hit and observed.hit.melee, true))
+    AppendIndented(lines, indent + 4, JsonField("ranged", observed.hit and observed.hit.ranged, true))
+    AppendIndented(lines, indent + 4, JsonField("spell", observed.hit and observed.hit.spell, true))
+    AppendIndented(lines, indent + 4, JsonField("expertise", observed.hit and observed.hit.expertise, false))
+    AppendIndented(lines, indent + 2, "},")
+    AppendIndented(lines, indent + 2, "\"crit\": {")
+    AppendIndented(lines, indent + 4, JsonField("melee", observed.crit and observed.crit.melee, true))
+    AppendIndented(lines, indent + 4, JsonField("ranged", observed.crit and observed.crit.ranged, true))
+    AppendIndented(lines, indent + 4, JsonField("spell_best", observed.crit and observed.crit.spellBest, false))
+    AppendIndented(lines, indent + 2, "},")
+    AppendIndented(lines, indent + 2, "\"tank\": {")
+    AppendIndented(lines, indent + 4, JsonField("defense", observed.tank and observed.tank.defense, true))
+    AppendIndented(lines, indent + 4, JsonField("armor", observed.tank and observed.tank.armor, true))
+    AppendIndented(lines, indent + 4, JsonField("stamina", observed.tank and observed.tank.stamina, true))
+    AppendIndented(lines, indent + 4, JsonField("dodge", observed.tank and observed.tank.dodge, true))
+    AppendIndented(lines, indent + 4, JsonField("parry", observed.tank and observed.tank.parry, true))
+    AppendIndented(lines, indent + 4, JsonField("block", observed.tank and observed.tank.block, true))
+    AppendIndented(lines, indent + 4, JsonField("known_avoidance_block", observed.tank and observed.tank.knownAvoidanceBlock, false))
+    AppendIndented(lines, indent + 2, "},")
+    AppendIndented(lines, indent + 2, "\"power\": {")
+    AppendIndented(lines, indent + 4, JsonField("attack_power", observed.power and observed.power.attackPower, true))
+    AppendIndented(lines, indent + 4, JsonField("ranged_attack_power", observed.power and observed.power.rangedAttackPower, true))
+    AppendIndented(lines, indent + 4, JsonField("spell_power_best", observed.power and observed.power.spellPowerBest, true))
+    AppendIndented(lines, indent + 4, JsonField("healing", observed.power and observed.power.healing, true))
+    AppendIndented(lines, indent + 4, JsonField("mana_regen_casting", observed.power and observed.power.manaRegenCasting, false))
+    AppendIndented(lines, indent + 2, "},")
+    AppendJsonObjectArray(lines, indent + 2, "gear_stat_highlights", observed.gearStatHighlights, {
+        { name = "token", value = "token" },
+        { name = "label", value = "label" },
+        { name = "value", value = "value" },
+        { name = "item_count", value = "itemCount" },
+        { name = "stack_count", value = "stackCount" },
+    }, false)
+    AppendIndented(lines, indent, "}")
+end
+
+local function AppendStrategyBookJson(lines, indent, strategyBook, comma)
+    strategyBook = strategyBook or BuildStrategyBook({}, BuildChartStats({}))
+    AppendIndented(lines, indent, "\"strategy_book\": {")
+    AppendIndented(lines, indent + 2, JsonField("version", strategyBook.version or 1, true))
+    AppendIndented(lines, indent + 2, JsonField("generated_at", FormatTime(strategyBook.generatedAt), true))
+    AppendIndented(lines, indent + 2, JsonField("class_token", strategyBook.classToken, true))
+    AppendIndented(lines, indent + 2, JsonField("race_token", strategyBook.raceToken, true))
+    AppendIndented(lines, indent + 2, JsonField("group_type", strategyBook.groupType, true))
+    AppendJsonStringArray(lines, indent + 2, "race_notes", strategyBook.raceNotes, true)
+    AppendJsonStringArray(lines, indent + 2, "group_notes", strategyBook.groupNotes, true)
+    AppendIndented(lines, indent + 2, "\"roles\": [")
+
+    for roleIndex = 1, #(strategyBook.roles or {}) do
+        local role = strategyBook.roles[roleIndex]
+        AppendIndented(lines, indent + 4, "{")
+        AppendIndented(lines, indent + 6, JsonField("key", role.key, true))
+        AppendIndented(lines, indent + 6, JsonField("label", role.label, true))
+        AppendIndented(lines, indent + 6, JsonField("confidence", role.confidence, true))
+        AppendIndented(lines, indent + 6, JsonField("talent_points", role.talentPoints, true))
+        AppendIndented(lines, indent + 6, JsonField("primary_talent_match", role.primaryTalentMatch and true or false, true))
+        AppendJsonStringArray(lines, indent + 6, "models", role.models, true)
+        AppendJsonStringArray(lines, indent + 6, "priorities", role.priorities, true)
+        AppendObservedStatsJson(lines, indent + 6, role.observed)
+        AppendIndented(lines, indent + 6, ",")
+        AppendJsonObjectArray(lines, indent + 6, "benchmarks", role.benchmarks, {
+            { name = "key", value = "key" },
+            { name = "label", value = "label" },
+            { name = "observed", value = "observed" },
+            { name = "target", value = "target" },
+            { name = "unit", value = "unit" },
+            { name = "status", value = "status" },
+            { name = "note", value = "note" },
+        }, true)
+        AppendJsonStringArray(lines, indent + 6, "notes", role.notes, false)
+        AppendIndented(lines, indent + 4, "}" .. (roleIndex < #(strategyBook.roles or {}) and "," or ""))
+    end
+
+    AppendIndented(lines, indent + 2, "]")
+    AppendIndented(lines, indent, "}" .. (comma and "," or ""))
+end
+
+local function PercentText(value)
+    if type(value) ~= "number" then
+        return "unknown"
+    end
+
+    return tostring(value) .. "%"
+end
+
+local function AppendCharacterStatsMarkdown(lines, characterStats)
+    characterStats = characterStats or BuildCharacterStatsSnapshot()
+    lines[#lines + 1] = "## Character Stats"
+    lines[#lines + 1] = ""
+    lines[#lines + 1] = "- Race: " .. tostring(characterStats.race and characterStats.race.localized or "Unknown") .. " (" .. tostring(characterStats.race and characterStats.race.english or "UNKNOWN") .. ")"
+    lines[#lines + 1] = "- Group: " .. tostring(characterStats.group and characterStats.group.type or "solo") .. "; size " .. tostring(characterStats.group and characterStats.group.size or 1)
+    lines[#lines + 1] = "- Defense: " .. tostring(characterStats.defense and characterStats.defense.effective or "unknown") .. "; Armor: " .. tostring(characterStats.armor and characterStats.armor.effective or "unknown")
+    lines[#lines + 1] = "- Hit: melee " .. PercentText(RatingBonus(characterStats, "melee_hit")) .. "; ranged " .. PercentText(RatingBonus(characterStats, "ranged_hit")) .. "; spell " .. PercentText(RatingBonus(characterStats, "spell_hit"))
+    lines[#lines + 1] = "- Crit: melee " .. PercentText(characterStats.chances and characterStats.chances.meleeCrit) .. "; ranged " .. PercentText(characterStats.chances and characterStats.chances.rangedCrit) .. "; spell best " .. PercentText(BestSpellValue(characterStats.chances and characterStats.chances.spellCrit, "crit"))
+    lines[#lines + 1] = ""
+end
+
+local function AppendStrategyBookMarkdown(lines, strategyBook)
+    strategyBook = strategyBook or BuildStrategyBook({}, BuildChartStats({}))
+    lines[#lines + 1] = "## Strategy Book"
+    lines[#lines + 1] = ""
+    lines[#lines + 1] = "- Class: " .. tostring(strategyBook.classToken or "UNKNOWN")
+    lines[#lines + 1] = "- Race: " .. tostring(strategyBook.raceToken or "UNKNOWN")
+    lines[#lines + 1] = "- Group context: " .. tostring(strategyBook.groupType or "solo")
+
+    for index = 1, #(strategyBook.raceNotes or {}) do
+        lines[#lines + 1] = "- Race note: " .. strategyBook.raceNotes[index]
+    end
+
+    for index = 1, #(strategyBook.groupNotes or {}) do
+        lines[#lines + 1] = "- Group note: " .. strategyBook.groupNotes[index]
+    end
+
+    lines[#lines + 1] = ""
+
+    for roleIndex = 1, #(strategyBook.roles or {}) do
+        local role = strategyBook.roles[roleIndex]
+        lines[#lines + 1] = "### " .. tostring(role.label or role.key)
+        lines[#lines + 1] = ""
+        lines[#lines + 1] = "- Confidence: " .. tostring(role.confidence or 0) .. "; talent points: " .. tostring(role.talentPoints or 0) .. "; primary match: " .. tostring(role.primaryTalentMatch and "yes" or "no")
+        lines[#lines + 1] = "- Models: " .. table.concat(role.models or {}, ", ")
+        lines[#lines + 1] = "- Priorities: " .. table.concat(role.priorities or {}, ", ")
+        lines[#lines + 1] = "- Observed hit: melee " .. PercentText(role.observed and role.observed.hit and role.observed.hit.melee) .. "; ranged " .. PercentText(role.observed and role.observed.hit and role.observed.hit.ranged) .. "; spell " .. PercentText(role.observed and role.observed.hit and role.observed.hit.spell)
+        lines[#lines + 1] = "- Observed crit: melee " .. PercentText(role.observed and role.observed.crit and role.observed.crit.melee) .. "; ranged " .. PercentText(role.observed and role.observed.crit and role.observed.crit.ranged) .. "; spell best " .. PercentText(role.observed and role.observed.crit and role.observed.crit.spellBest)
+        lines[#lines + 1] = "- Tank model: defense " .. tostring(role.observed and role.observed.tank and role.observed.tank.defense or "unknown") .. "; armor " .. tostring(role.observed and role.observed.tank and role.observed.tank.armor or "unknown") .. "; known avoidance/block " .. PercentText(role.observed and role.observed.tank and role.observed.tank.knownAvoidanceBlock)
+
+        if #(role.benchmarks or {}) > 0 then
+            lines[#lines + 1] = "- Benchmarks:"
+            for benchmarkIndex = 1, #role.benchmarks do
+                local benchmark = role.benchmarks[benchmarkIndex]
+                lines[#lines + 1] = "  - " .. tostring(benchmark.label or benchmark.key) .. ": " .. tostring(benchmark.status) .. " (observed " .. tostring(benchmark.observed or "unknown") .. "; target " .. tostring(benchmark.target or "unknown") .. " " .. tostring(benchmark.unit or "") .. ")"
+            end
+        end
+
+        if role.observed and role.observed.gearStatHighlights and #role.observed.gearStatHighlights > 0 then
+            lines[#lines + 1] = "- Gear stat highlights: " .. FormatStats(role.observed.gearStatHighlights)
+        end
+
+        lines[#lines + 1] = ""
+    end
+end
+
+local function AppendCharacterStatsText(lines, characterStats)
+    characterStats = characterStats or BuildCharacterStatsSnapshot()
+    lines[#lines + 1] = "CHARACTER STATS"
+    lines[#lines + 1] = "Race: " .. tostring(characterStats.race and characterStats.race.localized or "Unknown") .. " (" .. tostring(characterStats.race and characterStats.race.english or "UNKNOWN") .. ")"
+    lines[#lines + 1] = "Group: " .. tostring(characterStats.group and characterStats.group.type or "solo") .. "; size " .. tostring(characterStats.group and characterStats.group.size or 1)
+    lines[#lines + 1] = "Defense: " .. tostring(characterStats.defense and characterStats.defense.effective or "unknown") .. "; Armor: " .. tostring(characterStats.armor and characterStats.armor.effective or "unknown")
+    lines[#lines + 1] = "Hit: melee " .. PercentText(RatingBonus(characterStats, "melee_hit")) .. "; ranged " .. PercentText(RatingBonus(characterStats, "ranged_hit")) .. "; spell " .. PercentText(RatingBonus(characterStats, "spell_hit"))
+    lines[#lines + 1] = "Crit: melee " .. PercentText(characterStats.chances and characterStats.chances.meleeCrit) .. "; ranged " .. PercentText(characterStats.chances and characterStats.chances.rangedCrit) .. "; spell best " .. PercentText(BestSpellValue(characterStats.chances and characterStats.chances.spellCrit, "crit"))
+    lines[#lines + 1] = ""
+end
+
+local function AppendStrategyBookText(lines, strategyBook)
+    strategyBook = strategyBook or BuildStrategyBook({}, BuildChartStats({}))
+    lines[#lines + 1] = "STRATEGY BOOK"
+    lines[#lines + 1] = "Class: " .. tostring(strategyBook.classToken or "UNKNOWN")
+    lines[#lines + 1] = "Race: " .. tostring(strategyBook.raceToken or "UNKNOWN")
+    lines[#lines + 1] = "Group context: " .. tostring(strategyBook.groupType or "solo")
+
+    for index = 1, #(strategyBook.raceNotes or {}) do
+        lines[#lines + 1] = "Race note: " .. strategyBook.raceNotes[index]
+    end
+
+    for index = 1, #(strategyBook.groupNotes or {}) do
+        lines[#lines + 1] = "Group note: " .. strategyBook.groupNotes[index]
+    end
+
+    lines[#lines + 1] = ""
+
+    for roleIndex = 1, #(strategyBook.roles or {}) do
+        local role = strategyBook.roles[roleIndex]
+        lines[#lines + 1] = "[" .. tostring(role.label or role.key) .. "]"
+        lines[#lines + 1] = "Confidence: " .. tostring(role.confidence or 0) .. "; talent points: " .. tostring(role.talentPoints or 0) .. "; primary match: " .. tostring(role.primaryTalentMatch and "yes" or "no")
+        lines[#lines + 1] = "Models: " .. table.concat(role.models or {}, ", ")
+        lines[#lines + 1] = "Priorities: " .. table.concat(role.priorities or {}, ", ")
+        lines[#lines + 1] = "Observed hit: melee " .. PercentText(role.observed and role.observed.hit and role.observed.hit.melee) .. "; ranged " .. PercentText(role.observed and role.observed.hit and role.observed.hit.ranged) .. "; spell " .. PercentText(role.observed and role.observed.hit and role.observed.hit.spell)
+        lines[#lines + 1] = "Observed crit: melee " .. PercentText(role.observed and role.observed.crit and role.observed.crit.melee) .. "; ranged " .. PercentText(role.observed and role.observed.crit and role.observed.crit.ranged) .. "; spell best " .. PercentText(role.observed and role.observed.crit and role.observed.crit.spellBest)
+        lines[#lines + 1] = "Tank model: defense " .. tostring(role.observed and role.observed.tank and role.observed.tank.defense or "unknown") .. "; armor " .. tostring(role.observed and role.observed.tank and role.observed.tank.armor or "unknown") .. "; known avoidance/block " .. PercentText(role.observed and role.observed.tank and role.observed.tank.knownAvoidanceBlock)
+
+        for benchmarkIndex = 1, #(role.benchmarks or {}) do
+            local benchmark = role.benchmarks[benchmarkIndex]
+            lines[#lines + 1] = "Benchmark: " .. tostring(benchmark.label or benchmark.key) .. " = " .. tostring(benchmark.status) .. " (observed " .. tostring(benchmark.observed or "unknown") .. "; target " .. tostring(benchmark.target or "unknown") .. " " .. tostring(benchmark.unit or "") .. ")"
+        end
+
+        if role.observed and role.observed.gearStatHighlights and #role.observed.gearStatHighlights > 0 then
+            lines[#lines + 1] = "Gear stat highlights: " .. FormatStats(role.observed.gearStatHighlights)
+        end
+
+        lines[#lines + 1] = ""
+    end
+end
 local function CategoryFromInfo(classID, itemType, equipSlot)
     if IsEquippableSlot(equipSlot) then
         return "Gear"
@@ -2195,6 +3156,7 @@ function Addon:GetProfile()
         bags = { updatedAt = 0, items = {} },
         bank = { updatedAt = 0, items = {} },
         talents = { updatedAt = 0, available = false, summary = "", tabs = {} },
+        characterStats = { updatedAt = 0, api = "unavailable" },
     }
 
     local profile = self.db.profiles[key]
@@ -2207,6 +3169,7 @@ function Addon:GetProfile()
     profile.bags = profile.bags or { updatedAt = 0, items = {} }
     profile.bank = profile.bank or { updatedAt = 0, items = {} }
     profile.talents = profile.talents or { updatedAt = 0, available = false, summary = "", tabs = {} }
+    profile.characterStats = profile.characterStats or { updatedAt = 0, api = "unavailable" }
     profile.localDB = profile.localDB or {
         name = DB_NAME,
         version = 1,
@@ -2412,14 +3375,31 @@ function Addon:SaveTalentSnapshot()
     return snapshot
 end
 
+function Addon:SaveCharacterStatsSnapshot()
+    local profile = self:GetProfile()
+    local snapshot = BuildCharacterStatsSnapshot()
+    profile.characterStats = snapshot
+    profile.localDB = profile.localDB or { name = DB_NAME, version = 1 }
+    profile.localDB.name = DB_NAME
+    profile.localDB.version = 1
+    profile.localDB.savedAt = Now()
+    profile.localDB.characterStatsSavedAt = snapshot.updatedAt
+    profile.localDB.race = snapshot.race and snapshot.race.localized or nil
+    profile.localDB.raceToken = snapshot.race and snapshot.race.english or nil
+    profile.localDB.groupType = snapshot.group and snapshot.group.type or nil
+    return snapshot
+end
+
 function Addon:ScanBags()
     self:SaveTalentSnapshot()
+    self:SaveCharacterStatsSnapshot()
     local snapshot = self:ScanContainers("bags", self:GetBagContainers())
     return self:SaveSnapshot("bags", snapshot)
 end
 
 function Addon:ScanBank()
     self:SaveTalentSnapshot()
+    self:SaveCharacterStatsSnapshot()
     local snapshot = self:ScanContainers("bank", self:GetBankContainers())
     return self:SaveSnapshot("bank", snapshot)
 end
@@ -2544,7 +3524,7 @@ function Addon:CollectExportItems(scope, filter)
     return items
 end
 
-function Addon:BuildMarkdownExport(scope, profile, items, categories, buckets, filter, prompt, chartStats)
+function Addon:BuildMarkdownExport(scope, profile, items, categories, buckets, filter, prompt, chartStats, characterStats, strategyBook)
     local lines = {
         "# TBC Gear Exporter",
         "",
@@ -2569,6 +3549,8 @@ function Addon:BuildMarkdownExport(scope, profile, items, categories, buckets, f
         "",
     }
 
+    AppendCharacterStatsMarkdown(lines, characterStats)
+    AppendStrategyBookMarkdown(lines, strategyBook)
     AppendChartStatsMarkdown(lines, chartStats)
 
     if #items == 0 then
@@ -2604,7 +3586,7 @@ function Addon:BuildMarkdownExport(scope, profile, items, categories, buckets, f
     return table.concat(lines, "\n")
 end
 
-function Addon:BuildTextExport(scope, profile, items, categories, buckets, filter, prompt, chartStats)
+function Addon:BuildTextExport(scope, profile, items, categories, buckets, filter, prompt, chartStats, characterStats, strategyBook)
     local lines = {
         "TBC Gear Exporter",
         "",
@@ -2625,6 +3607,8 @@ function Addon:BuildTextExport(scope, profile, items, categories, buckets, filte
         "",
     }
 
+    AppendCharacterStatsText(lines, characterStats)
+    AppendStrategyBookText(lines, strategyBook)
     AppendChartStatsText(lines, chartStats)
 
     if #items == 0 then
@@ -2669,6 +3653,7 @@ function Addon:BuildExport(scope, format, filter)
 
     local profile = self:GetProfile()
     profile.talents = self:SaveTalentSnapshot()
+    profile.characterStats = self:SaveCharacterStatsSnapshot()
     local items = self:CollectExportItems(scope, filter)
     local prompt = BuildAIPrompt(profile, scope, filter, #items)
     local buckets = {}
@@ -2743,6 +3728,7 @@ function Addon:BuildExport(scope, format, filter)
     end
 
     local chartStats = BuildChartStats(items)
+    local strategyBook = BuildStrategyBook(profile, chartStats)
 
     local lines = {
         "AI_READY_WOW_TBC_INVENTORY_EXPORT v1",
@@ -2769,8 +3755,12 @@ function Addon:BuildExport(scope, format, filter)
     AppendIndented(lines, 4, JsonField("client_locale", profile.locale or "enUS", true))
     AppendIndented(lines, 4, JsonField("class", profile.classLocalized or profile.classEnglish or "Unknown Class", true))
     AppendIndented(lines, 4, JsonField("class_token", profile.classEnglish or "UNKNOWN", true))
-    AppendIndented(lines, 4, JsonField("class_id", profile.classID, false))
+    AppendIndented(lines, 4, JsonField("class_id", profile.classID, true))
+    AppendIndented(lines, 4, JsonField("race", profile.characterStats and profile.characterStats.race and profile.characterStats.race.localized, true))
+    AppendIndented(lines, 4, JsonField("race_token", profile.characterStats and profile.characterStats.race and profile.characterStats.race.english, true))
+    AppendIndented(lines, 4, JsonField("group_type", profile.characterStats and profile.characterStats.group and profile.characterStats.group.type, false))
     AppendIndented(lines, 2, "},")
+    AppendCharacterStatsJson(lines, 2, profile.characterStats, true)
     AppendTalentJson(lines, 2, profile.talents, true)
     AppendIndented(lines, 2, "\"local_db\": {")
     AppendIndented(lines, 4, JsonField("name", DB_NAME, true))
@@ -2779,7 +3769,11 @@ function Addon:BuildExport(scope, format, filter)
     AppendIndented(lines, 4, JsonField("bank_item_count", profile.localDB and profile.localDB.bankItemCount, true))
     AppendIndented(lines, 4, JsonField("talent_saved_at", FormatTime(profile.localDB and profile.localDB.talentSavedAt), true))
     AppendIndented(lines, 4, JsonField("talent_summary", profile.localDB and profile.localDB.talentSummary, true))
-    AppendIndented(lines, 4, JsonField("talent_primary_tree", profile.localDB and profile.localDB.talentPrimaryTab, false))
+    AppendIndented(lines, 4, JsonField("talent_primary_tree", profile.localDB and profile.localDB.talentPrimaryTab, true))
+    AppendIndented(lines, 4, JsonField("character_stats_saved_at", FormatTime(profile.localDB and profile.localDB.characterStatsSavedAt), true))
+    AppendIndented(lines, 4, JsonField("race", profile.localDB and profile.localDB.race, true))
+    AppendIndented(lines, 4, JsonField("race_token", profile.localDB and profile.localDB.raceToken, true))
+    AppendIndented(lines, 4, JsonField("group_type", profile.localDB and profile.localDB.groupType, false))
     AppendIndented(lines, 2, "},")
     AppendIndented(lines, 2, "\"export\": {")
     AppendIndented(lines, 4, JsonField("scope", scope, true))
@@ -2814,6 +3808,7 @@ function Addon:BuildExport(scope, format, filter)
 
     AppendIndented(lines, 2, "],")
     AppendChartStatsJson(lines, 2, chartStats, true)
+    AppendStrategyBookJson(lines, 2, strategyBook, true)
     AppendIndented(lines, 2, "\"items\": [")
 
     local itemPosition = 0
@@ -2876,11 +3871,11 @@ function Addon:BuildExport(scope, format, filter)
     end
 
     if format == "markdown" then
-        return self:BuildMarkdownExport(scope, profile, items, categories, buckets, filter, prompt, chartStats)
+        return self:BuildMarkdownExport(scope, profile, items, categories, buckets, filter, prompt, chartStats, profile.characterStats, strategyBook)
     end
 
     if format == "text" then
-        return self:BuildTextExport(scope, profile, items, categories, buckets, filter, prompt, chartStats)
+        return self:BuildTextExport(scope, profile, items, categories, buckets, filter, prompt, chartStats, profile.characterStats, strategyBook)
     end
 
     return aiText
@@ -3696,6 +4691,27 @@ if _G.TBCGearExporterTestMode then
         LocalizedRoleContext = LocalizedRoleContext,
         LocalizedOutputRequests = LocalizedOutputRequests,
         BuildAIPrompt = BuildAIPrompt,
+        SafeApiCall = SafeApiCall,
+        SafeNumber = SafeNumber,
+        SumKnown = SumKnown,
+        RaceToken = RaceToken,
+        GetPlayerRaceInfo = GetPlayerRaceInfo,
+        GetGroupContext = GetGroupContext,
+        BuildCharacterStatsSnapshot = BuildCharacterStatsSnapshot,
+        FindEntryByKey = FindEntryByKey,
+        AttributeValue = AttributeValue,
+        RatingBonus = RatingBonus,
+        BestSpellValue = BestSpellValue,
+        KnownAvoidanceBlock = KnownAvoidanceBlock,
+        TalentPointsForTabs = TalentPointsForTabs,
+        TalentPrimaryMatches = TalentPrimaryMatches,
+        RoleConfidence = RoleConfidence,
+        BuildRoleObservedStats = BuildRoleObservedStats,
+        BenchmarkObservedValue = BenchmarkObservedValue,
+        BenchmarkStatus = BenchmarkStatus,
+        BuildRoleBenchmarks = BuildRoleBenchmarks,
+        StrategyClassRoles = StrategyClassRoles,
+        BuildStrategyBook = BuildStrategyBook,
         NormalizedStackCount = NormalizedStackCount,
         RoundedStatNumber = RoundedStatNumber,
         BuildChartStats = BuildChartStats,

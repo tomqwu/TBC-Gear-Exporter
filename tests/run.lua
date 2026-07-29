@@ -113,6 +113,9 @@ mock = {
     unspentTalentPoints = 0,
     badTalentTabs = {},
     badTalentInfo = {},
+    character = {},
+    group = {},
+    ratings = {},
 }
 
 local function itemLink(itemID, name, qualityColor)
@@ -335,6 +338,61 @@ local function resetTalentMock()
     }
 end
 
+local function resetCharacterMock()
+    mock.character = {
+        raceLocalized = "Tauren",
+        raceEnglish = "TAUREN",
+        raceID = 6,
+        faction = "Horde",
+        factionLocalized = "Horde",
+        level = 70,
+        attributes = {
+            [1] = { base = 90, effective = 130, positive = 40, negative = 0 },
+            [2] = { base = 110, effective = 180, positive = 70, negative = 0 },
+            [3] = { base = 140, effective = 520, positive = 380, negative = 0 },
+            [4] = { base = 95, effective = 240, positive = 145, negative = 0 },
+            [5] = { base = 80, effective = 170, positive = 90, negative = 0 },
+        },
+        armor = { base = 12000, effective = 13500, armor = 13500, positive = 1500, negative = 0 },
+        defense = { base = 350, modifier = 145 },
+        attackPower = { base = 900, positive = 120, negative = -20 },
+        rangedAttackPower = { base = 500, positive = 60, negative = 0 },
+        meleeCrit = 28.5,
+        rangedCrit = 31,
+        dodge = 35,
+        parry = 0,
+        block = 0,
+        spellCrit = { [2] = 3, [3] = 8.25, [4] = 7.5, [5] = 6, [6] = 19.25, [7] = 13.5 },
+        spellDamage = { [2] = 120, [3] = 260, [4] = 250, [5] = 180, [6] = 400, [7] = 320 },
+        healing = 900,
+        manaRegenCasting = 82,
+        manaRegenNotCasting = 126,
+    }
+    mock.group = {
+        inRaid = true,
+        inGroup = true,
+        raidMembers = 25,
+        partyMembers = 4,
+    }
+    mock.ratings = {
+        [_G.CR_DEFENSE_SKILL or 1] = { rating = 225, bonus = 25 },
+        [_G.CR_DODGE or 2] = { rating = 44, bonus = 2.1 },
+        [_G.CR_PARRY or 3] = { rating = 0, bonus = 0 },
+        [_G.CR_BLOCK or 4] = { rating = 0, bonus = 0 },
+        [_G.CR_HIT_MELEE or 5] = { rating = 134, bonus = 8.5 },
+        [_G.CR_HIT_RANGED or 6] = { rating = 142, bonus = 9 },
+        [_G.CR_HIT_SPELL or 7] = { rating = 155, bonus = 12.25 },
+        [_G.CR_CRIT_MELEE or 8] = { rating = 86, bonus = 3.9 },
+        [_G.CR_CRIT_RANGED or 9] = { rating = 92, bonus = 4.1 },
+        [_G.CR_CRIT_SPELL or 10] = { rating = 76, bonus = 3.4 },
+        [_G.CR_HASTE_MELEE or 11] = { rating = 0, bonus = 0 },
+        [_G.CR_HASTE_RANGED or 12] = { rating = 0, bonus = 0 },
+        [_G.CR_HASTE_SPELL or 13] = { rating = 0, bonus = 0 },
+        [_G.CR_EXPERTISE or 14] = { rating = 16, bonus = 4 },
+        [_G.CR_RESILIENCE_PLAYER_DAMAGE_TAKEN or 15] = { rating = 0, bonus = 0 },
+    }
+end
+
 local function installGlobals()
     _G.TBCGearExporterTestMode = true
     _G.BANK_CONTAINER = -1
@@ -354,6 +412,22 @@ local function installGlobals()
     _G.ITEM_QUALITY3_DESC = "Rare"
     _G.ITEM_QUALITY4_DESC = "Epic"
     _G.ITEM_MOD_CUSTOM_POWER_SHORT = "+%d Custom Power"
+    _G.CR_DEFENSE_SKILL = 1
+    _G.CR_DODGE = 2
+    _G.CR_PARRY = 3
+    _G.CR_BLOCK = 4
+    _G.CR_HIT_MELEE = 5
+    _G.CR_HIT_RANGED = 6
+    _G.CR_HIT_SPELL = 7
+    _G.CR_CRIT_MELEE = 8
+    _G.CR_CRIT_RANGED = 9
+    _G.CR_CRIT_SPELL = 10
+    _G.CR_HASTE_MELEE = 11
+    _G.CR_HASTE_RANGED = 12
+    _G.CR_HASTE_SPELL = 13
+    _G.CR_EXPERTISE = 14
+    _G.CR_RESILIENCE_PLAYER_DAMAGE_TAKEN = 15
+    resetCharacterMock()
 
     _G.DEFAULT_CHAT_FRAME = {
         AddMessage = function(_, message)
@@ -405,6 +479,131 @@ local function installGlobals()
         end
 
         return "Unknown", "UNKNOWN", nil
+    end
+
+    _G.UnitRace = function(unit)
+        if unit == "player" then
+            return mock.character.raceLocalized, mock.character.raceEnglish, mock.character.raceID
+        end
+        return "Unknown", "UNKNOWN", nil
+    end
+
+    _G.UnitFactionGroup = function(unit)
+        if unit == "player" then
+            return mock.character.faction, mock.character.factionLocalized
+        end
+        return nil, nil
+    end
+
+    _G.IsInRaid = function()
+        return mock.group.inRaid
+    end
+
+    _G.IsInGroup = function()
+        return mock.group.inGroup
+    end
+
+    _G.GetNumGroupMembers = function()
+        return mock.group.raidMembers or 0
+    end
+
+    _G.GetNumSubgroupMembers = function()
+        return mock.group.partyMembers or 0
+    end
+
+    _G.GetNumRaidMembers = function()
+        return mock.group.legacyRaidMembers or mock.group.raidMembers or 0
+    end
+
+    _G.GetNumPartyMembers = function()
+        return mock.group.legacyPartyMembers or mock.group.partyMembers or 0
+    end
+
+    _G.UnitLevel = function(unit)
+        return unit == "player" and mock.character.level or nil
+    end
+
+    _G.UnitStat = function(unit, index)
+        local stat = unit == "player" and mock.character.attributes[index] or nil
+        if not stat then
+            return nil
+        end
+        return stat.base, stat.effective, stat.positive, stat.negative
+    end
+
+    _G.UnitArmor = function(unit)
+        local armor = unit == "player" and mock.character.armor or nil
+        if not armor then
+            return nil
+        end
+        return armor.base, armor.effective, armor.armor, armor.positive, armor.negative
+    end
+
+    _G.UnitDefense = function(unit)
+        if unit == "player" then
+            return mock.character.defense.base, mock.character.defense.modifier
+        end
+        return nil
+    end
+
+    _G.UnitAttackPower = function(unit)
+        if unit == "player" then
+            return mock.character.attackPower.base, mock.character.attackPower.positive, mock.character.attackPower.negative
+        end
+        return nil
+    end
+
+    _G.UnitRangedAttackPower = function(unit)
+        if unit == "player" then
+            return mock.character.rangedAttackPower.base, mock.character.rangedAttackPower.positive, mock.character.rangedAttackPower.negative
+        end
+        return nil
+    end
+
+    _G.GetCombatRating = function(ratingID)
+        local rating = mock.ratings[ratingID]
+        return rating and rating.rating or nil
+    end
+
+    _G.GetCombatRatingBonus = function(ratingID)
+        local rating = mock.ratings[ratingID]
+        return rating and rating.bonus or nil
+    end
+
+    _G.GetCritChance = function()
+        return mock.character.meleeCrit
+    end
+
+    _G.GetRangedCritChance = function()
+        return mock.character.rangedCrit
+    end
+
+    _G.GetDodgeChance = function()
+        return mock.character.dodge
+    end
+
+    _G.GetParryChance = function()
+        return mock.character.parry
+    end
+
+    _G.GetBlockChance = function()
+        return mock.character.block
+    end
+
+    _G.GetSpellCritChance = function(index)
+        return mock.character.spellCrit[index]
+    end
+
+    _G.GetSpellBonusDamage = function(index)
+        return mock.character.spellDamage[index]
+    end
+
+    _G.GetSpellBonusHealing = function()
+        return mock.character.healing
+    end
+
+    _G.GetManaRegen = function()
+        return mock.character.manaRegenCasting, mock.character.manaRegenNotCasting
     end
 
     resetTalentMock()
@@ -619,6 +818,7 @@ local function resetRuntimeState(Addon)
     mock.messages = {}
     mock.timers = {}
     resetTalentMock()
+    resetCharacterMock()
     _G.TBCGearExporterDB = nil
     Addon.db = nil
     Addon.pendingBagScan = nil
@@ -1339,6 +1539,162 @@ test("talent snapshot captures current build and fallback paths", function()
     _G.GetTalentInfo = oldTalentInfo
 end)
 
+test("character stats snapshot captures paper doll stats and fallbacks", function()
+    resetRuntimeState(Addon)
+
+    assertEquals(private.SafeNumber("12.5"), 12.5)
+    assertEquals(private.SafeNumber("bad"), nil)
+    assertEquals(private.SumKnown(nil, 2, -1), 1)
+    assertEquals(private.SumKnown(nil, nil), nil)
+    assertEquals(private.RaceToken("Blood Elf"), "BLOODELF")
+    assertEquals(private.RaceToken("blood_elves"), "BLOODELF")
+    assertEquals(private.RaceToken("Night Elves"), "NIGHTELF")
+    assertEquals(private.RaceToken("Scourge"), "SCOURGE")
+    assertEquals(private.RaceToken(""), "UNKNOWN")
+    assertEquals(private.RaceToken("Tauren"), "TAUREN")
+
+    local snapshot = private.BuildCharacterStatsSnapshot()
+    assertEquals(snapshot.api, "paper_doll")
+    assertEquals(snapshot.level, 70)
+    assertEquals(snapshot.race.localized, "Tauren")
+    assertEquals(snapshot.race.english, "TAUREN")
+    assertEquals(snapshot.race.faction, "Horde")
+    assertContains(snapshot.race.notes[1], "Stamina")
+    assertEquals(snapshot.group.type, "raid")
+    assertEquals(snapshot.group.size, 25)
+    assertContains(snapshot.group.notes[1], "Raid context")
+    assertEquals(private.AttributeValue(snapshot, "stamina"), 520)
+    assertEquals(private.AttributeValue(snapshot, "missing"), nil)
+    assertEquals(snapshot.armor.effective, 13500)
+    assertEquals(snapshot.defense.effective, 495)
+    assertEquals(snapshot.attackPower.melee.effective, 1000)
+    assertEquals(snapshot.attackPower.ranged.effective, 560)
+    assertEquals(private.RatingBonus(snapshot, "melee_hit"), 8.5)
+    assertEquals(private.RatingBonus(snapshot, "missing"), nil)
+    assertEquals(private.BestSpellValue(snapshot.chances.spellCrit, "crit"), 19.25)
+    assertEquals(private.BestSpellValue(nil, "crit"), nil)
+    assertEquals(private.KnownAvoidanceBlock(snapshot.chances), 35)
+    assertEquals(private.KnownAvoidanceBlock({}), nil)
+    assertEquals(snapshot.spell.healing, 900)
+    assertEquals(snapshot.spell.manaRegenCasting, 82)
+    assertEquals(private.BestSpellValue(snapshot.spell.spellDamage, "bonus"), 400)
+
+    mock.group.inRaid = false
+    mock.group.raidMembers = 0
+    mock.group.inGroup = true
+    mock.group.partyMembers = 4
+    local party = private.GetGroupContext()
+    assertEquals(party.type, "party")
+    assertEquals(party.size, 5)
+    assertContains(party.notes[1], "Party context")
+
+    mock.group.inGroup = false
+    mock.group.partyMembers = 0
+    local solo = private.GetGroupContext()
+    assertEquals(solo.type, "solo")
+    assertEquals(solo.size, 1)
+    assertContains(solo.notes[1], "Solo context")
+
+    local oldRace = _G.UnitRace
+    local oldFaction = _G.UnitFactionGroup
+    _G.UnitRace = function()
+        error("race failure")
+    end
+    _G.UnitFactionGroup = function()
+        return "Alliance"
+    end
+    local unknownRace = private.GetPlayerRaceInfo()
+    assertEquals(unknownRace.localized, "Unknown Race")
+    assertEquals(unknownRace.english, "UNKNOWN")
+    assertEquals(unknownRace.factionLocalized, "Alliance")
+    _G.UnitRace = nil
+    _G.UnitFactionGroup = nil
+    unknownRace = private.GetPlayerRaceInfo()
+    assertEquals(unknownRace.localized, "Unknown Race")
+    _G.UnitRace = oldRace
+    _G.UnitFactionGroup = oldFaction
+
+    local oldDefense = _G.UnitDefense
+    local oldAttackPower = _G.UnitAttackPower
+    local oldRangedAttackPower = _G.UnitRangedAttackPower
+    _G.UnitDefense = nil
+    _G.UnitAttackPower = nil
+    _G.UnitRangedAttackPower = nil
+    snapshot = private.BuildCharacterStatsSnapshot()
+    assertEquals(snapshot.defense.effective, nil)
+    assertEquals(snapshot.attackPower.melee.effective, nil)
+    assertEquals(snapshot.attackPower.ranged.effective, nil)
+    _G.UnitDefense = oldDefense
+    _G.UnitAttackPower = oldAttackPower
+    _G.UnitRangedAttackPower = oldRangedAttackPower
+end)
+
+test("strategy book ranks role models from talents gear race and raid context", function()
+    resetRuntimeState(Addon)
+    Addon:ScanBags()
+    Addon:ScanBank()
+
+    local profile = Addon:GetProfile()
+    local items = Addon:CollectExportItems("all")
+    local chartStats = private.BuildChartStats(items)
+    local strategyBook = private.BuildStrategyBook(profile, chartStats)
+    local firstRole = strategyBook.roles[1]
+
+    assertEquals(strategyBook.classToken, "DRUID")
+    assertEquals(strategyBook.raceToken, "TAUREN")
+    assertEquals(strategyBook.groupType, "raid")
+    assertContains(strategyBook.raceNotes[1], "Stamina")
+    assertContains(strategyBook.groupNotes[1], "Raid context")
+    assertEquals(firstRole.key, "bear_tank")
+    assertEquals(firstRole.label, "Bear Feral Tank")
+    assertEquals(firstRole.confidence, 100)
+    assertEquals(firstRole.talentPoints, 46)
+    assertTrue(firstRole.primaryTalentMatch)
+    assertEquals(firstRole.observed.hit.melee, 8.5)
+    assertEquals(firstRole.observed.hit.ranged, 9)
+    assertEquals(firstRole.observed.hit.spell, 12.25)
+    assertEquals(firstRole.observed.hit.expertise, 4)
+    assertEquals(firstRole.observed.crit.melee, 28.5)
+    assertEquals(firstRole.observed.crit.ranged, 31)
+    assertEquals(firstRole.observed.crit.spellBest, 19.25)
+    assertEquals(firstRole.observed.tank.defense, 495)
+    assertEquals(firstRole.observed.tank.armor, 13500)
+    assertEquals(firstRole.observed.tank.knownAvoidanceBlock, 35)
+    assertEquals(firstRole.observed.power.attackPower, 1000)
+    assertEquals(firstRole.observed.power.rangedAttackPower, 560)
+    assertEquals(firstRole.observed.power.spellPowerBest, 400)
+    assertEquals(firstRole.observed.power.healing, 900)
+    assertTrue(#firstRole.observed.gearStatHighlights >= 1)
+
+    assertEquals(private.TalentPointsForTabs(profile.talents, { 2 }), 46)
+    assertTrue(private.TalentPrimaryMatches(profile.talents, { 2 }))
+    assertFalse(private.TalentPrimaryMatches({ available = true }, { 1 }))
+    assertEquals(private.RoleConfidence({ talentTabs = { 1 } }, nil), 25)
+    assertEquals(private.RoleConfidence({ talentTabs = { 1 } }, profile.talents), 20)
+    assertEquals(private.RoleConfidence({ talentTabs = { 2 } }, profile.talents), 100)
+    assertEquals(private.StrategyClassRoles("MONK")[1].key, "general_inventory")
+
+    local observed = private.BuildRoleObservedStats(firstRole, profile.characterStats, chartStats)
+    assertEquals(private.BenchmarkObservedValue("defense_crit_immunity", observed), 495)
+    assertEquals(private.BenchmarkObservedValue("melee_special_hit", observed), 8.5)
+    assertEquals(private.BenchmarkObservedValue("ranged_hit", observed), 9)
+    assertEquals(private.BenchmarkObservedValue("spell_hit", observed), 12.25)
+    assertEquals(private.BenchmarkObservedValue("expertise_dodge", observed), 4)
+    assertEquals(private.BenchmarkObservedValue("avoidance_table", observed), 35)
+    assertEquals(private.BenchmarkObservedValue("unknown", observed), nil)
+    assertEquals(private.BenchmarkStatus("defense_crit_immunity", observed).status, "meets_or_exceeds")
+    assertEquals(private.BenchmarkStatus("melee_special_hit", observed).status, "near")
+    assertEquals(private.BenchmarkStatus("unknown", observed).status, "unknown")
+    assertEquals(private.BuildRoleBenchmarks({ benchmarkKeys = { "defense_crit_immunity" } }, observed)[1].target, 490)
+
+    mock.talentTabs[1].points = 0
+    mock.talentTabs[2].points = 0
+    mock.talentTabs[3].points = 0
+    local emptyTalents = private.BuildTalentSnapshot()
+    assertEquals(emptyTalents.primaryTab, nil)
+    assertEquals(emptyTalents.primaryTabIndex, nil)
+end)
+
 test("container item values cover missing API, table info, tuple info, and link fallback", function()
     local oldInfo = _G.GetContainerItemInfo
     local oldContainerInfo = _G.C_Container.GetContainerItemInfo
@@ -1545,6 +1901,7 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(allExport, "AI_READY_WOW_TBC_INVENTORY_EXPORT v1")
     assertContains(allExport, "AI_PROMPT:")
     assertContains(allExport, "职业职责分析视角：")
+    assertContains(allExport, "character_stats、chart_stats、strategy_book")
     assertContains(allExport, "熊形态野性坦克")
     assertContains(allExport, "当前天赋：0/46/15; primary=Feral Combat; points=61")
     assertTrue(allExport:find("AI_PROMPT:", 1, true) < allExport:find("DATA_JSON:", 1, true))
@@ -1560,6 +1917,14 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(allExport, "\"client_locale\": \"zhCN\"")
     assertContains(allExport, "\"class\": \"Druid\"")
     assertContains(allExport, "\"class_id\": 11")
+    assertContains(allExport, "\"race\": \"Tauren\"")
+    assertContains(allExport, "\"race_token\": \"TAUREN\"")
+    assertContains(allExport, "\"group_type\": \"raid\"")
+    assertContains(allExport, "\"character_stats\": {")
+    assertContains(allExport, "\"level\": 70")
+    assertContains(allExport, "\"effective\": 495")
+    assertContains(allExport, "\"melee_crit\": 28.5")
+    assertContains(allExport, "\"healing\": 900")
     assertContains(allExport, "\"current_talents\": {")
     assertContains(allExport, "\"summary\": \"0/46/15\"")
     assertContains(allExport, "\"primary_tree\": \"Feral Combat\"")
@@ -1572,6 +1937,7 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(allExport, "\"name\": \"TBCGearExporterDB\"")
     assertContains(allExport, "\"talent_summary\": \"0/46/15\"")
     assertContains(allExport, "\"talent_primary_tree\": \"Feral Combat\"")
+    assertContains(allExport, "\"character_stats_saved_at\":")
     assertContains(allExport, "\"bag_item_count\":")
     assertContains(allExport, "\"name\": \"Gear\"")
     assertContains(allExport, "\"name\": \"Consumables\"")
@@ -1592,6 +1958,13 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(allExport, "\"equip_slot_counts\": [")
     assertContains(allExport, "\"slot\": \"INVTYPE_HEAD\"")
     assertContains(allExport, "\"stat_totals\": [")
+    assertContains(allExport, "\"strategy_book\": {")
+    assertContains(allExport, "\"label\": \"Bear Feral Tank\"")
+    assertContains(allExport, "\"confidence\": 100")
+    assertContains(allExport, "\"tank_mitigation\"")
+    assertContains(allExport, "\"known_avoidance_block\": 35")
+    assertContains(allExport, "\"status\": \"meets_or_exceeds\"")
+    assertContains(allExport, "\"status\": \"near\"")
     assertContains(allExport, "\"label\": \"Crit Rating\"")
     assertContains(allExport, "\"value\": 16")
 
@@ -1639,6 +2012,11 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(markdownExport, "## Export Metadata")
     assertContains(markdownExport, "Current talents: 0/46/15; primary=Feral Combat; points=61")
     assertContains(markdownExport, "Client locale: zhCN")
+    assertContains(markdownExport, "## Character Stats")
+    assertContains(markdownExport, "## Strategy Book")
+    assertContains(markdownExport, "### Bear Feral Tank")
+    assertContains(markdownExport, "Observed hit: melee 8.5%")
+    assertContains(markdownExport, "Defense crit-immunity benchmark: meets_or_exceeds")
     assertContains(markdownExport, "## Gear")
     assertContains(markdownExport, "<span style=\"color:#0070DD\"><strong>Defender Helm</strong></span>")
     assertContains(markdownExport, "Rare (#0070DD)")
@@ -1656,6 +2034,11 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(textExport, "熊形态野性坦克")
     assertContains(textExport, "Current talents: 0/46/15; primary=Feral Combat; points=61")
     assertContains(textExport, "Client locale: zhCN")
+    assertContains(textExport, "CHARACTER STATS")
+    assertContains(textExport, "STRATEGY BOOK")
+    assertContains(textExport, "[Bear Feral Tank]")
+    assertContains(textExport, "Observed hit: melee 8.5%")
+    assertContains(textExport, "Benchmark: Defense crit-immunity benchmark = meets_or_exceeds")
     assertContains(textExport, "[Gear]")
     assertContains(textExport, "- |cff0070ddDefender Helm|r")
     assertContains(textExport, "Rare (#0070DD)")

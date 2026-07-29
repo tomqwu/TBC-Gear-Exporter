@@ -1,9 +1,9 @@
 ## Interface: 20505
 ## Interface-BCC: 20505
 ## Title: TBC Gear Exporter
-## Notes: Saves bag and bank items by category and exports AI-ready copyable text.
+## Notes: Saves bag, bank, talents, and stats by category with AI-ready strategy exports.
 ## Author: Codex
-## Version: 0.1.3
+## Version: 0.1.4
 ## SavedVariables: TBCGearExporterDB
 ## X-Curse-Project-ID: 1567147
 
