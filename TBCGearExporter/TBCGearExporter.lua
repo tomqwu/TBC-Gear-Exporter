@@ -749,6 +749,7 @@ local UI_STRINGS = {
         analysis_unknown = "unknown",
         analysis_character = "Character: %s (%s), race %s, %s size %s",
         analysis_talents = "Talents: %s",
+        analysis_talent_points = "Talent points: %s; selected talents: %s",
         analysis_defense = "Defense/mitigation: defense %s, armor %s, stamina %s, dodge %s, parry %s, block %s",
         analysis_hit = "Hit model: melee %s, ranged %s, spell %s, expertise %s",
         analysis_crit = "Crit model: melee %s, ranged %s, best spell %s",
@@ -816,6 +817,7 @@ local UI_STRINGS = {
         analysis_unknown = "未知",
         analysis_character = "角色：%s（%s），种族 %s，%s 人数 %s",
         analysis_talents = "天赋：%s",
+        analysis_talent_points = "天赋点：%s；已点天赋：%s",
         analysis_defense = "防御/免伤：防御 %s，护甲 %s，耐力 %s，躲闪 %s，招架 %s，格挡 %s",
         analysis_hit = "命中模型：近战 %s，远程 %s，法术 %s，熟练 %s",
         analysis_crit = "暴击模型：近战 %s，远程 %s，最佳法术 %s",
@@ -883,6 +885,7 @@ local UI_STRINGS = {
         analysis_unknown = "未知",
         analysis_character = "角色：%s（%s），種族 %s，%s 人數 %s",
         analysis_talents = "天賦：%s",
+        analysis_talent_points = "天賦點：%s；已點天賦：%s",
         analysis_defense = "防禦/減傷：防禦 %s，護甲 %s，耐力 %s，閃躲 %s，招架 %s，格擋 %s",
         analysis_hit = "命中模型：近戰 %s，遠程 %s，法術 %s，熟練 %s",
         analysis_crit = "致命模型：近戰 %s，遠程 %s，最佳法術 %s",
@@ -1828,17 +1831,70 @@ local function AppendJsonStringArray(lines, indent, key, values, comma)
     AppendIndented(lines, indent, "]" .. (comma and "," or ""))
 end
 
+local function TalentTreePoints(talents)
+    local points = {}
+
+    for index = 1, #(talents and talents.treePoints or {}) do
+        local tree = talents.treePoints[index]
+        points[#points + 1] = {
+            index = tree.index,
+            name = tree.name,
+            points = tonumber(tree.points or tree.pointsSpent) or 0,
+            pointsSpent = tonumber(tree.pointsSpent or tree.points) or 0,
+            isPrimary = tree.isPrimary and true or false,
+        }
+    end
+
+    if #points == 0 then
+        for index = 1, #(talents and talents.tabs or {}) do
+            local tab = talents.tabs[index]
+            local treeIndex = tab and tab.index or index
+            local spent = tonumber(tab and (tab.pointsSpent or tab.points)) or 0
+            points[#points + 1] = {
+                index = treeIndex,
+                name = tab and tab.name or ("Tree " .. tostring(index)),
+                points = spent,
+                pointsSpent = spent,
+                isPrimary = talents and talents.primaryTabIndex == treeIndex or false,
+            }
+        end
+    end
+
+    return points
+end
+
+local function TalentSnapshotHasSpentPoints(talents)
+    return (tonumber(talents and (talents.pointsSpent or talents.totalPoints)) or 0) > 0
+end
+
 local function AppendTalentJson(lines, indent, talents, comma)
     talents = talents or {}
+    local treePoints = TalentTreePoints(talents)
+
     AppendIndented(lines, indent, "\"current_talents\": {")
     AppendIndented(lines, indent + 2, JsonField("updated_at", FormatTime(talents.updatedAt), true))
     AppendIndented(lines, indent + 2, JsonField("api", talents.api or "unavailable", true))
     AppendIndented(lines, indent + 2, JsonField("available", talents.available and true or false, true))
     AppendIndented(lines, indent + 2, JsonField("summary", talents.summary or "", true))
     AppendIndented(lines, indent + 2, JsonField("total_points", talents.totalPoints or 0, true))
+    AppendIndented(lines, indent + 2, JsonField("points_spent", talents.pointsSpent or talents.totalPoints or 0, true))
     AppendIndented(lines, indent + 2, JsonField("unspent_points", talents.unspentPoints, true))
     AppendIndented(lines, indent + 2, JsonField("primary_tree", talents.primaryTab, true))
     AppendIndented(lines, indent + 2, JsonField("primary_tree_index", talents.primaryTabIndex, true))
+    AppendIndented(lines, indent + 2, "\"tree_points\": [")
+
+    for treeIndex = 1, #treePoints do
+        local tree = treePoints[treeIndex]
+        AppendIndented(lines, indent + 4, "{ "
+            .. JsonField("index", tree.index, true) .. " "
+            .. JsonField("name", tree.name, true) .. " "
+            .. JsonField("points", tree.points or 0, true) .. " "
+            .. JsonField("points_spent", tree.pointsSpent or tree.points or 0, true) .. " "
+            .. JsonField("is_primary", tree.isPrimary and true or false, false)
+            .. " }" .. (treeIndex < #treePoints and "," or ""))
+    end
+
+    AppendIndented(lines, indent + 2, "],")
     AppendIndented(lines, indent + 2, "\"trees\": [")
 
     for tabIndex = 1, #(talents.tabs or {}) do
@@ -1847,6 +1903,7 @@ local function AppendTalentJson(lines, indent, talents, comma)
         AppendIndented(lines, indent + 6, JsonField("index", tab.index, true))
         AppendIndented(lines, indent + 6, JsonField("name", tab.name, true))
         AppendIndented(lines, indent + 6, JsonField("points", tab.points or 0, true))
+        AppendIndented(lines, indent + 6, JsonField("points_spent", tab.pointsSpent or tab.points or 0, true))
         AppendIndented(lines, indent + 6, JsonField("icon", tab.icon, true))
         AppendIndented(lines, indent + 6, JsonField("background", tab.background, true))
         AppendIndented(lines, indent + 6, "\"talents\": [")
@@ -1859,8 +1916,13 @@ local function AppendTalentJson(lines, indent, talents, comma)
                 .. JsonField("name", talent.name, true) .. " "
                 .. JsonField("tier", talent.tier, true) .. " "
                 .. JsonField("column", talent.column, true) .. " "
+                .. JsonField("points", talent.points or talent.rank or 0, true) .. " "
+                .. JsonField("points_spent", talent.pointsSpent or talent.rank or 0, true) .. " "
                 .. JsonField("rank", talent.rank or 0, true) .. " "
+                .. JsonField("current_rank", talent.rank or 0, true) .. " "
                 .. JsonField("max_rank", talent.maxRank or 0, true) .. " "
+                .. JsonField("is_exceptional", talent.isExceptional and true or false, true) .. " "
+                .. JsonField("meets_prereq", talent.meetsPrereq ~= false, true) .. " "
                 .. JsonField("icon", talent.icon, false)
                 .. " }" .. suffix)
         end
@@ -1872,7 +1934,6 @@ local function AppendTalentJson(lines, indent, talents, comma)
     AppendIndented(lines, indent + 2, "]")
     AppendIndented(lines, indent, "}" .. (comma and "," or ""))
 end
-
 local function LocationLabel(source, bagID, slotID)
     if source == "bags" then
         if bagID == 0 then
@@ -2302,10 +2363,12 @@ local function BuildTalentSnapshot()
         api = TalentApiName(),
         available = false,
         totalPoints = 0,
+        pointsSpent = 0,
         unspentPoints = UnspentTalentPoints(),
         primaryTab = nil,
         primaryTabIndex = nil,
         summary = "",
+        treePoints = {},
         tabs = {},
     }
 
@@ -2326,10 +2389,13 @@ local function BuildTalentSnapshot()
             name = name or ("Tree " .. tostring(tabIndex)),
             icon = icon,
             points = pointsSpent,
+            pointsSpent = pointsSpent,
+            talentPoints = pointsSpent,
             background = background,
             talents = {},
         }
 
+        local talentRankTotal = 0
         local talentCount = tonumber(SafeTalentCall(GetNumTalents, tabIndex)) or 0
         for talentIndex = 1, talentCount do
             local talentName, talentIcon, tier, column, rank, maxRank, isExceptional, meetsPrereq = SafeTalentCall(GetTalentInfo, tabIndex, talentIndex)
@@ -2337,13 +2403,17 @@ local function BuildTalentSnapshot()
             maxRank = tonumber(maxRank) or 0
 
             if rank > 0 then
+                talentRankTotal = talentRankTotal + rank
                 tab.talents[#tab.talents + 1] = {
                     index = talentIndex,
                     name = talentName or ("Talent " .. tostring(talentIndex)),
                     icon = talentIcon,
                     tier = tonumber(tier),
                     column = tonumber(column),
+                    points = rank,
+                    pointsSpent = rank,
                     rank = rank,
+                    currentRank = rank,
                     maxRank = maxRank,
                     isExceptional = isExceptional and true or false,
                     meetsPrereq = meetsPrereq ~= false,
@@ -2351,10 +2421,25 @@ local function BuildTalentSnapshot()
             end
         end
 
+        if talentRankTotal > pointsSpent then
+            pointsSpent = talentRankTotal
+        end
+
+        tab.points = pointsSpent
+        tab.pointsSpent = pointsSpent
+        tab.talentPoints = pointsSpent
         snapshot.available = true
         snapshot.totalPoints = snapshot.totalPoints + pointsSpent
+        snapshot.pointsSpent = snapshot.totalPoints
         summaryParts[#summaryParts + 1] = tostring(pointsSpent)
         snapshot.tabs[#snapshot.tabs + 1] = tab
+        snapshot.treePoints[#snapshot.treePoints + 1] = {
+            index = tab.index,
+            name = tab.name,
+            points = pointsSpent,
+            pointsSpent = pointsSpent,
+            isPrimary = false,
+        }
 
         if pointsSpent > primaryPoints then
             primaryPoints = pointsSpent
@@ -2364,12 +2449,80 @@ local function BuildTalentSnapshot()
     end
 
     snapshot.summary = table.concat(summaryParts, "/")
+    snapshot.pointsSpent = snapshot.totalPoints
     if primaryPoints <= 0 then
         snapshot.primaryTab = nil
         snapshot.primaryTabIndex = nil
     end
 
+    for index = 1, #(snapshot.treePoints or {}) do
+        snapshot.treePoints[index].isPrimary = snapshot.primaryTabIndex == snapshot.treePoints[index].index
+    end
+
     return snapshot
+end
+
+local function TalentTreePointsText(talents, locale)
+    local promptLocale = PromptLocale(locale)
+
+    if not talents or not talents.available then
+        return (promptLocale == "enUS") and "unavailable" or "不可用"
+    end
+
+    local treePoints = TalentTreePoints(talents)
+    if #treePoints == 0 then
+        return (promptLocale == "enUS") and "none" or "无"
+    end
+
+    local parts = {}
+    for index = 1, #treePoints do
+        local tree = treePoints[index]
+        parts[#parts + 1] = tostring(tree.name or ("Tree " .. tostring(tree.index or index))) .. " " .. tostring(tree.pointsSpent or tree.points or 0)
+    end
+
+    return table.concat(parts, ", ")
+end
+
+local function TalentSelectedPointsText(talents, locale, maxCount)
+    local promptLocale = PromptLocale(locale)
+
+    if not talents or not talents.available then
+        return (promptLocale == "enUS") and "unavailable" or "不可用"
+    end
+
+    local parts = {}
+    local omitted = 0
+    maxCount = maxCount or 10
+
+    for tabIndex = 1, #(talents.tabs or {}) do
+        local tab = talents.tabs[tabIndex]
+        for talentIndex = 1, #(tab and tab.talents or {}) do
+            local talent = tab.talents[talentIndex]
+            local spent = tonumber(talent and (talent.pointsSpent or talent.points or talent.rank)) or 0
+            if spent > 0 then
+                if #parts < maxCount then
+                    parts[#parts + 1] = tostring(talent.name or ("Talent " .. tostring(talent.index or talentIndex)))
+                        .. " " .. tostring(spent) .. "/" .. tostring(talent.maxRank or spent)
+                else
+                    omitted = omitted + 1
+                end
+            end
+        end
+    end
+
+    if #parts == 0 then
+        return (promptLocale == "enUS") and "none" or "无"
+    end
+
+    if omitted > 0 then
+        if promptLocale == "enUS" then
+            parts[#parts + 1] = "+" .. tostring(omitted) .. " more"
+        else
+            parts[#parts + 1] = "另 " .. tostring(omitted) .. " 个"
+        end
+    end
+
+    return table.concat(parts, ", ")
 end
 
 local function TalentSummaryText(talents, locale)
@@ -2384,7 +2537,8 @@ local function TalentSummaryText(talents, locale)
     local parts = {
         tostring(talents.summary or ""),
         "primary=" .. tostring(primary),
-        "points=" .. tostring(talents.totalPoints or 0),
+        "points=" .. tostring(talents.totalPoints or talents.pointsSpent or 0),
+        "trees=" .. TalentTreePointsText(talents, locale),
     }
 
     if unspent ~= nil then
@@ -2393,7 +2547,6 @@ local function TalentSummaryText(talents, locale)
 
     return table.concat(parts, "; ")
 end
-
 local function ClassRoleContext(classToken)
     classToken = ClassToken(classToken)
     return CLASS_ROLE_CONTEXT[classToken] or DEFAULT_ROLE_CONTEXT
@@ -2446,6 +2599,7 @@ local function BuildAIPrompt(profile, scope, filter, itemCount)
             "客户端语言：" .. tostring(locale) .. "；请使用与客户端一致的语言回答，并保留物品原始本地化名称。",
             "导出范围：" .. LocalizedScopeTitle(scope, promptLocale) .. "；过滤器：" .. LocalizedExportFilterTitle(filter, promptLocale) .. "；物品数量：" .. tostring(itemCount or 0) .. "。",
             "当前天赋：" .. talentSummary .. "。",
+            "请优先使用 current_talents.tree_points、current_talents.trees[].points_spent 和每个已点天赋的 points_spent/rank 来判断当前天赋点数。",
             "银行内容是最后一次保存的快照。背包/银行来源只代表库存位置，不代表物品已经装备。",
             "请使用 character_stats、chart_stats、strategy_book、物品属性、物品等级、品质、装备栏位、分类、来源位置和 wowhead_url 字段。不要编造缺失属性，也不要假设隐藏附魔或宝石。",
             "请考虑该职业可能的天赋/职责，不要只假设一个专精。",
@@ -2460,6 +2614,7 @@ local function BuildAIPrompt(profile, scope, filter, itemCount)
             "客戶端語言：" .. tostring(locale) .. "；請使用與客戶端一致的語言回答，並保留物品原始在地化名稱。",
             "匯出範圍：" .. LocalizedScopeTitle(scope, promptLocale) .. "；過濾器：" .. LocalizedExportFilterTitle(filter, promptLocale) .. "；物品數量：" .. tostring(itemCount or 0) .. "。",
             "目前天賦：" .. talentSummary .. "。",
+            "請優先使用 current_talents.tree_points、current_talents.trees[].points_spent 和每個已點天賦的 points_spent/rank 來判斷目前天賦點數。",
             "銀行內容是最後一次儲存的快照。背包/銀行來源只代表庫存位置，不代表物品已經裝備。",
             "請使用 character_stats、chart_stats、strategy_book、物品屬性、物品等級、品質、裝備欄位、分類、來源位置和 wowhead_url 欄位。不要編造缺失屬性，也不要假設隱藏附魔或寶石。",
             "請考慮該職業可能的天賦/職責，不要只假設一個專精。",
@@ -2474,6 +2629,7 @@ local function BuildAIPrompt(profile, scope, filter, itemCount)
             "Client locale: " .. tostring(locale) .. ". Answer in the client locale when possible and preserve localized item names.",
             "Export scope: " .. LocalizedScopeTitle(scope, promptLocale) .. "; filter: " .. LocalizedExportFilterTitle(filter, promptLocale) .. "; item count: " .. tostring(itemCount or 0) .. ".",
             "Current talents: " .. talentSummary .. ".",
+            "Use current_talents.tree_points, current_talents.trees[].points_spent, and each selected talent points_spent/rank to anchor the current talent distribution.",
             "Bank contents are the last saved snapshot. Treat bag and bank source labels as inventory location, not proof that an item is equipped.",
             "Use character_stats, chart_stats, strategy_book, item stats, item level, quality, equip slot, category, source location, and wowhead_url fields. Do not invent missing stats or assume hidden enchants/gems.",
             "Consider plausible class talents/specs instead of assuming one role.",
@@ -3574,6 +3730,7 @@ local function BuildStatsAnalysisText(profile, chartStats, strategyBook)
             AnalysisGroupType(group.type or "solo", locale),
             tostring(group.size or 1)),
         LForLocale(locale, "analysis_talents", TalentSummaryText(profile.talents, locale)),
+        LForLocale(locale, "analysis_talent_points", TalentTreePointsText(profile.talents, locale), TalentSelectedPointsText(profile.talents, locale, 8)),
         LForLocale(locale, "analysis_defense",
             AnalysisValue(defense.effective, nil, locale),
             AnalysisValue(armor.effective, nil, locale),
@@ -3948,7 +4105,15 @@ end
 
 function Addon:SaveTalentSnapshot()
     local profile = self:GetProfile()
+    local previous = profile.talents
     local snapshot = BuildTalentSnapshot()
+
+    if TalentSnapshotHasSpentPoints(previous)
+        and not TalentSnapshotHasSpentPoints(snapshot)
+        and (tonumber(snapshot.unspentPoints) or 0) <= 0 then
+        snapshot = previous
+    end
+
     profile.talents = snapshot
     profile.localDB = profile.localDB or { name = DB_NAME, version = 1 }
     profile.localDB.name = DB_NAME
@@ -3958,6 +4123,8 @@ function Addon:SaveTalentSnapshot()
     profile.localDB.talentSummary = snapshot.summary
     profile.localDB.talentPrimaryTab = snapshot.primaryTab
     profile.localDB.talentTotalPoints = snapshot.totalPoints
+    profile.localDB.talentPointsSpent = snapshot.pointsSpent or snapshot.totalPoints
+    profile.localDB.talentTreePoints = TalentTreePointsText(snapshot, profile.locale)
     return snapshot
 end
 
@@ -4125,6 +4292,8 @@ function Addon:BuildMarkdownExport(scope, profile, items, categories, buckets, f
         "- Character: " .. tostring(profile.player or "Unknown Player") .. " - " .. tostring(profile.realm or "Unknown Realm"),
         "- Class: " .. tostring(profile.classLocalized or profile.classEnglish or "Unknown Class"),
         "- Current talents: " .. TalentSummaryText(profile.talents, profile.locale),
+        "- Talent points: " .. TalentTreePointsText(profile.talents, profile.locale),
+        "- Selected talents: " .. TalentSelectedPointsText(profile.talents, profile.locale, 12),
         "- Client locale: " .. tostring(profile.locale or "enUS"),
         "- Local DB: " .. DB_NAME .. " saved at " .. FormatTime(profile.localDB and profile.localDB.savedAt),
         "- Scope: " .. ScopeTitle(scope),
@@ -4183,6 +4352,8 @@ function Addon:BuildTextExport(scope, profile, items, categories, buckets, filte
         "Character: " .. tostring(profile.player or "Unknown Player") .. " - " .. tostring(profile.realm or "Unknown Realm"),
         "Class: " .. tostring(profile.classLocalized or profile.classEnglish or "Unknown Class"),
         "Current talents: " .. TalentSummaryText(profile.talents, profile.locale),
+        "Talent points: " .. TalentTreePointsText(profile.talents, profile.locale),
+        "Selected talents: " .. TalentSelectedPointsText(profile.talents, profile.locale, 12),
         "Client locale: " .. tostring(profile.locale or "enUS"),
         "Local DB: " .. DB_NAME .. " saved at " .. FormatTime(profile.localDB and profile.localDB.savedAt),
         "Scope: " .. ScopeTitle(scope),
@@ -4356,6 +4527,9 @@ function Addon:BuildExport(scope, format, filter)
     AppendIndented(lines, 4, JsonField("talent_saved_at", FormatTime(profile.localDB and profile.localDB.talentSavedAt), true))
     AppendIndented(lines, 4, JsonField("talent_summary", profile.localDB and profile.localDB.talentSummary, true))
     AppendIndented(lines, 4, JsonField("talent_primary_tree", profile.localDB and profile.localDB.talentPrimaryTab, true))
+    AppendIndented(lines, 4, JsonField("talent_total_points", profile.localDB and profile.localDB.talentTotalPoints, true))
+    AppendIndented(lines, 4, JsonField("talent_points_spent", profile.localDB and profile.localDB.talentPointsSpent, true))
+    AppendIndented(lines, 4, JsonField("talent_tree_points", profile.localDB and profile.localDB.talentTreePoints, true))
     AppendIndented(lines, 4, JsonField("character_stats_saved_at", FormatTime(profile.localDB and profile.localDB.characterStatsSavedAt), true))
     AppendIndented(lines, 4, JsonField("race", profile.localDB and profile.localDB.race, true))
     AppendIndented(lines, 4, JsonField("race_token", profile.localDB and profile.localDB.raceToken, true))
@@ -5192,6 +5366,7 @@ function Addon:OnAddonLoaded(loadedName)
 
     SafeRegister("PLAYER_LOGIN")
     SafeRegister("PLAYER_TALENT_UPDATE")
+    SafeRegister("CHARACTER_POINTS_CHANGED")
     SafeRegister("BAG_OPEN")
     SafeRegister("BAG_UPDATE")
     SafeRegister("BAG_UPDATE_DELAYED")
@@ -5220,7 +5395,7 @@ function Addon:OnEvent(eventName, ...)
         return
     end
 
-    if eventName == "PLAYER_TALENT_UPDATE" then
+    if eventName == "PLAYER_TALENT_UPDATE" or eventName == "CHARACTER_POINTS_CHANGED" then
         self:SaveTalentSnapshot()
         return
     end
@@ -5337,6 +5512,10 @@ if _G.TBCGearExporterTestMode then
         GetPlayerClassInfo = GetPlayerClassInfo,
         TalentApiName = TalentApiName,
         BuildTalentSnapshot = BuildTalentSnapshot,
+        TalentTreePoints = TalentTreePoints,
+        TalentTreePointsText = TalentTreePointsText,
+        TalentSelectedPointsText = TalentSelectedPointsText,
+        TalentSnapshotHasSpentPoints = TalentSnapshotHasSpentPoints,
         TalentSummaryText = TalentSummaryText,
         ClassRoleContext = ClassRoleContext,
         LocalizedRoleContext = LocalizedRoleContext,

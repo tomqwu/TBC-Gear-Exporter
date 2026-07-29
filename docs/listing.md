@@ -17,7 +17,7 @@ It scans visible bags, bank containers, current talents, and character-sheet sta
 ### Key Features
 
 - Saves bag and bank snapshots locally per character.
-- Saves current talent tree points, primary tree, total/unspent points, and selected talent ranks.
+- Saves current talent tree points, explicit `tree_points`, per-tree `points_spent`, primary tree, total/unspent points, and selected talent `points_spent`/`rank` values.
 - Saves live race, faction, level, raid/party context, attributes, armor, defense, attack power, combat ratings, crit/avoidance chances, spell damage, healing, and mana regen.
 - Scans bags when you open your bags, and scans bank contents when the bank is open.
 - Prints scan/debug lines in chat so you know when the local database changed.
@@ -40,7 +40,7 @@ The default AI Text export starts with an `AI_PROMPT` section and then includes 
 The prompt includes:
 
 - Character name, realm, class, and client locale.
-- Current talent build summary and selected ranked talents.
+- Current talent build summary, tree point distribution, and selected ranked talents with points spent.
 - Live character stats, race, raid/party context, and strategy-book benchmarks for hit, crit, defense, avoidance, threat, mitigation, healing, mana, and DPS.
 - Export scope and active filter.
 - Class-aware role context, such as tank, DPS, caster, or healer evaluation lenses.
