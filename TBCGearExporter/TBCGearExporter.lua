@@ -726,6 +726,7 @@ local UI_STRINGS = {
         select_button = "Select",
         source_label = "Source:",
         local_db_label = "Local DB",
+        overview_tab = "Overview",
         items_tab = "Items",
         stats_analysis_tab = "Stats Analysis",
         text_export_tab = "Text Export",
@@ -745,6 +746,16 @@ local UI_STRINGS = {
         status_generated = "%s export generated from saved local DB with filter: %s. Press Ctrl+C to copy.",
         status_visual = "Visual item view updated: %d items. Use Text Export to copy AI-ready data.",
         status_analysis = "Stats analysis updated: %d role models. Use Text Export to copy AI-ready data.",
+        status_overview = "Overview updated: %d items, %d role models. Use Text Export to copy AI-ready data.",
+        overview_title = "Overview",
+        overview_inventory = "Inventory: %d item lines, %d stacks, %d gear, %d equippable",
+        overview_talents = "Talents: %s; selected: %s",
+        overview_stats = "Core stats: defense %s, armor %s, melee hit %s, spell hit %s, melee crit %s, best spell crit %s",
+        overview_categories = "Categories: %s",
+        overview_quality = "Quality: %s",
+        overview_top_stats = "Top gear stats: %s",
+        overview_roles_title = "Top role lenses",
+        overview_role = "%s - confidence %s, talent points %s, models %s",
         analysis_title = "Stats Analysis",
         analysis_unknown = "unknown",
         analysis_character = "Character: %s (%s), race %s, %s size %s",
@@ -794,6 +805,7 @@ local UI_STRINGS = {
         select_button = "全选",
         source_label = "来源：",
         local_db_label = "本地数据库",
+        overview_tab = "总览",
         items_tab = "物品",
         stats_analysis_tab = "属性分析",
         text_export_tab = "文本导出",
@@ -813,6 +825,16 @@ local UI_STRINGS = {
         status_generated = "%s 已从本地数据库生成，过滤：%s。按 Ctrl+C 复制。",
         status_visual = "物品图标视图已更新：%d 件。切到文本导出即可复制 AI 数据。",
         status_analysis = "属性分析已更新：%d 个职责模型。切到文本导出即可复制 AI 数据。",
+        status_overview = "总览已更新：%d 件物品，%d 个职责模型。切到文本导出即可复制 AI 数据。",
+        overview_title = "总览",
+        overview_inventory = "库存：%d 条物品，%d 堆叠，%d 件装备，%d 件可装备",
+        overview_talents = "天赋：%s；已点：%s",
+        overview_stats = "核心属性：防御 %s，护甲 %s，近战命中 %s，法术命中 %s，近战暴击 %s，最佳法术暴击 %s",
+        overview_categories = "分类：%s",
+        overview_quality = "品质：%s",
+        overview_top_stats = "装备属性重点：%s",
+        overview_roles_title = "主要职责视角",
+        overview_role = "%s - 置信度 %s，天赋点 %s，模型 %s",
         analysis_title = "属性分析",
         analysis_unknown = "未知",
         analysis_character = "角色：%s（%s），种族 %s，%s 人数 %s",
@@ -862,6 +884,7 @@ local UI_STRINGS = {
         select_button = "全選",
         source_label = "來源：",
         local_db_label = "本地資料庫",
+        overview_tab = "總覽",
         items_tab = "物品",
         stats_analysis_tab = "屬性分析",
         text_export_tab = "文字匯出",
@@ -881,6 +904,16 @@ local UI_STRINGS = {
         status_generated = "%s 已從本地資料庫產生，篩選：%s。按 Ctrl+C 複製。",
         status_visual = "物品圖示檢視已更新：%d 件。切到文字匯出即可複製 AI 資料。",
         status_analysis = "屬性分析已更新：%d 個職責模型。切到文字匯出即可複製 AI 資料。",
+        status_overview = "總覽已更新：%d 件物品，%d 個職責模型。切到文字匯出即可複製 AI 資料。",
+        overview_title = "總覽",
+        overview_inventory = "庫存：%d 條物品，%d 堆疊，%d 件裝備，%d 件可裝備",
+        overview_talents = "天賦：%s；已點：%s",
+        overview_stats = "核心屬性：防禦 %s，護甲 %s，近戰命中 %s，法術命中 %s，近戰致命 %s，最佳法術致命 %s",
+        overview_categories = "分類：%s",
+        overview_quality = "品質：%s",
+        overview_top_stats = "裝備屬性重點：%s",
+        overview_roles_title = "主要職責視角",
+        overview_role = "%s - 信心 %s，天賦點 %s，模型 %s",
         analysis_title = "屬性分析",
         analysis_unknown = "未知",
         analysis_character = "角色：%s（%s），種族 %s，%s 人數 %s",
@@ -1487,6 +1520,32 @@ local function BuildStatList(link)
     return stats
 end
 
+local function CompactNumber(value, decimals)
+    if type(value) ~= "number" then
+        return tostring(value)
+    end
+
+    if value ~= value or value == math.huge or value == -math.huge then
+        return tostring(value)
+    end
+
+    decimals = decimals or 2
+    local text
+
+    if math.floor(value) == value then
+        text = tostring(value)
+    else
+        text = string.format("%." .. tostring(decimals) .. "f", value)
+        text = text:gsub("(%..-)0+$", "%1"):gsub("%.$", "")
+    end
+
+    if text == "-0" then
+        return "0"
+    end
+
+    return text
+end
+
 local function FormatStats(stats)
     if not stats or #stats == 0 then
         return "none"
@@ -1501,11 +1560,11 @@ local function FormatStats(stats)
         local socketStat = label:lower():find("socket", 1, true)
 
         if type(value) == "number" and value > 0 and not socketStat then
-            parts[#parts + 1] = "+" .. value .. " " .. label
+            parts[#parts + 1] = "+" .. CompactNumber(value, 2) .. " " .. label
         elseif type(value) == "number" and value == 1 and socketStat then
             parts[#parts + 1] = label
         else
-            parts[#parts + 1] = tostring(value) .. " " .. label
+            parts[#parts + 1] = tostring(type(value) == "number" and CompactNumber(value, 2) or value) .. " " .. label
         end
     end
 
@@ -2345,6 +2404,97 @@ local function SafeTalentCall(fn, ...)
     return SafeApiCall(fn, ...)
 end
 
+Addon.TALENT_TREE_NAMES = {
+    DRUID = {
+        enUS = { "Balance", "Feral Combat", "Restoration" },
+        zhCN = { "平衡", "野性战斗", "恢复" },
+        zhTW = { "平衡", "野性戰鬥", "恢復" },
+    },
+    HUNTER = {
+        enUS = { "Beast Mastery", "Marksmanship", "Survival" },
+        zhCN = { "野兽掌握", "射击", "生存" },
+        zhTW = { "野獸控制", "射擊", "生存" },
+    },
+    MAGE = {
+        enUS = { "Arcane", "Fire", "Frost" },
+        zhCN = { "奥术", "火焰", "冰霜" },
+        zhTW = { "秘法", "火焰", "冰霜" },
+    },
+    PALADIN = {
+        enUS = { "Holy", "Protection", "Retribution" },
+        zhCN = { "神圣", "防护", "惩戒" },
+        zhTW = { "神聖", "防護", "懲戒" },
+    },
+    PRIEST = {
+        enUS = { "Discipline", "Holy", "Shadow" },
+        zhCN = { "戒律", "神圣", "暗影" },
+        zhTW = { "戒律", "神聖", "暗影" },
+    },
+    ROGUE = {
+        enUS = { "Assassination", "Combat", "Subtlety" },
+        zhCN = { "刺杀", "战斗", "敏锐" },
+        zhTW = { "刺殺", "戰鬥", "敏銳" },
+    },
+    SHAMAN = {
+        enUS = { "Elemental", "Enhancement", "Restoration" },
+        zhCN = { "元素", "增强", "恢复" },
+        zhTW = { "元素", "增強", "恢復" },
+    },
+    WARLOCK = {
+        enUS = { "Affliction", "Demonology", "Destruction" },
+        zhCN = { "痛苦", "恶魔学识", "毁灭" },
+        zhTW = { "痛苦", "惡魔學識", "毀滅" },
+    },
+    WARRIOR = {
+        enUS = { "Arms", "Fury", "Protection" },
+        zhCN = { "武器", "狂怒", "防护" },
+        zhTW = { "武器", "狂怒", "防護" },
+    },
+}
+
+function Addon.LocalizedTalentTreeName(classToken, tabIndex, locale)
+    local names = Addon.TALENT_TREE_NAMES[ClassToken(classToken)]
+    if not names then
+        return nil
+    end
+
+    local promptLocale = PromptLocale(locale)
+    local localized = names[promptLocale] or names.enUS
+    return localized and localized[tabIndex] or nil
+end
+
+function Addon.TalentTabInfo(tabIndex, classToken, locale)
+    local first, second, third, fourth, fifth, sixth = SafeTalentCall(GetTalentTabInfo, tabIndex)
+    local tabID, name, icon, pointsSpent, background
+
+    if type(first) == "number" then
+        tabID = first
+        if type(second) == "string" and second ~= "" then
+            name = second
+        end
+        if type(third) == "number" then
+            pointsSpent = third
+            icon = fourth
+            background = fifth
+        elseif type(sixth) == "number" then
+            pointsSpent = sixth
+            icon = fourth or third
+            background = fifth
+        end
+    else
+        name = first
+        icon = second
+        pointsSpent = third
+        background = fourth
+    end
+
+    if type(name) ~= "string" or name == "" or tonumber(name) then
+        name = Addon.LocalizedTalentTreeName(classToken, tabIndex, locale) or ("Tree " .. tostring(tabIndex))
+    end
+
+    return name, icon, tonumber(pointsSpent) or 0, background, tabID
+end
+
 local function UnspentTalentPoints()
     local points = SafeTalentCall(UnitCharacterPoints, "player")
     points = tonumber(points)
@@ -2377,15 +2527,17 @@ local function BuildTalentSnapshot()
     end
 
     local tabCount = tonumber(SafeTalentCall(GetNumTalentTabs)) or 0
+    local classToken = GetPlayerClassInfo().english
+    local locale = ClientLocale()
     local summaryParts = {}
     local primaryPoints = -1
 
     for tabIndex = 1, tabCount do
-        local name, icon, pointsSpent, background = SafeTalentCall(GetTalentTabInfo, tabIndex)
-        pointsSpent = tonumber(pointsSpent) or 0
+        local name, icon, pointsSpent, background, tabID = Addon.TalentTabInfo(tabIndex, classToken, locale)
 
         local tab = {
             index = tabIndex,
+            id = tabID,
             name = name or ("Tree " .. tostring(tabIndex)),
             icon = icon,
             points = pointsSpent,
@@ -2435,6 +2587,7 @@ local function BuildTalentSnapshot()
         snapshot.tabs[#snapshot.tabs + 1] = tab
         snapshot.treePoints[#snapshot.treePoints + 1] = {
             index = tab.index,
+            id = tab.id,
             name = tab.name,
             points = pointsSpent,
             pointsSpent = pointsSpent,
@@ -3487,7 +3640,7 @@ local function PercentText(value)
         return "unknown"
     end
 
-    return tostring(value) .. "%"
+    return CompactNumber(value, 2) .. "%"
 end
 
 local function AppendCharacterStatsMarkdown(lines, characterStats)
@@ -3614,7 +3767,7 @@ end
 
 local function AnalysisValue(value, suffix, locale)
     if type(value) == "number" then
-        return tostring(value) .. (suffix or "")
+        return CompactNumber(value, 2) .. (suffix or "")
     end
 
     if value ~= nil and value ~= "" then
@@ -3801,6 +3954,209 @@ local function BuildStatsAnalysisText(profile, chartStats, strategyBook)
     end
 
     return table.concat(lines, "\n"), #roles
+end
+
+function Addon.CompactCountList(entries, labeler, maxCount)
+    local parts = {}
+    local omitted = 0
+    maxCount = maxCount or 4
+
+    for index = 1, #(entries or {}) do
+        local entry = entries[index]
+        if #parts < maxCount then
+            parts[#parts + 1] = tostring(labeler(entry)) .. " " .. tostring(entry.itemCount or 0)
+        else
+            omitted = omitted + 1
+        end
+    end
+
+    if #parts == 0 then
+        return "none"
+    end
+
+    if omitted > 0 then
+        parts[#parts + 1] = "+" .. tostring(omitted)
+    end
+
+    return table.concat(parts, ", ")
+end
+
+function Addon.FirstEntries(entries, maxCount)
+    local selected = {}
+
+    for index = 1, math.min(#(entries or {}), maxCount or 6) do
+        selected[#selected + 1] = entries[index]
+    end
+
+    return selected
+end
+
+function Addon.MarkdownEscape(value)
+    value = tostring(value or "")
+    value = value:gsub("\n", " "):gsub("|", "\\|")
+    return value
+end
+
+function Addon.MarkdownPlainItemName(item)
+    local name = Addon.MarkdownEscape(item and item.name or "Unknown Item")
+    local url = ItemWowheadURL(item)
+
+    if url then
+        return "[" .. name .. "](" .. url .. ")"
+    end
+
+    return name
+end
+
+function Addon.ShortStats(stats, maxCount)
+    if not stats or #stats == 0 then
+        return "none"
+    end
+
+    local selected = {}
+    maxCount = maxCount or 4
+
+    for index = 1, math.min(#stats, maxCount) do
+        selected[#selected + 1] = stats[index]
+    end
+
+    local text = FormatStats(selected)
+    if #stats > maxCount then
+        text = text .. ", +" .. tostring(#stats - maxCount) .. " more"
+    end
+
+    return text
+end
+
+function Addon.BuildOverviewText(profile, chartStats, strategyBook, items)
+    profile = profile or {}
+    chartStats = chartStats or BuildChartStats(items or {})
+    strategyBook = strategyBook or BuildStrategyBook(profile, chartStats)
+
+    local locale = AnalysisLocale(profile.locale or ClientLocale())
+    local characterStats = profile.characterStats or BuildCharacterStatsSnapshot()
+    local race = characterStats.race or {}
+    local group = characterStats.group or {}
+    local chances = characterStats.chances or {}
+    local defense = characterStats.defense or {}
+    local armor = characterStats.armor or {}
+    local roles = strategyBook.roles or {}
+    local lines = {
+        LForLocale(locale, "overview_title"),
+        "",
+        LForLocale(locale, "analysis_character",
+            tostring(profile.player or "Unknown Player"),
+            AnalysisClassName(profile, locale),
+            AnalysisRaceName(race, locale),
+            AnalysisGroupType(group.type or "solo", locale),
+            tostring(group.size or 1)),
+        LForLocale(locale, "overview_inventory",
+            chartStats.itemCount or 0,
+            chartStats.stackCount or 0,
+            chartStats.gearItemCount or 0,
+            chartStats.equippableItemCount or 0),
+        LForLocale(locale, "overview_talents", TalentTreePointsText(profile.talents, locale), TalentSelectedPointsText(profile.talents, locale, 5)),
+        LForLocale(locale, "overview_stats",
+            AnalysisValue(defense.effective, nil, locale),
+            AnalysisValue(armor.effective, nil, locale),
+            AnalysisValue(RatingBonus(characterStats, "melee_hit"), "%", locale),
+            AnalysisValue(RatingBonus(characterStats, "spell_hit"), "%", locale),
+            AnalysisValue(chances.meleeCrit, "%", locale),
+            AnalysisValue(BestSpellValue(chances.spellCrit, "crit"), "%", locale)),
+        LForLocale(locale, "overview_categories", Addon.CompactCountList(chartStats.categoryCounts, function(entry) return entry.name end, 5)),
+        LForLocale(locale, "overview_quality", Addon.CompactCountList(chartStats.qualityCounts, function(entry) return entry.quality or "Unknown" end, 4)),
+        LForLocale(locale, "overview_top_stats", FormatAnalysisStats(Addon.FirstEntries(chartStats.statTotals, 6), locale)),
+        "",
+        LForLocale(locale, "overview_roles_title"),
+    }
+
+    if #roles == 0 then
+        lines[#lines + 1] = LForLocale(locale, "analysis_no_roles")
+    else
+        for roleIndex = 1, math.min(#roles, 3) do
+            local role = roles[roleIndex]
+            lines[#lines + 1] = LForLocale(locale, "overview_role",
+                AnalysisRoleLabel(role, locale),
+                AnalysisValue(role.confidence, nil, locale),
+                AnalysisValue(role.talentPoints, nil, locale),
+                AnalysisModelLabels(role.models, locale))
+        end
+    end
+
+    return table.concat(lines, "\n"), #roles
+end
+
+function Addon.AppendMarkdownQuickSummary(lines, profile, scope, filter, items, chartStats, strategyBook)
+    local characterStats = profile.characterStats or BuildCharacterStatsSnapshot()
+    local roles = strategyBook.roles or {}
+    local topRole = roles[1]
+
+    lines[#lines + 1] = "## Quick Summary"
+    lines[#lines + 1] = ""
+    lines[#lines + 1] = "| Field | Value |"
+    lines[#lines + 1] = "| --- | --- |"
+    lines[#lines + 1] = "| Character | " .. Addon.MarkdownEscape(tostring(profile.player or "Unknown Player") .. " - " .. tostring(profile.realm or "Unknown Realm")) .. " |"
+    lines[#lines + 1] = "| Class | " .. Addon.MarkdownEscape(profile.classLocalized or profile.classEnglish or "Unknown Class") .. " |"
+    lines[#lines + 1] = "| Scope / Filter | " .. Addon.MarkdownEscape(ScopeTitle(scope) .. " / " .. ExportFilterTitle(filter)) .. " |"
+    lines[#lines + 1] = "| Items | " .. tostring(#items) .. " lines, " .. tostring(chartStats.stackCount or 0) .. " stacked; gear " .. tostring(chartStats.gearItemCount or 0) .. " |"
+    lines[#lines + 1] = "| Talents | " .. Addon.MarkdownEscape(TalentTreePointsText(profile.talents, profile.locale)) .. " |"
+    lines[#lines + 1] = "| Selected talents | " .. Addon.MarkdownEscape(TalentSelectedPointsText(profile.talents, profile.locale, 8)) .. " |"
+    lines[#lines + 1] = "| Top role | " .. Addon.MarkdownEscape(topRole and ((topRole.label or topRole.key) .. " (" .. tostring(topRole.confidence or 0) .. " confidence)") or "none") .. " |"
+    lines[#lines + 1] = "| Core stats | Defense " .. Addon.MarkdownEscape(AnalysisValue(characterStats.defense and characterStats.defense.effective)) .. ", armor " .. Addon.MarkdownEscape(AnalysisValue(characterStats.armor and characterStats.armor.effective)) .. ", melee hit " .. Addon.MarkdownEscape(AnalysisValue(RatingBonus(characterStats, "melee_hit"), "%")) .. ", spell hit " .. Addon.MarkdownEscape(AnalysisValue(RatingBonus(characterStats, "spell_hit"), "%")) .. " |"
+    lines[#lines + 1] = "| Categories | " .. Addon.MarkdownEscape(Addon.CompactCountList(chartStats.categoryCounts, function(entry) return entry.name end, 5)) .. " |"
+    lines[#lines + 1] = "| Top stats | " .. Addon.MarkdownEscape(FormatStats(Addon.FirstEntries(chartStats.statTotals, 8))) .. " |"
+    lines[#lines + 1] = ""
+end
+
+function Addon.AppendMarkdownRoleSnapshot(lines, strategyBook)
+    lines[#lines + 1] = "## Role Snapshot"
+    lines[#lines + 1] = ""
+    lines[#lines + 1] = "| Role | Confidence | Talent points | Models | Gear highlights |"
+    lines[#lines + 1] = "| --- | ---: | ---: | --- | --- |"
+
+    for roleIndex = 1, math.min(#(strategyBook.roles or {}), 5) do
+        local role = strategyBook.roles[roleIndex]
+        lines[#lines + 1] = "| " .. Addon.MarkdownEscape(role.label or role.key)
+            .. " | " .. tostring(role.confidence or 0)
+            .. " | " .. tostring(role.talentPoints or 0)
+            .. " | " .. Addon.MarkdownEscape(table.concat(role.models or {}, ", "))
+            .. " | " .. Addon.MarkdownEscape(FormatStats(role.observed and role.observed.gearStatHighlights))
+            .. " |"
+    end
+
+    if #(strategyBook.roles or {}) == 0 then
+        lines[#lines + 1] = "| none | 0 | 0 | none | none |"
+    end
+
+    lines[#lines + 1] = ""
+end
+
+function Addon.AppendMarkdownItemTable(lines, category, bucket, defaultOpen)
+    lines[#lines + 1] = defaultOpen and "<details open>" or "<details>"
+    lines[#lines + 1] = "<summary>" .. Addon.MarkdownEscape(category) .. " (" .. tostring(#(bucket or {})) .. ")</summary>"
+    lines[#lines + 1] = ""
+    lines[#lines + 1] = "| Item | Q | iLvl | Source | Location | Stats |"
+    lines[#lines + 1] = "| --- | --- | ---: | --- | --- | --- |"
+
+    for itemIndex = 1, #(bucket or {}) do
+        local item = bucket[itemIndex]
+        lines[#lines + 1] = "| " .. Addon.MarkdownPlainItemName(item)
+            .. " x" .. tostring(item.count or 1)
+            .. " | " .. Addon.MarkdownEscape(QualityDisplay(item))
+            .. " | " .. Addon.MarkdownEscape(ItemLevelDisplay(item))
+            .. " | " .. Addon.MarkdownEscape(SourceLabel(item.source))
+            .. " | " .. Addon.MarkdownEscape(item.location or "Unknown Location")
+            .. " | " .. Addon.MarkdownEscape(Addon.ShortStats(item.stats, 4))
+            .. " |"
+    end
+
+    if #(bucket or {}) == 0 then
+        lines[#lines + 1] = "| none | - | - | - | - | - |"
+    end
+
+    lines[#lines + 1] = ""
+    lines[#lines + 1] = "</details>"
+    lines[#lines + 1] = ""
 end
 
 local function CategoryFromInfo(classID, itemType, equipSlot)
@@ -4281,66 +4637,63 @@ function Addon:BuildMarkdownExport(scope, profile, items, categories, buckets, f
     local lines = {
         "# TBC Gear Exporter",
         "",
-        "## AI Prompt",
-        "",
-        "```text",
-        prompt and prompt.text or "",
-        "```",
-        "",
-        "## Export Metadata",
-        "",
-        "- Character: " .. tostring(profile.player or "Unknown Player") .. " - " .. tostring(profile.realm or "Unknown Realm"),
-        "- Class: " .. tostring(profile.classLocalized or profile.classEnglish or "Unknown Class"),
-        "- Current talents: " .. TalentSummaryText(profile.talents, profile.locale),
-        "- Talent points: " .. TalentTreePointsText(profile.talents, profile.locale),
-        "- Selected talents: " .. TalentSelectedPointsText(profile.talents, profile.locale, 12),
-        "- Client locale: " .. tostring(profile.locale or "enUS"),
-        "- Local DB: " .. DB_NAME .. " saved at " .. FormatTime(profile.localDB and profile.localDB.savedAt),
-        "- Scope: " .. ScopeTitle(scope),
-        "- Filter: " .. ExportFilterTitle(filter),
-        "- Items: " .. #items,
-        "- Bag scan: " .. FormatTime(profile.bags and profile.bags.updatedAt),
-        "- Bank scan: " .. FormatTime(profile.bank and profile.bank.updatedAt),
+        "> Human-readable report. Use JSON or AI Text when another tool needs the full raw dataset.",
         "",
     }
+
+    chartStats = chartStats or BuildChartStats(items or {})
+    strategyBook = strategyBook or BuildStrategyBook(profile, chartStats)
+    Addon.AppendMarkdownQuickSummary(lines, profile, scope, filter, items or {}, chartStats, strategyBook)
+    Addon.AppendMarkdownRoleSnapshot(lines, strategyBook)
+
+    lines[#lines + 1] = "## AI Prompt"
+    lines[#lines + 1] = ""
+    lines[#lines + 1] = "```text"
+    lines[#lines + 1] = prompt and prompt.text or ""
+    lines[#lines + 1] = "```"
+    lines[#lines + 1] = ""
+
+    lines[#lines + 1] = "<details>"
+    lines[#lines + 1] = "<summary>Character, strategy, and chart details</summary>"
+    lines[#lines + 1] = ""
+    lines[#lines + 1] = "## Export Metadata"
+    lines[#lines + 1] = ""
+    lines[#lines + 1] = "- Character: " .. tostring(profile.player or "Unknown Player") .. " - " .. tostring(profile.realm or "Unknown Realm")
+    lines[#lines + 1] = "- Class: " .. tostring(profile.classLocalized or profile.classEnglish or "Unknown Class")
+    lines[#lines + 1] = "- Current talents: " .. TalentSummaryText(profile.talents, profile.locale)
+    lines[#lines + 1] = "- Talent points: " .. TalentTreePointsText(profile.talents, profile.locale)
+    lines[#lines + 1] = "- Selected talents: " .. TalentSelectedPointsText(profile.talents, profile.locale, 12)
+    lines[#lines + 1] = "- Client locale: " .. tostring(profile.locale or "enUS")
+    lines[#lines + 1] = "- Local DB: " .. DB_NAME .. " saved at " .. FormatTime(profile.localDB and profile.localDB.savedAt)
+    lines[#lines + 1] = "- Scope: " .. ScopeTitle(scope)
+    lines[#lines + 1] = "- Filter: " .. ExportFilterTitle(filter)
+    lines[#lines + 1] = "- Items: " .. #(items or {})
+    lines[#lines + 1] = "- Bag scan: " .. FormatTime(profile.bags and profile.bags.updatedAt)
+    lines[#lines + 1] = "- Bank scan: " .. FormatTime(profile.bank and profile.bank.updatedAt)
+    lines[#lines + 1] = ""
 
     AppendCharacterStatsMarkdown(lines, characterStats)
     AppendStrategyBookMarkdown(lines, strategyBook)
     AppendChartStatsMarkdown(lines, chartStats)
+    lines[#lines + 1] = "</details>"
+    lines[#lines + 1] = ""
 
-    if #items == 0 then
+    if #(items or {}) == 0 then
         lines[#lines + 1] = "_No saved items are available. Use `/tbcgear scan` to save bags, and open the bank while scanning to save bank items._"
         return table.concat(lines, "\n")
     end
 
+    lines[#lines + 1] = "## Item Tables"
+    lines[#lines + 1] = ""
+
     for categoryIndex = 1, #categories do
         local category = categories[categoryIndex]
         local bucket = buckets[category] or {}
-        lines[#lines + 1] = "## " .. category .. " (" .. #bucket .. ")"
-
-        for itemIndex = 1, #bucket do
-            local item = bucket[itemIndex]
-            local wowheadUrl = ItemWowheadURL(item)
-            local line = "- " .. MarkdownItemName(item) .. " x" .. tostring(item.count or 1)
-                .. " | " .. QualityDisplay(item)
-                .. " | iLvl: " .. ItemLevelDisplay(item)
-                .. " | Type: " .. ItemTypeDisplay(item)
-                .. " | " .. SourceLabel(item.source)
-                .. " | " .. tostring(item.location or "Unknown Location")
-
-            if wowheadUrl then
-                line = line .. " | Wowhead: " .. wowheadUrl
-            end
-
-            lines[#lines + 1] = line .. " | Stats: " .. FormatStats(item.stats)
-        end
-
-        lines[#lines + 1] = ""
+        Addon.AppendMarkdownItemTable(lines, category, bucket, category == "Gear")
     end
 
     return table.concat(lines, "\n")
 end
-
 function Addon:BuildTextExport(scope, profile, items, categories, buckets, filter, prompt, chartStats, characterStats, strategyBook)
     local lines = {
         "TBC Gear Exporter",
@@ -4653,12 +5006,22 @@ function Addon:SetExportView(view)
         self.exportView = "text"
     elseif view == "analysis" then
         self.exportView = "analysis"
-    else
+    elseif view == "items" then
         self.exportView = "items"
+    else
+        self.exportView = "overview"
     end
 
     if not self.exportFrame then
         return
+    end
+
+    if self.exportFrame.overviewScroll then
+        if self.exportView == "overview" then
+            self.exportFrame.overviewScroll:Show()
+        else
+            self.exportFrame.overviewScroll:Hide()
+        end
     end
 
     if self.exportFrame.visualScroll then
@@ -4685,7 +5048,6 @@ function Addon:SetExportView(view)
         end
     end
 end
-
 function Addon:CreateVisualItemRow(parent, index)
     local row = CreateFrame("Button", nil, parent)
     SetFrameSize(row, 490, 42)
@@ -4794,6 +5156,23 @@ function Addon:RefreshVisualItems(items)
     end
 end
 
+function Addon:RefreshOverview(profile, chartStats, strategyBook, items)
+    if not self.exportFrame or not self.exportFrame.overviewText then
+        return 0
+    end
+
+    local text, roleCount = Addon.BuildOverviewText(profile, chartStats, strategyBook, items)
+    self.exportFrame.overviewText:SetText(text)
+    self.exportFrame.overviewRoleCount = roleCount
+
+    if self.exportFrame.overviewContent and self.exportFrame.overviewContent.SetHeight then
+        local _, breaks = tostring(text or ""):gsub("\n", "\n")
+        self.exportFrame.overviewContent:SetHeight(math.max(300, ((breaks + 1) * 16) + 28))
+    end
+
+    return roleCount or 0
+end
+
 function Addon:RefreshStatsAnalysis(profile, chartStats, strategyBook)
     if not self.exportFrame or not self.exportFrame.analysisText then
         return 0
@@ -4841,11 +5220,13 @@ function Addon:RefreshExport(scope, format, filter)
     local profile = self:GetProfile()
     local chartStats = BuildChartStats(items)
     local strategyBook = BuildStrategyBook(profile, chartStats)
+    local overviewRoleCount = 0
     local analysisRoleCount = 0
     self.exportFrame.editBox:SetText(text)
     self:RefreshVisualItems(items)
+    overviewRoleCount = self:RefreshOverview(profile, chartStats, strategyBook, items)
     analysisRoleCount = self:RefreshStatsAnalysis(profile, chartStats, strategyBook)
-    self:SetExportView(self.exportView or "items")
+    self:SetExportView(self.exportView or "overview")
 
     if self.exportView == "text" then
         self.exportFrame.editBox:SetCursorPosition(0)
@@ -4861,8 +5242,10 @@ function Addon:RefreshExport(scope, format, filter)
         self.exportFrame.status:SetText(L("status_generated", LocalizedExportFormatTitle(self.exportFormat, ClientLocale()), LocalizedExportFilterTitle(self.exportFilter, ClientLocale())))
     elseif self.exportView == "analysis" then
         self.exportFrame.status:SetText(L("status_analysis", analysisRoleCount))
-    else
+    elseif self.exportView == "items" then
         self.exportFrame.status:SetText(L("status_visual", #items))
+    else
+        self.exportFrame.status:SetText(L("status_overview", #items, overviewRoleCount))
     end
 end
 
@@ -5065,9 +5448,18 @@ function Addon:CreateExportFrame()
         Addon:ExportSaved("gear", nil, { qualityID = 4 })
     end)
 
+    local overviewTab = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
+    SetFrameSize(overviewTab, 78, 24)
+    overviewTab:SetPoint("TOPLEFT", 282, -64)
+    overviewTab:SetText(L("overview_tab"))
+    overviewTab:SetScript("OnClick", function()
+        Addon:SetExportView("overview")
+        Addon:RefreshExport()
+    end)
+
     local itemsTab = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
-    SetFrameSize(itemsTab, 82, 24)
-    itemsTab:SetPoint("TOPLEFT", 282, -64)
+    SetFrameSize(itemsTab, 70, 24)
+    itemsTab:SetPoint("LEFT", overviewTab, "RIGHT", 8, 0)
     itemsTab:SetText(L("items_tab"))
     itemsTab:SetScript("OnClick", function()
         Addon:SetExportView("items")
@@ -5075,7 +5467,7 @@ function Addon:CreateExportFrame()
     end)
 
     local analysisTab = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
-    SetFrameSize(analysisTab, 118, 24)
+    SetFrameSize(analysisTab, 112, 24)
     analysisTab:SetPoint("LEFT", itemsTab, "RIGHT", 8, 0)
     analysisTab:SetText(L("stats_analysis_tab"))
     analysisTab:SetScript("OnClick", function()
@@ -5084,17 +5476,30 @@ function Addon:CreateExportFrame()
     end)
 
     local textTab = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
-    SetFrameSize(textTab, 112, 24)
+    SetFrameSize(textTab, 104, 24)
     textTab:SetPoint("LEFT", analysisTab, "RIGHT", 8, 0)
     textTab:SetText(L("text_export_tab"))
     textTab:SetScript("OnClick", function()
         Addon:SelectExportText()
     end)
 
+    local overviewScroll = CreateFrame("ScrollFrame", "TBCGearExporterOverviewScrollFrame", exportFrame, "UIPanelScrollFrameTemplate")
+    overviewScroll:SetPoint("TOPLEFT", 282, -96)
+    overviewScroll:SetPoint("BOTTOMRIGHT", -38, 48)
+
+    local overviewContent = CreateFrame("Frame", nil, overviewScroll)
+    SetFrameSize(overviewContent, 490, 300)
+    overviewScroll:SetScrollChild(overviewContent)
+
+    local overviewText = overviewContent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    overviewText:SetPoint("TOPLEFT", 4, -4)
+    overviewText:SetPoint("RIGHT", overviewContent, "RIGHT", -8, 0)
+    overviewText:SetJustifyH("LEFT")
+    overviewText:SetText(L("overview_title"))
+
     local visualScroll = CreateFrame("ScrollFrame", "TBCGearExporterVisualScrollFrame", exportFrame, "UIPanelScrollFrameTemplate")
     visualScroll:SetPoint("TOPLEFT", 282, -96)
     visualScroll:SetPoint("BOTTOMRIGHT", -38, 48)
-
     local itemListContent = CreateFrame("Frame", nil, visualScroll)
     SetFrameSize(itemListContent, 490, 300)
     visualScroll:SetScrollChild(itemListContent)
@@ -5153,19 +5558,23 @@ function Addon:CreateExportFrame()
     exportFrame.filterLabel = filterLabel
     exportFrame.sourceLabel = sourceLabel
     exportFrame.dbLabel = dbLabel
+    exportFrame.overviewTab = overviewTab
     exportFrame.itemsTab = itemsTab
     exportFrame.analysisTab = analysisTab
     exportFrame.textTab = textTab
+    exportFrame.overviewScroll = overviewScroll
     exportFrame.visualScroll = visualScroll
     exportFrame.analysisScroll = analysisScroll
     exportFrame.textScroll = textScroll
+    exportFrame.overviewContent = overviewContent
+    exportFrame.overviewText = overviewText
     exportFrame.itemListContent = itemListContent
     exportFrame.analysisContent = analysisContent
     exportFrame.analysisText = analysisText
     exportFrame.emptyItems = emptyItems
     exportFrame.itemRows = {}
     self.exportFrame = exportFrame
-    self:SetExportView(self.exportView or "items")
+    self:SetExportView(self.exportView or "overview")
 end
 
 function Addon:ShowExport(scope, format, filter)
@@ -5465,6 +5874,7 @@ if _G.TBCGearExporterTestMode then
         QualityColorHex = QualityColorHex,
         ParseItemLinkColorHex = ParseItemLinkColorHex,
         ItemQualityColorHex = ItemQualityColorHex,
+        CompactNumber = CompactNumber,
         ColorizeItemName = ColorizeItemName,
         ItemColoredName = ItemColoredName,
         HtmlEscape = HtmlEscape,
@@ -5512,6 +5922,8 @@ if _G.TBCGearExporterTestMode then
         GetPlayerClassInfo = GetPlayerClassInfo,
         TalentApiName = TalentApiName,
         BuildTalentSnapshot = BuildTalentSnapshot,
+        LocalizedTalentTreeName = Addon.LocalizedTalentTreeName,
+        TalentTabInfo = Addon.TalentTabInfo,
         TalentTreePoints = TalentTreePoints,
         TalentTreePointsText = TalentTreePointsText,
         TalentSelectedPointsText = TalentSelectedPointsText,
@@ -5543,6 +5955,11 @@ if _G.TBCGearExporterTestMode then
         StrategyClassRoles = StrategyClassRoles,
         BuildStrategyBook = BuildStrategyBook,
         BuildStatsAnalysisText = BuildStatsAnalysisText,
+        BuildOverviewText = Addon.BuildOverviewText,
+        CompactCountList = Addon.CompactCountList,
+        MarkdownEscape = Addon.MarkdownEscape,
+        MarkdownPlainItemName = Addon.MarkdownPlainItemName,
+        ShortStats = Addon.ShortStats,
         AnalysisValue = AnalysisValue,
         NormalizedStackCount = NormalizedStackCount,
         RoundedStatNumber = RoundedStatNumber,

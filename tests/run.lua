@@ -1521,9 +1521,20 @@ test("talent snapshot captures current build and fallback paths", function()
 
     mock.badTalentTabs[2] = true
     snapshot = private.BuildTalentSnapshot()
-    assertEquals(snapshot.tabs[2].name, "Tree 2")
+    assertEquals(snapshot.tabs[2].name, "野性战斗")
     assertEquals(snapshot.tabs[2].points, 9)
     mock.badTalentTabs = {}
+
+    local originalTalentTabInfo = _G.GetTalentTabInfo
+    _G.GetTalentTabInfo = function(tabIndex)
+        local tab = mock.talentTabs[tabIndex]
+        return ({ 382, 383, 381 })[tabIndex], nil, tab and tab.points or 0, tab and tab.icon, tab and tab.background
+    end
+    snapshot = private.BuildTalentSnapshot()
+    assertEquals(snapshot.tabs[2].name, "野性战斗")
+    assertContains(private.TalentTreePointsText(snapshot, "zhCN"), "野性战斗 46")
+    assertEquals(private.LocalizedTalentTreeName("PALADIN", 1, "zhCN"), "神圣")
+    _G.GetTalentTabInfo = originalTalentTabInfo
 
     local oldUnitPoints = _G.UnitCharacterPoints
     _G.UnitCharacterPoints = nil
@@ -1736,6 +1747,7 @@ test("strategy book ranks role models from talents gear race and raid context", 
     assertEquals(private.BuildRoleBenchmarks({ benchmarkKeys = { "defense_crit_immunity" } }, observed)[1].target, 490)
     assertEquals(private.AnalysisValue(nil), "未知")
     assertEquals(private.AnalysisValue(8.5, "%"), "8.5%")
+    assertEquals(private.AnalysisValue(14.451999664307, "%"), "14.45%")
     local analysisText, roleCount = private.BuildStatsAnalysisText(profile, chartStats, strategyBook)
     assertEquals(roleCount, #strategyBook.roles)
     assertContains(analysisText, "属性分析")
@@ -2103,8 +2115,12 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
 
     local markdownExport = Addon:BuildExport("all", "markdown")
     assertContains(markdownExport, "# TBC Gear Exporter")
+    assertContains(markdownExport, "## Quick Summary")
+    assertContains(markdownExport, "| Field | Value |")
+    assertContains(markdownExport, "## Role Snapshot")
     assertContains(markdownExport, "## AI Prompt")
     assertContains(markdownExport, "熊形态野性坦克")
+    assertContains(markdownExport, "<summary>Character, strategy, and chart details</summary>")
     assertContains(markdownExport, "## Export Metadata")
     assertContains(markdownExport, "Current talents: 0/46/15; primary=Feral Combat; points=61")
     assertContains(markdownExport, "Client locale: zhCN")
@@ -2113,12 +2129,14 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(markdownExport, "### Bear Feral Tank")
     assertContains(markdownExport, "Observed hit: melee 8.5%")
     assertContains(markdownExport, "Defense crit-immunity benchmark: meets_or_exceeds")
-    assertContains(markdownExport, "## Gear")
-    assertContains(markdownExport, "<span style=\"color:#0070DD\"><strong>Defender Helm</strong></span>")
+    assertContains(markdownExport, "## Item Tables")
+    assertContains(markdownExport, "<details open>")
+    assertContains(markdownExport, "<summary>Gear (2)</summary>")
+    assertContains(markdownExport, "| Item | Q | iLvl | Source | Location | Stats |")
+    assertContains(markdownExport, "[Defender Helm](https://www.wowhead.com/tbc/item=1001)")
     assertContains(markdownExport, "Rare (#0070DD)")
-    assertContains(markdownExport, "iLvl: 115")
-    assertContains(markdownExport, "Type: Armor / Plate")
-    assertContains(markdownExport, "Wowhead: https://www.wowhead.com/tbc/item=1001")
+    assertContains(markdownExport, "| 115 |")
+    assertFalse(markdownExport:find("<span style=", 1, true), "markdown report should use readable links instead of HTML-colored item names")
     assertContains(markdownExport, "## Chart Stats")
     assertContains(markdownExport, "### Stat Totals")
     assertContains(markdownExport, "+16 Crit Rating")
@@ -2156,6 +2174,22 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(Addon:BuildExport("all", "text"), "No saved items are available")
 end)
 
+test("readable export helpers compact noisy details", function()
+	local counts = {
+		{ name = "Gear", itemCount = 7 },
+		{ name = "Consumables", itemCount = 3 },
+		{ name = "Quest", itemCount = 1 },
+	}
+	assertEquals(private.CompactCountList(counts, function(entry) return entry.name end, 2), "Gear 7, Consumables 3, +1")
+	assertEquals(private.CompactCountList({}, function(entry) return entry.name end, 2), "none")
+	assertEquals(private.MarkdownPlainItemName({ name = "Plain [Item]|Name" }), "Plain [Item]\\|Name")
+	assertEquals(private.ShortStats({
+		{ label = "Strength", value = 10 },
+		{ label = "Agility", value = 9 },
+		{ label = "Stamina", value = 8 },
+	}, 2), "+10 Strength, +9 Agility, +1 more")
+end)
+
 test("export sorting covers quality, name, location, and unknown category ordering", function()
     resetRuntimeState(Addon)
     local profile = Addon:GetProfile()
@@ -2184,8 +2218,9 @@ test("RefreshExport no-ops without frame and updates edit box with frame", funct
     Addon:CreateExportFrame()
     Addon:RefreshExport("bags")
     assertContains(Addon.exportFrame.editBox.text, "Super Mana Potion")
-    assertEquals(Addon.exportView, "items")
-    assertTrue(Addon.exportFrame.visualScroll:IsShown())
+    assertEquals(Addon.exportView, "overview")
+    assertTrue(Addon.exportFrame.overviewScroll:IsShown())
+    assertFalse(Addon.exportFrame.visualScroll:IsShown())
     assertFalse(Addon.exportFrame.analysisScroll:IsShown())
     assertFalse(Addon.exportFrame.textScroll:IsShown())
     assertTrue(#Addon.exportFrame.itemRows >= 1)
@@ -2200,10 +2235,14 @@ test("RefreshExport no-ops without frame and updates edit box with frame", funct
         end
     end
     assertTrue(sawVisualIcon)
-    assertContains(Addon.exportFrame.status.text, "物品图标视图已更新")
+    assertContains(Addon.exportFrame.overviewText.text, "总览")
+    assertContains(Addon.exportFrame.overviewText.text, "库存：")
+    assertContains(Addon.exportFrame.overviewText.text, "熊形态野性坦克")
+    assertContains(Addon.exportFrame.status.text, "总览已更新")
     Addon:SetExportView("analysis")
     Addon:RefreshExport("bags")
     assertTrue(Addon.exportFrame.analysisScroll:IsShown())
+    assertFalse(Addon.exportFrame.overviewScroll:IsShown())
     assertFalse(Addon.exportFrame.visualScroll:IsShown())
     assertFalse(Addon.exportFrame.textScroll:IsShown())
     assertContains(Addon.exportFrame.status.text, "属性分析已更新")
@@ -2228,13 +2267,17 @@ test("CreateExportFrame wires UI controls and scripts", function()
     assertTrue(exportFrame.status ~= nil)
     assertTrue(exportFrame.sourceLabel ~= nil)
     assertTrue(exportFrame.filterLabel ~= nil)
+    assertTrue(exportFrame.overviewScroll ~= nil)
     assertTrue(exportFrame.visualScroll ~= nil)
     assertTrue(exportFrame.analysisScroll ~= nil)
     assertTrue(exportFrame.textScroll ~= nil)
+    assertTrue(exportFrame.overviewContent ~= nil)
+    assertTrue(exportFrame.overviewText ~= nil)
     assertTrue(exportFrame.itemListContent ~= nil)
     assertTrue(exportFrame.analysisContent ~= nil)
     assertTrue(exportFrame.analysisText ~= nil)
-    assertTrue(exportFrame.visualScroll:IsShown())
+    assertTrue(exportFrame.overviewScroll:IsShown())
+    assertFalse(exportFrame.visualScroll:IsShown())
     assertFalse(exportFrame.analysisScroll:IsShown())
     assertFalse(exportFrame.textScroll:IsShown())
 
@@ -2253,15 +2296,18 @@ test("CreateExportFrame wires UI controls and scripts", function()
     exportFrame.editBox.scripts.OnTextChanged({ GetNumLines = function() return 1 end })
 
     Addon:SetExportView("text")
+    assertFalse(exportFrame.overviewScroll:IsShown())
     assertFalse(exportFrame.visualScroll:IsShown())
     assertFalse(exportFrame.analysisScroll:IsShown())
     assertTrue(exportFrame.textScroll:IsShown())
     Addon:SetExportView("analysis")
+    assertFalse(exportFrame.overviewScroll:IsShown())
     assertFalse(exportFrame.visualScroll:IsShown())
     assertTrue(exportFrame.analysisScroll:IsShown())
     assertFalse(exportFrame.textScroll:IsShown())
     Addon:SetExportView("bogus")
-    assertTrue(exportFrame.visualScroll:IsShown())
+    assertTrue(exportFrame.overviewScroll:IsShown())
+    assertFalse(exportFrame.visualScroll:IsShown())
     assertFalse(exportFrame.analysisScroll:IsShown())
     assertFalse(exportFrame.textScroll:IsShown())
 end)
@@ -2334,8 +2380,11 @@ test("export frame buttons scan and change scopes", function()
     findButtonByText(ui("scan_button")).scripts.OnClick()
     assertAnyMessageContains(ui("bags_scanned"))
     Addon:ScanBank()
-    assertTrue(Addon.exportFrame.visualScroll:IsShown())
+    assertTrue(Addon.exportFrame.overviewScroll:IsShown())
+    assertFalse(Addon.exportFrame.visualScroll:IsShown())
     assertTrue(#Addon.exportFrame.itemRows >= 1)
+    findButtonByText(ui("items_tab")).scripts.OnClick()
+    assertTrue(Addon.exportFrame.visualScroll:IsShown())
     local visualRow = Addon.exportFrame.itemRows[1]
     visualRow.scripts.OnEnter(visualRow)
     assertEquals(GameTooltip.hyperlink, visualRow.item.link)
@@ -2373,12 +2422,16 @@ test("export frame buttons scan and change scopes", function()
     assertFalse(Addon.exportFrame.visualScroll:IsShown())
     assertEquals(Addon.exportFrame.status.text, ui("status_selected"))
 
+    findButtonByText(ui("overview_tab")).scripts.OnClick()
+    assertEquals(Addon.exportView, "overview")
+    assertTrue(Addon.exportFrame.overviewScroll:IsShown())
     findButtonByText(ui("items_tab")).scripts.OnClick()
     assertEquals(Addon.exportView, "items")
     assertTrue(Addon.exportFrame.visualScroll:IsShown())
     findButtonByText(ui("stats_analysis_tab")).scripts.OnClick()
     assertEquals(Addon.exportView, "analysis")
     assertTrue(Addon.exportFrame.analysisScroll:IsShown())
+    assertFalse(Addon.exportFrame.overviewScroll:IsShown())
     assertFalse(Addon.exportFrame.visualScroll:IsShown())
     assertFalse(Addon.exportFrame.textScroll:IsShown())
     assertContains(Addon.exportFrame.status.text, "属性分析已更新")

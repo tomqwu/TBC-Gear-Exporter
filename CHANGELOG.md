@@ -4,6 +4,12 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+## [0.1.8] - 2026-07-29
+
+- Add a default localized Overview GUI tab with compact inventory, talent, stat, category, quality, and role snapshots.
+- Redesign Markdown export into a readable report with quick summary, role snapshot, collapsible details, and Wowhead-linked item tables.
+- Round noisy human-facing stat decimals and fall back to localized talent tree names when the WoW API returns tree IDs.
+
 ## [0.1.7] - 2026-07-29
 
 - Export explicit talent point fields, including `current_talents.points_spent`, `tree_points`, per-tree `points_spent`, and per-talent `points_spent`/`current_rank`.
