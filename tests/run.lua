@@ -2116,22 +2116,25 @@ test("protection paladin strategy compares visible gains and losses without inve
     assertTrue(weights.ITEM_MOD_HIT_SPELL_RATING_SHORT > 0)
     assertEquals(private.NormalizeStatToken("ITEM_MOD_POWER_REGEN0_SHORT"), "ITEM_MOD_MANA_REGENERATION_SHORT")
     assertEquals(private.NormalizeStatToken("ITEM_MOD_SPELL_DAMAGE_DONE"), "ITEM_MOD_SPELL_DAMAGE_DONE_SHORT")
+    assertEquals(private.ComparisonStatToken("ITEM_MOD_SPELL_DAMAGE_DONE"), "ITEM_MOD_SPELL_POWER_SHORT")
     assertEquals(private.StatLabel("ITEM_MOD_DEFENSE_SKILL_RATING"), "Defense Rating")
     assertEquals(role.observed.gearStatHighlights[1].value, 20)
     assertFalse(role.observed.gearStatHighlights[1].value == 30, "candidate stamina must not leak into current gear highlights")
 
-    assertEquals(engine.version, 2)
+    assertEquals(engine.version, 3)
     assertEquals(#engine.upgrades, 1)
     assertEquals(engine.upgrades[1].evidence, "high")
+    assertEquals(engine.upgrades[1].verdict, "upgrade")
     assertEquals(engine.upgrades[1].statGains[1].token, "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT")
-    assertEquals(engine.upgrades[1].statLosses[1].token, "ITEM_MOD_SPELL_DAMAGE_DONE_SHORT")
+    assertEquals(engine.upgrades[1].statLosses[1].token, "ITEM_MOD_SPELL_POWER_SHORT")
     assertContains(private.DeltaText(engine.upgrades[1].statGains, "zhCN"), "防御等级")
-    assertContains(private.DeltaText(engine.upgrades[1].statLosses, "zhCN"), "法术伤害")
+    assertContains(private.DeltaText(engine.upgrades[1].statLosses, "zhCN"), "法术强度")
     assertEquals(private.EvidenceLabel("high", "zhTW"), "高")
 
     local relevant = private.ItemRelevantStatMap(candidate, weights)
     assertEquals(relevant.ITEM_MOD_STAMINA_SHORT, 30)
     assertEquals(relevant.ITEM_MOD_ARMOR, 1200)
+    assertEquals(relevant.ITEM_MOD_SPELL_POWER_SHORT, 10)
     assertEquals(relevant.ITEM_MOD_MANA_REGENERATION_SHORT, 6)
     assertEquals(candidateChart.statTotals[2].token, "ITEM_MOD_ARMOR")
     assertEquals(private.RecommendationEvidence(nil, candidate, {}, {}), "low")
@@ -2147,6 +2150,228 @@ test("protection paladin strategy compares visible gains and losses without inve
         { { token = "ITEM_MOD_STAMINA_SHORT" } },
         {}
     ), "low")
+end)
+
+test("spell damage and spell power compare as one offensive stat", function()
+    local weights = {
+        ITEM_MOD_SPELL_POWER_SHORT = 1,
+        ITEM_MOD_SPELL_DAMAGE_DONE_SHORT = 1,
+    }
+    local current = {
+        stats = {
+            { token = "ITEM_MOD_SPELL_POWER", value = 20 },
+        },
+    }
+    local candidate = {
+        stats = {
+            { token = "ITEM_MOD_SPELL_DAMAGE_DONE", value = 26 },
+        },
+    }
+    local gains, losses = private.BuildStatDeltas(current, candidate, weights)
+    assertEquals(#gains, 1)
+    assertEquals(gains[1].token, "ITEM_MOD_SPELL_POWER_SHORT")
+    assertEquals(gains[1].value, 6)
+    assertEquals(#losses, 0)
+    assertContains(private.DeltaText(gains, "zhCN"), "+6 法术强度")
+end)
+
+test("benchmark impacts distinguish gaps caps and contextual shield totals", function()
+    local role = {
+        benchmarks = {
+            { key = "defense_crit_immunity", label = "Defense", status = "meets_or_exceeds" },
+            { key = "spell_hit", label = "Spell Hit", status = "below" },
+            { key = "avoidance_table", label = "Shield Table", status = "context_required" },
+        },
+    }
+    local impacts = private.BuildBenchmarkImpacts(role, {
+        { token = "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT", value = 3 },
+        { token = "ITEM_MOD_HIT_SPELL_RATING_SHORT", value = 2 },
+        { token = "ITEM_MOD_DODGE_RATING_SHORT", value = 5 },
+    }, {
+        { token = "ITEM_MOD_BLOCK_RATING_SHORT", value = 7 },
+    })
+    assertEquals(#impacts, 3)
+    assertEquals(impacts[1].effect, "cap_buffer")
+    assertEquals(impacts[2].effect, "helps_gap")
+    assertEquals(impacts[3].delta, -2)
+    assertEquals(impacts[3].effect, "context_risk")
+end)
+
+test("benchmark impacts flag cap risk gap regression and contextual progress", function()
+    local role = {
+        benchmarks = {
+            { key = "defense_crit_immunity", label = "Defense", status = "meets_or_exceeds" },
+            { key = "spell_hit", label = "Spell Hit", status = "near" },
+            { key = "avoidance_table", label = "Shield Table", status = "context_required" },
+        },
+    }
+    local impacts = private.BuildBenchmarkImpacts(role, {
+        { token = "ITEM_MOD_PARRY_RATING_SHORT", value = 4 },
+    }, {
+        { token = "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT", value = 18 },
+        { token = "ITEM_MOD_HIT_SPELL_RATING_SHORT", value = 3 },
+    })
+    assertEquals(impacts[1].effect, "cap_risk")
+    assertEquals(impacts[2].effect, "worsens_gap")
+    assertEquals(impacts[3].effect, "context_help")
+end)
+
+test("recommendation verdicts separate upgrades tradeoffs minor gains and manual checks", function()
+    assertEquals(private.RecommendationVerdict("low", 40, {}), "review")
+    assertEquals(private.RecommendationVerdict("high", 12, {}), "upgrade")
+    assertEquals(private.RecommendationVerdict("medium", 7.99, {}), "minor")
+    assertEquals(private.RecommendationVerdict("high", 20, { { effect = "cap_risk" } }), "tradeoff")
+    assertEquals(private.RecommendationVerdict("high", 20, { { effect = "worsens_gap" } }), "tradeoff")
+    assertEquals(private.RecommendationVerdict("high", 20, { { effect = "context_risk" } }), "tradeoff")
+end)
+
+test("verdict summaries are concise and localized", function()
+    local engine = {
+        upgrades = {
+            { verdict = "upgrade" },
+            { verdict = "minor" },
+            { verdict = "tradeoff" },
+            { verdict = "review" },
+            {},
+        },
+    }
+    local counts = private.VerdictCounts(engine.upgrades)
+    assertEquals(counts.upgrade, 1)
+    assertEquals(counts.minor, 1)
+    assertEquals(counts.tradeoff, 1)
+    assertEquals(counts.review, 2)
+    assertContains(private.VerdictSummary(engine, "zhCN"), "明确 1")
+    assertContains(private.VerdictSummary(engine, "zhTW"), "需核對 2")
+    assertContains(private.VerdictSummary(engine, "enUS"), "1 clear")
+    assertEquals(private.RecommendationVerdictLabel("tradeoff", "zhCN"), "有取舍")
+end)
+
+test("benchmark impact copy explains the direction without claiming a simulated stat", function()
+    local impacts = {
+        { key = "defense_crit_immunity", label = "Defense", delta = -18, effect = "cap_risk" },
+        { key = "avoidance_table", label = "Shield Table", delta = 10, effect = "context_help" },
+    }
+    local zhCN = private.BenchmarkImpactText(impacts, "zhCN")
+    assertContains(zhCN, "防御免暴基准 -18")
+    assertContains(zhCN, "换装后需重新核对是否达标")
+    assertContains(zhCN, "提高可见常驻小计")
+    assertEquals(private.BenchmarkImpactText({}, "zhCN"), "不改变已跟踪基准")
+end)
+
+test("shield table benchmark is contextual instead of a false failed cap", function()
+    local benchmark = private.BenchmarkStatus("avoidance_table", {
+        tank = { knownAvoidanceBlock = 60.13 },
+    })
+    assertEquals(benchmark.status, "context_required")
+    assertEquals(benchmark.observed, 60.13)
+    assertEquals(benchmark.target, 102.4)
+    local text = private.GearBenchmarkText({ benchmarkGaps = { benchmark } }, "zhCN")
+    assertContains(text, "需结合战斗状态核对")
+    assertFalse(text:find("低于目标", 1, true), "shield subtotal must not be presented as a failed full table")
+end)
+
+test("Strongge style neck swap reports net spell power and a defense tradeoff", function()
+    local current = {
+        itemID = 24121, name = "夜枭之链", category = "Gear", equipSlot = "INVTYPE_NECK",
+        classID = 4, subClassID = 0, itemLevel = 115, quality = 4, slotKey = "NECK",
+        stats = {
+            { token = "ITEM_MOD_INTELLECT_SHORT", value = 19 },
+            { token = "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT", value = 18 },
+            { token = "ITEM_MOD_SPELL_POWER_SHORT", value = 20 },
+        },
+    }
+    local candidate = {
+        itemID = 30018, name = "萨古纳尔男爵的索求", category = "Gear", equipSlot = "INVTYPE_NECK",
+        classID = 4, subClassID = 0, itemLevel = 138, quality = 4, slotKey = "NECK",
+        stats = {
+            { token = "ITEM_MOD_STAMINA_SHORT", value = 25 },
+            { token = "ITEM_MOD_INTELLECT_SHORT", value = 19 },
+            { token = "ITEM_MOD_SPELL_DAMAGE_DONE", value = 26 },
+            { token = "ITEM_MOD_POWER_REGEN0_SHORT", value = 6 },
+        },
+    }
+    local role = {
+        key = "protection_tank", label = "Protection Tank", confidence = 100,
+        statTokens = {
+            "ITEM_MOD_STAMINA_SHORT", "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT", "ITEM_MOD_ARMOR",
+            "ITEM_MOD_DODGE_RATING_SHORT", "ITEM_MOD_PARRY_RATING_SHORT", "ITEM_MOD_BLOCK_RATING_SHORT",
+            "ITEM_MOD_BLOCK_VALUE_SHORT", "ITEM_MOD_SPELL_POWER_SHORT", "ITEM_MOD_SPELL_DAMAGE_DONE_SHORT",
+            "ITEM_MOD_HIT_SPELL_RATING_SHORT", "ITEM_MOD_INTELLECT_SHORT", "ITEM_MOD_MANA_REGENERATION_SHORT",
+        },
+        benchmarks = {
+            { key = "defense_crit_immunity", label = "Defense", status = "meets_or_exceeds" },
+            { key = "avoidance_table", label = "Shield Table", status = "context_required" },
+            { key = "spell_hit", label = "Spell Hit", status = "below" },
+        },
+    }
+    local engine = private.BuildGearRecommendations({
+        classEnglish = "PALADIN", locale = "zhCN", equipped = { items = { current } },
+    }, { candidate }, { roles = { role } })
+    local upgrade = engine.upgrades[1]
+    assertEquals(#engine.upgrades, 1)
+    assertEquals(upgrade.verdict, "tradeoff")
+    assertEquals(upgrade.evidence, "high")
+    assertContains(private.DeltaText(upgrade.statGains, "zhCN"), "+6 法术强度")
+    assertContains(private.DeltaText(upgrade.statLosses, "zhCN"), "+18 防御等级")
+    assertFalse(private.DeltaText(upgrade.statLosses, "zhCN"):find("法术强度", 1, true))
+    assertEquals(upgrade.benchmarkImpacts[1].effect, "cap_risk")
+end)
+
+test("Strongge style trinket is manual review while the ring is a minor gain", function()
+    local role = {
+        key = "protection_tank", label = "Protection Tank", confidence = 100,
+        statTokens = {
+            "ITEM_MOD_STAMINA_SHORT", "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT",
+            "ITEM_MOD_DODGE_RATING_SHORT", "ITEM_MOD_PARRY_RATING_SHORT", "ITEM_MOD_BLOCK_RATING_SHORT",
+        },
+        benchmarks = {
+            { key = "defense_crit_immunity", label = "Defense", status = "meets_or_exceeds" },
+            { key = "avoidance_table", label = "Shield Table", status = "context_required" },
+        },
+    }
+    local profile = {
+        classEnglish = "PALADIN", locale = "zhCN",
+        equipped = { items = {
+            {
+                itemID = 27529, name = "巨人塑像", category = "Gear", equipSlot = "INVTYPE_TRINKET",
+                classID = 4, subClassID = 0, itemLevel = 115, quality = 4, slotKey = "TRINKET",
+                stats = { { token = "ITEM_MOD_BLOCK_RATING_SHORT", value = 32 } },
+            },
+            {
+                itemID = 28675, name = "谢尔曼指环", category = "Gear", equipSlot = "INVTYPE_FINGER",
+                classID = 4, subClassID = 0, itemLevel = 115, quality = 4, slotKey = "FINGER",
+                stats = {
+                    { token = "ITEM_MOD_STAMINA_SHORT", value = 36 },
+                    { token = "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT", value = 23 },
+                },
+            },
+        } },
+    }
+    local candidates = {
+        {
+            itemID = 30629, name = "偏移甲虫", category = "Gear", equipSlot = "INVTYPE_TRINKET",
+            classID = 4, subClassID = 0, itemLevel = 128, quality = 4, slotKey = "TRINKET",
+            stats = { { token = "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT", value = 42 } },
+        },
+        {
+            itemID = 31319, name = "无懈防御指环", category = "Gear", equipSlot = "INVTYPE_FINGER",
+            classID = 4, subClassID = 0, itemLevel = 100, quality = 4, slotKey = "FINGER",
+            stats = {
+                { token = "ITEM_MOD_STAMINA_SHORT", value = 36 },
+                { token = "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT", value = 26 },
+            },
+        },
+    }
+    local engine = private.BuildGearRecommendations(profile, candidates, { roles = { role } })
+    local bySlot = {}
+    for index = 1, #engine.upgrades do
+        bySlot[engine.upgrades[index].slotKey] = engine.upgrades[index]
+    end
+    assertEquals(bySlot.TRINKET.verdict, "review")
+    assertEquals(bySlot.TRINKET.evidence, "low")
+    assertEquals(bySlot.FINGER.verdict, "minor")
+    assertEquals(bySlot.FINGER.evidence, "medium")
+    assertContains(private.VerdictSummary(engine, "zhCN"), "需核对 1")
 end)
 
 test("container item values cover missing API, table info, tuple info, and link fallback", function()
@@ -2486,7 +2711,7 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(markdownExport, "## 职责判断")
     assertContains(markdownExport, "## 换装建议")
     assertContains(markdownExport, "优先属性:")
-    assertContains(markdownExport, "背包和银行中没有找到")
+    assertContains(markdownExport, "背包和银行中没有值得")
     assertFalse(markdownExport:find("职业职责分析视角", 1, true), "human-readable Markdown should not duplicate the AI prompt")
     assertContains(markdownExport, "熊形态野性坦克")
     assertContains(markdownExport, "<summary>角色、策略与候选库存详细数据</summary>")
@@ -2567,26 +2792,39 @@ test("recommendation exports include current gear and concrete upgrades", functi
     assertContains(json, "\"matched_stats\": [")
     assertContains(json, "\"stat_gains\": [")
     assertContains(json, "\"stat_losses\": [")
+    assertContains(json, "\"benchmark_impacts\": [")
+    assertContains(json, "\"verdict_counts\": {")
+    assertContains(json, "\"verdict\": \"")
     assertContains(json, "\"evidence\": \"high\"")
     assertContains(json, "\"evidence\": \"low\"")
     assertContains(json, "https://www.wowhead.com/tbc/item=6002")
 
     local markdown = Addon:BuildExport("all", "markdown")
     assertContains(markdown, "## 换装建议")
-    assertContains(markdown, "| 头部 | [Worn Leather Cap](https://www.wowhead.com/tbc/item=6001)")
+    assertContains(markdown, "### 1. 头部")
+    assertContains(markdown, "[Worn Leather Cap](https://www.wowhead.com/tbc/item=6001)")
     assertContains(markdown, "[Guardian Leather Crown](https://www.wowhead.com/tbc/item=6002)")
-    assertContains(markdown, "| 手部 | 填补空栏位 | [Feral Grips]")
+    assertContains(markdown, "### 2. 手部")
+    assertContains(markdown, "当前装备: 填补空栏位")
+    assertContains(markdown, "候选装备: [Feral Grips]")
+    assertContains(markdown, "基准影响:")
+    assertContains(markdown, "结论")
     assertContains(markdown, "获得:")
     assertContains(markdown, "失去:")
     assertContains(markdown, "高")
     assertContains(markdown, "启发式评分")
 
     local textExport = Addon:BuildExport("all", "text")
-    assertContains(textExport, "头部: Worn Leather Cap -> Guardian Leather Crown")
-    assertContains(textExport, "手部: 填补空栏位 -> Feral Grips")
+    assertContains(textExport, "1. 头部 ·")
+    assertContains(textExport, "当前装备: Worn Leather Cap")
+    assertContains(textExport, "候选装备: Guardian Leather Crown")
+    assertContains(textExport, "2. 手部 ·")
+    assertContains(textExport, "当前装备: 填补空栏位")
+    assertContains(textExport, "候选装备: Feral Grips")
     assertContains(textExport, "评分变化 +")
-    assertContains(textExport, "证据 高")
-    assertContains(textExport, "证据 低")
+    assertContains(textExport, "基准影响")
+    assertContains(textExport, "证据: 高")
+    assertContains(textExport, "证据: 低")
 end)
 test("readable export helpers compact noisy details", function()
 	local counts = {
@@ -2658,7 +2896,7 @@ test("RefreshExport no-ops without frame and updates edit box with frame", funct
     assertContains(Addon.exportFrame.overviewText.text, "熊形态野性坦克")
     assertContains(Addon.exportFrame.status.text, "总览已更新")
     assertContains(Addon.exportFrame.adviceSummary.text, "熊形态野性坦克")
-    assertContains(Addon.exportFrame.adviceSummary.text, "建议升级 2 件")
+    assertContains(Addon.exportFrame.adviceSummary.text, "配装结论 2 条")
     assertEquals(#Addon.exportFrame.adviceRows, 2)
     Addon:SetExportView("advice")
     Addon:RefreshExport("bags")

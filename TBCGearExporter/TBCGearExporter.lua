@@ -351,7 +351,7 @@ local TBC_BENCHMARKS = {
     ranged_hit = { label = "Ranged hit benchmark", value = 9, unit = "% hit", note = "Common boss-level ranged-hit reference." },
     spell_hit = { label = "Spell hit benchmark", value = 16, unit = "% hit", note = "Common TBC boss-level spell-hit reference before class/talent debuffs." },
     expertise_dodge = { label = "Expertise dodge benchmark", value = 6.5, unit = "% dodge reduction", note = "Common boss dodge reduction reference where expertise exists." },
-    avoidance_table = { label = "Shield table coverage benchmark", value = 102.4, unit = "% known avoidance/block table", note = "Useful for warrior/paladin mitigation models; exported value omits unreported miss when the API cannot expose it." },
+    avoidance_table = { label = "Shield table context check", value = 102.4, unit = "% dodge/parry/block subtotal", note = "The exported subtotal excludes attacker miss and temporary block effects, so it cannot prove or disprove full shield-table coverage by itself." },
 }
 
 GEAR_ENGINE.GEAR_SLOT_ORDER = {
@@ -435,6 +435,14 @@ function GEAR_ENGINE.NormalizeStatToken(token)
     return GEAR_ENGINE.STAT_TOKEN_ALIASES[token] or token
 end
 
+function GEAR_ENGINE.ComparisonStatToken(token)
+    token = GEAR_ENGINE.NormalizeStatToken(token)
+    if token == "ITEM_MOD_SPELL_DAMAGE_DONE_SHORT" then
+        return "ITEM_MOD_SPELL_POWER_SHORT"
+    end
+    return token
+end
+
 GEAR_ENGINE.BENCHMARK_STAT_TOKENS = {
     defense_crit_immunity = { "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT" },
     melee_special_hit = { "ITEM_MOD_HIT_RATING_SHORT", "ITEM_MOD_HIT_MELEE_RATING_SHORT" },
@@ -482,6 +490,7 @@ local ANALYSIS_LOCALIZATION = {
             meets_or_exceeds = "Meets / exceeds",
             near = "Near target",
             below = "Below target",
+            context_required = "Needs combat context",
             unknown = "Unknown",
         },
         groupTypes = {
@@ -539,13 +548,14 @@ local ANALYSIS_LOCALIZATION = {
             meets_or_exceeds = "达标",
             near = "接近目标",
             below = "低于目标",
+            context_required = "需结合战斗状态核对",
             unknown = "未知",
         },
         units = {
             ["defense skill"] = "防御技能",
             ["% hit"] = "% 命中",
             ["% dodge reduction"] = "% 躲闪降低",
-            ["% known avoidance/block table"] = "% 已知免伤/格挡表",
+            ["% dodge/parry/block subtotal"] = "% 躲闪+招架+格挡小计",
         },
         groupTypes = {
             raid = "团队",
@@ -695,13 +705,14 @@ local ANALYSIS_LOCALIZATION = {
             meets_or_exceeds = "達標",
             near = "接近目標",
             below = "低於目標",
+            context_required = "需結合戰鬥狀態核對",
             unknown = "未知",
         },
         units = {
             ["defense skill"] = "防禦技能",
             ["% hit"] = "% 命中",
             ["% dodge reduction"] = "% 閃躲降低",
-            ["% known avoidance/block table"] = "% 已知減傷/格擋表",
+            ["% dodge/parry/block subtotal"] = "% 閃躲+招架+格擋小計",
         },
         groupTypes = {
             raid = "團隊",
@@ -914,19 +925,21 @@ local UI_STRINGS = {
         status_visual = "Visual item view updated: %d items. Use Text Export to copy AI-ready data.",
         status_analysis = "Stats analysis updated: %d role models. Use Text Export to copy AI-ready data.",
         status_overview = "Overview updated: %d items, %d role models. Use Text Export to copy AI-ready data.",
-        status_advice = "Gear advice updated: %d upgrades for %s.",
+        status_advice = "Gear advice updated: %d decisions for %s.",
         advice_title = "Gear Strategy",
-        advice_summary = "%s · %d equipped · %d candidates · %d suggested upgrades",
+        advice_summary = "%s · %d equipped · %d candidates · %d decisions",
+        advice_verdicts = "Decision: %s",
         advice_priorities = "Priority stats: %s",
-        advice_benchmarks = "Open gaps: %s",
-        advice_no_gaps = "No tracked benchmark gap",
-        advice_no_upgrades = "No clear upgrade found in the saved bags and bank for this role.",
+        advice_benchmarks = "Key checks: %s",
+        advice_no_gaps = "No unresolved benchmark check",
+        advice_no_upgrades = "No saved bag or bank item is strong enough to compare for this role.",
         advice_empty_slot = "Fill empty slot",
         advice_replace = "Estimated +%s score; %s",
         advice_ilvl = "item level %s → %s",
         advice_stats = "matched stats: %s",
         advice_gains = "Gains: %s",
         advice_losses = "Gives up: %s",
+        advice_impact = "Benchmark impact: %s",
         advice_evidence = "%s evidence",
         advice_evidence_high = "High",
         advice_evidence_medium = "Medium",
@@ -956,7 +969,7 @@ local UI_STRINGS = {
         analysis_role = "%s - confidence %s, talent points %s",
         analysis_models = "Models: %s",
         analysis_role_hit = "Observed hit/crit: hit melee %s, spell %s; crit melee %s, spell %s",
-        analysis_role_tank = "Tank lens: defense %s, armor %s, known avoidance/block %s",
+        analysis_role_tank = "Tank lens: defense %s, armor %s, standing dodge/parry/block subtotal %s",
         analysis_benchmark = "Benchmark: %s = %s (observed %s; target %s %s)",
         analysis_highlights = "Current gear highlights: %s",
         analysis_no_roles = "No role models available yet. Scan bags or generate an export to refresh the local DB.",
@@ -1012,19 +1025,21 @@ local UI_STRINGS = {
         status_visual = "物品图标视图已更新：%d 件。切到文本导出即可复制 AI 数据。",
         status_analysis = "属性分析已更新：%d 个职责模型。切到文本导出即可复制 AI 数据。",
         status_overview = "总览已更新：%d 件物品，%d 个职责模型。切到文本导出即可复制 AI 数据。",
-        status_advice = "装备建议已更新：%d 个升级建议，职责 %s。",
+        status_advice = "装备建议已更新：%d 条配装结论，职责 %s。",
         advice_title = "装备策略",
-        advice_summary = "%s · 已装备 %d 件 · 候选 %d 件 · 建议升级 %d 件",
+        advice_summary = "%s · 已装备 %d 件 · 候选 %d 件 · 配装结论 %d 条",
+        advice_verdicts = "结论：%s",
         advice_priorities = "优先属性：%s",
-        advice_benchmarks = "未达标项目：%s",
-        advice_no_gaps = "当前没有已跟踪的基准缺口",
-        advice_no_upgrades = "背包和银行中没有找到适合此职责的明确升级。",
+        advice_benchmarks = "关键检查：%s",
+        advice_no_gaps = "当前没有待处理的基准检查",
+        advice_no_upgrades = "背包和银行中没有值得为此职责进一步比较的候选装备。",
         advice_empty_slot = "填补空栏位",
         advice_replace = "预计评分 +%s；%s",
         advice_ilvl = "物品等级 %s → %s",
         advice_stats = "匹配属性：%s",
         advice_gains = "获得：%s",
         advice_losses = "失去：%s",
+        advice_impact = "基准影响：%s",
         advice_evidence = "%s证据",
         advice_evidence_high = "高",
         advice_evidence_medium = "中",
@@ -1054,7 +1069,7 @@ local UI_STRINGS = {
         analysis_role = "%s - 置信度 %s，天赋点 %s",
         analysis_models = "模型：%s",
         analysis_role_hit = "实测命中/暴击：近战命中 %s，法术命中 %s；近战暴击 %s，法术暴击 %s",
-        analysis_role_tank = "坦克视角：防御 %s，护甲 %s，已知免伤/格挡 %s",
+        analysis_role_tank = "坦克视角：防御 %s，护甲 %s，常驻躲闪/招架/格挡小计 %s",
         analysis_benchmark = "基准：%s = %s（实测 %s；目标 %s %s）",
         analysis_highlights = "当前装备属性亮点：%s",
         analysis_no_roles = "还没有可用的职责模型。扫描背包或生成导出以刷新本地数据库。",
@@ -1110,19 +1125,21 @@ local UI_STRINGS = {
         status_visual = "物品圖示檢視已更新：%d 件。切到文字匯出即可複製 AI 資料。",
         status_analysis = "屬性分析已更新：%d 個職責模型。切到文字匯出即可複製 AI 資料。",
         status_overview = "總覽已更新：%d 件物品，%d 個職責模型。切到文字匯出即可複製 AI 資料。",
-        status_advice = "裝備建議已更新：%d 個升級建議，職責 %s。",
+        status_advice = "裝備建議已更新：%d 條配裝結論，職責 %s。",
         advice_title = "裝備策略",
-        advice_summary = "%s · 已裝備 %d 件 · 候選 %d 件 · 建議升級 %d 件",
+        advice_summary = "%s · 已裝備 %d 件 · 候選 %d 件 · 配裝結論 %d 條",
+        advice_verdicts = "結論：%s",
         advice_priorities = "優先屬性：%s",
-        advice_benchmarks = "未達標項目：%s",
-        advice_no_gaps = "目前沒有已追蹤的基準缺口",
-        advice_no_upgrades = "背包和銀行中沒有找到適合此職責的明確升級。",
+        advice_benchmarks = "關鍵檢查：%s",
+        advice_no_gaps = "目前沒有待處理的基準檢查",
+        advice_no_upgrades = "背包和銀行中沒有值得為此職責進一步比較的候選裝備。",
         advice_empty_slot = "填補空欄位",
         advice_replace = "預估評分 +%s；%s",
         advice_ilvl = "物品等級 %s → %s",
         advice_stats = "匹配屬性：%s",
         advice_gains = "獲得：%s",
         advice_losses = "失去：%s",
+        advice_impact = "基準影響：%s",
         advice_evidence = "%s證據",
         advice_evidence_high = "高",
         advice_evidence_medium = "中",
@@ -1152,7 +1169,7 @@ local UI_STRINGS = {
         analysis_role = "%s - 信心 %s，天賦點 %s",
         analysis_models = "模型：%s",
         analysis_role_hit = "實測命中/致命：近戰命中 %s，法術命中 %s；近戰致命 %s，法術致命 %s",
-        analysis_role_tank = "坦克視角：防禦 %s，護甲 %s，已知減傷/格擋 %s",
+        analysis_role_tank = "坦克視角：防禦 %s，護甲 %s，常駐閃躲/招架/格擋小計 %s",
         analysis_benchmark = "基準：%s = %s（實測 %s；目標 %s %s）",
         analysis_highlights = "目前裝備屬性亮點：%s",
         analysis_no_roles = "還沒有可用的職責模型。掃描背包或產生匯出以重新整理本地資料庫。",
@@ -1183,9 +1200,15 @@ GEAR_ENGINE.REPORT_TERMS = {
         top_role = "Primary role", core_stats = "Live core stats", categories = "Categories", top_stats = "Candidate stat totals",
         role_snapshot = "Role Snapshot", role = "Role", confidence = "Confidence", talent_points = "Talent points",
         models = "Models", current_highlights = "Current gear highlights", gear_recommendations = "Gear Recommendations",
-        priority_stats = "Priority stats", benchmark_gaps = "Open benchmark gaps", caveat = "Limit",
-        slot = "Slot", current = "Current", suggested = "Candidate", score = "Score", evidence = "Evidence",
+        priority_stats = "Priority stats", benchmark_gaps = "Key benchmark checks", caveat = "Limit",
+        slot = "Slot", current = "Current", suggested = "Candidate", score = "Score", evidence = "Evidence", verdict = "Decision",
         gains = "Gains", losses = "Gives up", high = "High", medium = "Medium", low = "Low",
+        verdict_upgrade = "Clear upgrade", verdict_minor = "Small improvement", verdict_tradeoff = "Tradeoff", verdict_review = "Manual check",
+        verdict_summary = "%d clear · %d small · %d tradeoff · %d manual",
+        benchmark_impact = "Benchmark impact", impact_helps_gap = "moves toward target", impact_worsens_gap = "moves away from target",
+        impact_cap_buffer = "adds buffer above target", impact_cap_risk = "recheck target after equipping",
+        impact_context_help = "improves the visible subtotal", impact_context_risk = "reduces the visible subtotal",
+        no_benchmark_impact = "no tracked benchmark change",
         ai_prompt = "AI Analysis Prompt", details = "Detailed character, strategy, and inventory statistics",
         export_metadata = "Export Metadata", client_locale = "Client locale", local_db = "Local DB",
         scope = "Scope", filter = "Filter", bag_scan = "Bag scan", bank_scan = "Bank scan", equipped_scan = "Equipped scan",
@@ -1208,9 +1231,15 @@ GEAR_ENGINE.REPORT_TERMS = {
         top_role = "主要职责", core_stats = "实时核心属性", categories = "物品分类", top_stats = "候选库存属性合计",
         role_snapshot = "职责判断", role = "职责", confidence = "置信度", talent_points = "天赋点",
         models = "分析模型", current_highlights = "当前装备属性重点", gear_recommendations = "换装建议",
-        priority_stats = "优先属性", benchmark_gaps = "未达标项目", caveat = "分析限制",
-        slot = "栏位", current = "当前装备", suggested = "候选装备", score = "评分变化", evidence = "证据",
+        priority_stats = "优先属性", benchmark_gaps = "关键基准检查", caveat = "分析限制",
+        slot = "栏位", current = "当前装备", suggested = "候选装备", score = "评分变化", evidence = "证据", verdict = "结论",
         gains = "获得", losses = "失去", high = "高", medium = "中", low = "低",
+        verdict_upgrade = "明确升级", verdict_minor = "小幅提升", verdict_tradeoff = "有取舍", verdict_review = "需手动核对",
+        verdict_summary = "明确 %d · 小幅 %d · 有取舍 %d · 需核对 %d",
+        benchmark_impact = "基准影响", impact_helps_gap = "向目标靠近", impact_worsens_gap = "离目标更远",
+        impact_cap_buffer = "增加达标余量", impact_cap_risk = "换装后需重新核对是否达标",
+        impact_context_help = "提高可见常驻小计", impact_context_risk = "降低可见常驻小计",
+        no_benchmark_impact = "不改变已跟踪基准",
         ai_prompt = "AI 分析指令", details = "角色、策略与候选库存详细数据",
         export_metadata = "导出信息", client_locale = "客户端语言", local_db = "本地数据库",
         scope = "范围", filter = "过滤", bag_scan = "背包扫描", bank_scan = "银行扫描", equipped_scan = "当前装备扫描",
@@ -1233,9 +1262,15 @@ GEAR_ENGINE.REPORT_TERMS = {
         top_role = "主要職責", core_stats = "即時核心屬性", categories = "物品分類", top_stats = "候選庫存屬性合計",
         role_snapshot = "職責判斷", role = "職責", confidence = "信心", talent_points = "天賦點",
         models = "分析模型", current_highlights = "目前裝備屬性重點", gear_recommendations = "換裝建議",
-        priority_stats = "優先屬性", benchmark_gaps = "未達標項目", caveat = "分析限制",
-        slot = "欄位", current = "目前裝備", suggested = "候選裝備", score = "評分變化", evidence = "證據",
+        priority_stats = "優先屬性", benchmark_gaps = "關鍵基準檢查", caveat = "分析限制",
+        slot = "欄位", current = "目前裝備", suggested = "候選裝備", score = "評分變化", evidence = "證據", verdict = "結論",
         gains = "獲得", losses = "失去", high = "高", medium = "中", low = "低",
+        verdict_upgrade = "明確升級", verdict_minor = "小幅提升", verdict_tradeoff = "有取捨", verdict_review = "需手動核對",
+        verdict_summary = "明確 %d · 小幅 %d · 有取捨 %d · 需核對 %d",
+        benchmark_impact = "基準影響", impact_helps_gap = "向目標靠近", impact_worsens_gap = "離目標更遠",
+        impact_cap_buffer = "增加達標餘量", impact_cap_risk = "換裝後需重新核對是否達標",
+        impact_context_help = "提高可見常駐小計", impact_context_risk = "降低可見常駐小計",
+        no_benchmark_impact = "不改變已追蹤基準",
         ai_prompt = "AI 分析指令", details = "角色、策略與候選庫存詳細資料",
         export_metadata = "匯出資訊", client_locale = "客戶端語言", local_db = "本地資料庫",
         scope = "範圍", filter = "篩選", bag_scan = "背包掃描", bank_scan = "銀行掃描", equipped_scan = "目前裝備掃描",
@@ -1899,6 +1934,31 @@ end
 function GEAR_ENGINE.EvidenceLabel(evidence, locale)
     local terms = GEAR_ENGINE.ReportTerms(locale)
     return terms[evidence or "low"] or terms.low
+end
+
+function GEAR_ENGINE.RecommendationVerdictLabel(verdict, locale)
+    local terms = GEAR_ENGINE.ReportTerms(locale)
+    return terms["verdict_" .. tostring(verdict or "review")] or terms.verdict_review
+end
+
+function GEAR_ENGINE.VerdictSummary(engine, locale)
+    local terms = GEAR_ENGINE.ReportTerms(locale)
+    local counts = engine and engine.verdictCounts or GEAR_ENGINE.VerdictCounts(engine and engine.upgrades)
+    return string.format(terms.verdict_summary, counts.upgrade or 0, counts.minor or 0, counts.tradeoff or 0, counts.review or 0)
+end
+
+function GEAR_ENGINE.BenchmarkImpactText(impacts, locale)
+    local terms = GEAR_ENGINE.ReportTerms(locale)
+    local localized = ANALYSIS_LOCALIZATION[PromptLocale(locale or ClientLocale())]
+    local parts = {}
+    for index = 1, math.min(#(impacts or {}), 2) do
+        local impact = impacts[index]
+        local label = localized and localized.benchmarks and localized.benchmarks[impact.key] or impact.label or impact.key
+        local delta = tonumber(impact.delta) or 0
+        local signedDelta = delta > 0 and ("+" .. CompactNumber(delta, 2)) or CompactNumber(delta, 2)
+        parts[#parts + 1] = tostring(label) .. " " .. signedDelta .. " (" .. tostring(terms["impact_" .. tostring(impact.effect)] or impact.effect) .. ")"
+    end
+    return #parts > 0 and table.concat(parts, "; ") or terms.no_benchmark_impact
 end
 
 local function FormatStats(stats)
@@ -3162,7 +3222,7 @@ local function BuildAIPrompt(profile, scope, filter, itemCount)
             "当前天赋：" .. talentSummary .. "。",
             "请优先使用 current_talents.tree_points、current_talents.trees[].points_spent 和每个已点天赋的 points_spent/rank 来判断当前天赋点数。",
             "银行内容是最后一次保存的快照。背包/银行来源只代表库存位置，不代表物品已经装备。",
-            "请使用 character_stats、chart_stats、strategy_book、gear_recommendations、当前装备、物品属性、物品等级、品质、装备栏位、来源位置和 wowhead_url 字段。优先验证建议升级与基准缺口，不要编造隐藏附魔、宝石、套装或触发效果。",
+            "请使用 character_stats、chart_stats、strategy_book、gear_recommendations、当前装备、物品属性、物品等级、品质、装备栏位、来源位置和 wowhead_url 字段。优先核对 verdict、benchmark_impacts 和关键基准；不要编造隐藏附魔、宝石、套装或触发效果。",
             "请考虑该职业可能的天赋/职责，不要只假设一个专精。",
             "",
             "职业职责分析视角：",
@@ -3177,7 +3237,7 @@ local function BuildAIPrompt(profile, scope, filter, itemCount)
             "目前天賦：" .. talentSummary .. "。",
             "請優先使用 current_talents.tree_points、current_talents.trees[].points_spent 和每個已點天賦的 points_spent/rank 來判斷目前天賦點數。",
             "銀行內容是最後一次儲存的快照。背包/銀行來源只代表庫存位置，不代表物品已經裝備。",
-            "請使用 character_stats、chart_stats、strategy_book、gear_recommendations、目前裝備、物品屬性、物品等級、品質、裝備欄位、來源位置和 wowhead_url 欄位。優先驗證建議升級與基準缺口，不要編造隱藏附魔、寶石、套裝或觸發效果。",
+            "請使用 character_stats、chart_stats、strategy_book、gear_recommendations、目前裝備、物品屬性、物品等級、品質、裝備欄位、來源位置和 wowhead_url 欄位。優先核對 verdict、benchmark_impacts 和關鍵基準；不要編造隱藏附魔、寶石、套裝或觸發效果。",
             "請考慮該職業可能的天賦/職責，不要只假設一個專精。",
             "",
             "職業職責分析視角：",
@@ -3192,7 +3252,7 @@ local function BuildAIPrompt(profile, scope, filter, itemCount)
             "Current talents: " .. talentSummary .. ".",
             "Use current_talents.tree_points, current_talents.trees[].points_spent, and each selected talent points_spent/rank to anchor the current talent distribution.",
             "Bank contents are the last saved snapshot. Treat bag and bank source labels as inventory location, not proof that an item is equipped.",
-            "Use character_stats, chart_stats, strategy_book, gear_recommendations, current equipment, item stats, item level, quality, equip slot, source location, and wowhead_url fields. Validate suggested upgrades and benchmark gaps first; do not invent hidden enchants, gems, set bonuses, or proc effects.",
+            "Use character_stats, chart_stats, strategy_book, gear_recommendations, current equipment, item stats, item level, quality, equip slot, source location, and wowhead_url fields. Check verdict, benchmark_impacts, and key benchmarks first; do not invent hidden enchants, gems, set bonuses, or proc effects.",
             "Consider plausible class talents/specs instead of assuming one role.",
             "",
             "Class role lenses:",
@@ -3809,7 +3869,9 @@ local function BenchmarkStatus(key, observed)
     local status = "unknown"
 
     if type(value) == "number" and benchmark then
-        if value >= benchmark.value then
+        if key == "avoidance_table" then
+            status = "context_required"
+        elseif value >= benchmark.value then
             status = "meets_or_exceeds"
         elseif value >= (benchmark.value * 0.9) then
             status = "near"
@@ -3968,13 +4030,23 @@ function GEAR_ENGINE.BuildRoleStatWeights(role)
 
     for index = 1, #(role and role.benchmarks or {}) do
         local benchmark = role.benchmarks[index]
-        local boost = benchmark.status == "below" and 1.75 or (benchmark.status == "near" and 1.30 or 1)
+        local boost = benchmark.status == "below" and 1.75
+            or ((benchmark.status == "near" or benchmark.status == "context_required") and 1.30 or 1)
         local tokens = GEAR_ENGINE.BENCHMARK_STAT_TOKENS[benchmark.key] or {}
         for tokenIndex = 1, #tokens do
             local token = tokens[tokenIndex]
             local base = weights[token] or (GEAR_ENGINE.STAT_SCORE_SCALES[token] or 1)
             weights[token] = base * boost
         end
+    end
+
+    local spellOffenseWeight = GEAR_ENGINE.MaximumWeight(weights, {
+        "ITEM_MOD_SPELL_POWER_SHORT",
+        "ITEM_MOD_SPELL_DAMAGE_DONE_SHORT",
+    })
+    if spellOffenseWeight then
+        weights.ITEM_MOD_SPELL_POWER_SHORT = spellOffenseWeight
+        weights.ITEM_MOD_SPELL_DAMAGE_DONE_SHORT = spellOffenseWeight
     end
 
     return weights
@@ -4018,7 +4090,7 @@ function GEAR_ENGINE.ItemRelevantStatMap(item, weights)
 
     for index = 1, #(item and item.stats or {}) do
         local stat = item.stats[index]
-        local token = GEAR_ENGINE.NormalizeStatToken(stat and stat.token)
+        local token = GEAR_ENGINE.ComparisonStatToken(stat and stat.token)
         local value = tonumber(stat and stat.value)
         if token and value and GEAR_ENGINE.StatWeightForToken(weights, token) then
             values[token] = (values[token] or 0) + value
@@ -4088,6 +4160,80 @@ function GEAR_ENGINE.RecommendationEvidence(currentItem, candidateItem, gains, l
         return "high"
     end
     return "medium"
+end
+
+function GEAR_ENGINE.BuildBenchmarkImpacts(role, gains, losses)
+    local signed = {}
+    local impacts = {}
+    for index = 1, #(gains or {}) do
+        local entry = gains[index]
+        local token = GEAR_ENGINE.ComparisonStatToken(entry and entry.token)
+        signed[token] = (signed[token] or 0) + (tonumber(entry and entry.value) or 0)
+    end
+    for index = 1, #(losses or {}) do
+        local entry = losses[index]
+        local token = GEAR_ENGINE.ComparisonStatToken(entry and entry.token)
+        signed[token] = (signed[token] or 0) - (tonumber(entry and entry.value) or 0)
+    end
+
+    for index = 1, #(role and role.benchmarks or {}) do
+        local benchmark = role.benchmarks[index]
+        local delta = 0
+        local seen = {}
+        for tokenIndex = 1, #(GEAR_ENGINE.BENCHMARK_STAT_TOKENS[benchmark.key] or {}) do
+            local token = GEAR_ENGINE.ComparisonStatToken(GEAR_ENGINE.BENCHMARK_STAT_TOKENS[benchmark.key][tokenIndex])
+            if not seen[token] then
+                delta = delta + (signed[token] or 0)
+                seen[token] = true
+            end
+        end
+
+        if delta ~= 0 then
+            local effect
+            if benchmark.status == "below" or benchmark.status == "near" then
+                effect = delta > 0 and "helps_gap" or "worsens_gap"
+            elseif benchmark.status == "meets_or_exceeds" then
+                effect = delta > 0 and "cap_buffer" or "cap_risk"
+            elseif benchmark.status == "context_required" then
+                effect = delta > 0 and "context_help" or "context_risk"
+            end
+            if effect then
+                impacts[#impacts + 1] = {
+                    key = benchmark.key,
+                    label = benchmark.label,
+                    status = benchmark.status,
+                    delta = RoundedStatNumber(delta),
+                    effect = effect,
+                }
+            end
+        end
+    end
+    return impacts
+end
+
+function GEAR_ENGINE.RecommendationVerdict(evidence, scoreGain, impacts)
+    if evidence == "low" then
+        return "review"
+    end
+    for index = 1, #(impacts or {}) do
+        local effect = impacts[index] and impacts[index].effect
+        if effect == "worsens_gap" or effect == "cap_risk" or effect == "context_risk" then
+            return "tradeoff"
+        end
+    end
+    if (tonumber(scoreGain) or 0) < 8 then
+        return "minor"
+    end
+    return "upgrade"
+end
+
+function GEAR_ENGINE.VerdictCounts(upgrades)
+    local counts = { upgrade = 0, minor = 0, tradeoff = 0, review = 0 }
+    for index = 1, #(upgrades or {}) do
+        local verdict = upgrades[index] and upgrades[index].verdict or "review"
+        counts[verdict] = (counts[verdict] or 0) + 1
+    end
+    return counts
 end
 
 function GEAR_ENGINE.CandidateCompatibleWithClass(profile, item)
@@ -4179,6 +4325,8 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
             local gain = score - (current and current.score or 0)
             if gain >= 2 and #matched > 0 then
                 local statGains, statLosses = GEAR_ENGINE.BuildStatDeltas(current and current.item or nil, item, weights)
+                local evidence = GEAR_ENGINE.RecommendationEvidence(current and current.item or nil, item, statGains, statLosses)
+                local benchmarkImpacts = GEAR_ENGINE.BuildBenchmarkImpacts(role, statGains, statLosses)
                 local recommendation = {
                     slotKey = slotKey,
                     current = current and current.item or nil,
@@ -4189,7 +4337,9 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
                     matchedStats = matched,
                     statGains = statGains,
                     statLosses = statLosses,
-                    evidence = GEAR_ENGINE.RecommendationEvidence(current and current.item or nil, item, statGains, statLosses),
+                    benchmarkImpacts = benchmarkImpacts,
+                    evidence = evidence,
+                    verdict = GEAR_ENGINE.RecommendationVerdict(evidence, gain, benchmarkImpacts),
                 }
                 if not bestBySlot[slotKey] or score > bestBySlot[slotKey].candidateScore then
                     bestBySlot[slotKey] = recommendation
@@ -4217,13 +4367,13 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
     local benchmarkGaps = {}
     for index = 1, #(role and role.benchmarks or {}) do
         local benchmark = role.benchmarks[index]
-        if benchmark.status == "below" or benchmark.status == "near" then
+        if benchmark.status == "below" or benchmark.status == "near" or benchmark.status == "context_required" then
             benchmarkGaps[#benchmarkGaps + 1] = benchmark
         end
     end
 
     return {
-        version = 2,
+        version = 3,
         generatedAt = Now(),
         roleKey = role.key,
         roleLabel = role.label,
@@ -4234,6 +4384,7 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
         priorityStats = GEAR_ENGINE.PriorityStats(role, weights),
         benchmarkGaps = benchmarkGaps,
         upgrades = upgrades,
+        verdictCounts = GEAR_ENGINE.VerdictCounts(upgrades),
         equipped = equippedItems,
         caveat = LForLocale(profile and profile.locale or ClientLocale(), "advice_caveat"),
     }
@@ -4435,6 +4586,12 @@ function GEAR_ENGINE.AppendGearRecommendationsJson(lines, indent, engine, comma)
     AppendIndented(lines, indent + 2, JsonField("equipped_count", engine.equippedCount, true))
     AppendIndented(lines, indent + 2, JsonField("candidate_count", engine.candidateCount, true))
     AppendIndented(lines, indent + 2, JsonField("caveat", engine.caveat, true))
+    local verdictCounts = engine.verdictCounts or GEAR_ENGINE.VerdictCounts(engine.upgrades)
+    AppendIndented(lines, indent + 2, "\"verdict_counts\": { "
+        .. JsonField("upgrade", verdictCounts.upgrade or 0, true) .. " "
+        .. JsonField("minor", verdictCounts.minor or 0, true) .. " "
+        .. JsonField("tradeoff", verdictCounts.tradeoff or 0, true) .. " "
+        .. JsonField("review", verdictCounts.review or 0, false) .. " },")
     AppendJsonObjectArray(lines, indent + 2, "priority_stats", engine.priorityStats, {
         { name = "token", value = "token" },
         { name = "label", value = "label" },
@@ -4464,6 +4621,7 @@ function GEAR_ENGINE.AppendGearRecommendationsJson(lines, indent, engine, comma)
         AppendIndented(lines, indent + 6, JsonField("slot_key", upgrade.slotKey, true))
         AppendIndented(lines, indent + 6, JsonField("score_gain", upgrade.scoreGain, true))
         AppendIndented(lines, indent + 6, JsonField("evidence", upgrade.evidence, true))
+        AppendIndented(lines, indent + 6, JsonField("verdict", upgrade.verdict, true))
         GEAR_ENGINE.AppendGearItemJson(lines, indent + 6, "current", upgrade.current, upgrade.currentScore, true)
         GEAR_ENGINE.AppendGearItemJson(lines, indent + 6, "candidate", upgrade.candidate, upgrade.candidateScore, true)
         AppendJsonObjectArray(lines, indent + 6, "matched_stats", upgrade.matchedStats, {
@@ -4483,6 +4641,13 @@ function GEAR_ENGINE.AppendGearRecommendationsJson(lines, indent, engine, comma)
             { name = "label", value = "label" },
             { name = "value", value = "value" },
             { name = "weighted_value", value = "weightedValue" },
+        }, true)
+        AppendJsonObjectArray(lines, indent + 6, "benchmark_impacts", upgrade.benchmarkImpacts, {
+            { name = "key", value = "key" },
+            { name = "label", value = "label" },
+            { name = "status", value = "status" },
+            { name = "delta", value = "delta" },
+            { name = "effect", value = "effect" },
         }, false)
         AppendIndented(lines, indent + 4, "}" .. (index < #(engine.upgrades or {}) and "," or ""))
     end
@@ -4511,7 +4676,9 @@ function GEAR_ENGINE.GearBenchmarkText(engine, locale)
     for index = 1, #(engine and engine.benchmarkGaps or {}) do
         local gap = engine.benchmarkGaps[index]
         local label = localized and localized.benchmarks and localized.benchmarks[gap.key] or gap.label or gap.key
+        local status = localized and localized.statuses and localized.statuses[gap.status] or gap.status
         values[#values + 1] = tostring(label) .. " " .. CompactNumber(gap.observed or 0, 2) .. "/" .. CompactNumber(gap.target or 0, 2)
+            .. " (" .. tostring(status or "unknown") .. ")"
     end
     return #values > 0 and table.concat(values, "; ") or LForLocale(locale or ClientLocale(), "advice_no_gaps")
 end
@@ -4525,46 +4692,51 @@ function GEAR_ENGINE.AppendGearRecommendationsMarkdown(lines, engine, locale)
     lines[#lines + 1] = "## " .. terms.gear_recommendations
     lines[#lines + 1] = ""
     lines[#lines + 1] = "- " .. terms.role .. ": " .. tostring(GEAR_ENGINE.GearRoleLabel(engine, locale)) .. " (" .. terms.confidence .. " " .. tostring(engine.roleConfidence or 0) .. ")"
+    lines[#lines + 1] = "- " .. terms.verdict .. ": " .. GEAR_ENGINE.VerdictSummary(engine, locale)
     lines[#lines + 1] = "- " .. terms.priority_stats .. ": " .. GEAR_ENGINE.GearPriorityText(engine, locale)
     lines[#lines + 1] = "- " .. terms.benchmark_gaps .. ": " .. GEAR_ENGINE.GearBenchmarkText(engine, locale)
     lines[#lines + 1] = "- " .. terms.caveat .. ": " .. tostring(engine.caveat)
     lines[#lines + 1] = ""
-    lines[#lines + 1] = "| " .. terms.slot .. " | " .. terms.current .. " | " .. terms.suggested .. " | " .. terms.score .. " | " .. terms.evidence .. " |"
-    lines[#lines + 1] = "|---|---|---|---:|---|"
     for index = 1, #(engine.upgrades or {}) do
         local upgrade = engine.upgrades[index]
         local current = upgrade.current and Addon.MarkdownPlainItemName(upgrade.current) or LForLocale(locale, "advice_empty_slot")
         local candidate = Addon.MarkdownPlainItemName(upgrade.candidate)
-        local evidence = terms.gains .. ": " .. GEAR_ENGINE.DeltaText(upgrade.statGains, locale)
-            .. "; " .. terms.losses .. ": " .. GEAR_ENGINE.DeltaText(upgrade.statLosses, locale)
-            .. "; " .. GEAR_ENGINE.EvidenceLabel(upgrade.evidence, locale)
-        lines[#lines + 1] = "| " .. Addon.MarkdownEscape(GEAR_ENGINE.EquipmentSlotLabel(upgrade.slotKey, locale))
-            .. " | " .. current
-            .. " | " .. candidate
-            .. " | +" .. Addon.MarkdownEscape(CompactNumber(upgrade.scoreGain, 2))
-            .. " | " .. Addon.MarkdownEscape(evidence) .. " |"
+        lines[#lines + 1] = "### " .. tostring(index) .. ". " .. Addon.MarkdownEscape(GEAR_ENGINE.EquipmentSlotLabel(upgrade.slotKey, locale))
+            .. " · " .. Addon.MarkdownEscape(GEAR_ENGINE.RecommendationVerdictLabel(upgrade.verdict, locale))
+            .. " · +" .. Addon.MarkdownEscape(CompactNumber(upgrade.scoreGain, 2))
+        lines[#lines + 1] = "- " .. terms.current .. ": " .. current
+        lines[#lines + 1] = "- " .. terms.suggested .. ": " .. candidate
+        lines[#lines + 1] = "- " .. terms.gains .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.DeltaText(upgrade.statGains, locale))
+        lines[#lines + 1] = "- " .. terms.losses .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.DeltaText(upgrade.statLosses, locale))
+        lines[#lines + 1] = "- " .. terms.benchmark_impact .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.BenchmarkImpactText(upgrade.benchmarkImpacts, locale))
+        lines[#lines + 1] = "- " .. terms.evidence .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.EvidenceLabel(upgrade.evidence, locale))
+        lines[#lines + 1] = ""
     end
     if #(engine.upgrades or {}) == 0 then
-        lines[#lines + 1] = "| - | - | " .. Addon.MarkdownEscape(LForLocale(locale, "advice_no_upgrades")) .. " | - | - |"
+        lines[#lines + 1] = Addon.MarkdownEscape(LForLocale(locale, "advice_no_upgrades"))
+        lines[#lines + 1] = ""
     end
-    lines[#lines + 1] = ""
 end
 
 function GEAR_ENGINE.AppendGearRecommendationsText(lines, engine, locale)
     local terms = GEAR_ENGINE.ReportTerms(locale)
     lines[#lines + 1] = terms.gear_recommendations
     lines[#lines + 1] = terms.role .. ": " .. tostring(GEAR_ENGINE.GearRoleLabel(engine, locale)) .. "; " .. terms.confidence .. " " .. tostring(engine.roleConfidence or 0)
+    lines[#lines + 1] = terms.verdict .. ": " .. GEAR_ENGINE.VerdictSummary(engine, locale)
     lines[#lines + 1] = terms.priority_stats .. ": " .. GEAR_ENGINE.GearPriorityText(engine, locale)
     lines[#lines + 1] = terms.benchmark_gaps .. ": " .. GEAR_ENGINE.GearBenchmarkText(engine, locale)
     for index = 1, #(engine.upgrades or {}) do
         local upgrade = engine.upgrades[index]
         local current = upgrade.current and upgrade.current.name or LForLocale(locale, "advice_empty_slot")
-        lines[#lines + 1] = GEAR_ENGINE.EquipmentSlotLabel(upgrade.slotKey, locale) .. ": " .. tostring(current)
-            .. " -> " .. tostring(upgrade.candidate and upgrade.candidate.name)
-            .. " (" .. terms.score .. " +" .. CompactNumber(upgrade.scoreGain, 2)
-            .. "; " .. terms.gains .. " " .. GEAR_ENGINE.DeltaText(upgrade.statGains, locale)
-            .. "; " .. terms.losses .. " " .. GEAR_ENGINE.DeltaText(upgrade.statLosses, locale)
-            .. "; " .. terms.evidence .. " " .. GEAR_ENGINE.EvidenceLabel(upgrade.evidence, locale) .. ")"
+        lines[#lines + 1] = tostring(index) .. ". " .. GEAR_ENGINE.EquipmentSlotLabel(upgrade.slotKey, locale)
+            .. " · " .. GEAR_ENGINE.RecommendationVerdictLabel(upgrade.verdict, locale)
+            .. " · " .. terms.score .. " +" .. CompactNumber(upgrade.scoreGain, 2)
+        lines[#lines + 1] = "   " .. terms.current .. ": " .. tostring(current)
+        lines[#lines + 1] = "   " .. terms.suggested .. ": " .. tostring(upgrade.candidate and upgrade.candidate.name)
+        lines[#lines + 1] = "   " .. terms.gains .. ": " .. GEAR_ENGINE.DeltaText(upgrade.statGains, locale)
+        lines[#lines + 1] = "   " .. terms.losses .. ": " .. GEAR_ENGINE.DeltaText(upgrade.statLosses, locale)
+        lines[#lines + 1] = "   " .. terms.benchmark_impact .. ": " .. GEAR_ENGINE.BenchmarkImpactText(upgrade.benchmarkImpacts, locale)
+        lines[#lines + 1] = "   " .. terms.evidence .. ": " .. GEAR_ENGINE.EvidenceLabel(upgrade.evidence, locale)
     end
     if #(engine.upgrades or {}) == 0 then
         lines[#lines + 1] = LForLocale(locale, "advice_no_upgrades")
@@ -6069,8 +6241,8 @@ end
 
 function Addon:CreateGearAdviceRow(parent, index)
     local row = CreateFrame("Frame", nil, parent)
-    SetFrameSize(row, 490, 58)
-    row:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, -((index - 1) * 60))
+    SetFrameSize(row, 490, 72)
+    row:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, -((index - 1) * 74))
 
     local slot = row:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     slot:SetPoint("LEFT", 4, 0)
@@ -6141,6 +6313,7 @@ function Addon:RefreshGearAdvice(profile, engine)
     local locale = profile and profile.locale or ClientLocale()
     local roleLabel = GEAR_ENGINE.GearRoleLabel(engine, locale)
     self.exportFrame.adviceSummary:SetText(LForLocale(locale, "advice_summary", roleLabel, engine.equippedCount or 0, engine.candidateCount or 0, #(engine.upgrades or {}))
+        .. "\n" .. LForLocale(locale, "advice_verdicts", GEAR_ENGINE.VerdictSummary(engine, locale))
         .. "\n" .. LForLocale(locale, "advice_priorities", GEAR_ENGINE.GearPriorityText(engine, locale))
         .. "\n" .. LForLocale(locale, "advice_benchmarks", GEAR_ENGINE.GearBenchmarkText(engine, locale)))
     self.exportFrame.adviceCaveat:SetText(engine.caveat or LForLocale(locale, "advice_caveat"))
@@ -6170,17 +6343,19 @@ function Addon:RefreshGearAdvice(profile, engine)
         row.slot:SetText(GEAR_ENGINE.EquipmentSlotLabel(upgrade.slotKey, locale))
         row.name:SetText(ItemColoredName(upgrade.candidate))
         row.gain:SetText("|cff33ff99+" .. CompactNumber(upgrade.scoreGain, 2) .. "|r\n"
-            .. LForLocale(locale, "advice_evidence", LForLocale(locale, "advice_evidence_" .. tostring(upgrade.evidence or "low"))))
+            .. GEAR_ENGINE.RecommendationVerdictLabel(upgrade.verdict, locale))
         row.reason:SetText(LForLocale(locale, "advice_gains", GEAR_ENGINE.DeltaText(upgrade.statGains, locale))
-            .. "; " .. LForLocale(locale, "advice_losses", GEAR_ENGINE.DeltaText(upgrade.statLosses, locale)))
+            .. "; " .. LForLocale(locale, "advice_losses", GEAR_ENGINE.DeltaText(upgrade.statLosses, locale))
+            .. "\n" .. LForLocale(locale, "advice_impact", GEAR_ENGINE.BenchmarkImpactText(upgrade.benchmarkImpacts, locale))
+            .. "; " .. LForLocale(locale, "advice_evidence", LForLocale(locale, "advice_evidence_" .. tostring(upgrade.evidence or "low"))))
         row:Show()
     end
 
     if self.exportFrame.adviceRowsContent.SetHeight then
-        self.exportFrame.adviceRowsContent:SetHeight(math.max(220, (#upgrades * 60) + 8))
+        self.exportFrame.adviceRowsContent:SetHeight(math.max(220, (#upgrades * 74) + 8))
     end
     if self.exportFrame.adviceContent.SetHeight then
-        self.exportFrame.adviceContent:SetHeight(math.max(320, (#upgrades * 60) + 112))
+        self.exportFrame.adviceContent:SetHeight(math.max(340, (#upgrades * 74) + 132))
     end
     return #upgrades
 end
@@ -6604,14 +6779,14 @@ function Addon:CreateExportFrame()
     adviceSummary:SetText(L("advice_title"))
 
     local adviceCaveat = adviceContent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    adviceCaveat:SetPoint("TOPLEFT", 4, -58)
+    adviceCaveat:SetPoint("TOPLEFT", 4, -76)
     adviceCaveat:SetPoint("RIGHT", adviceContent, "RIGHT", -8, 0)
     adviceCaveat:SetJustifyH("LEFT")
     adviceCaveat:SetText(L("advice_caveat"))
 
     local adviceRowsContent = CreateFrame("Frame", nil, adviceContent)
     SetFrameSize(adviceRowsContent, 490, 220)
-    adviceRowsContent:SetPoint("TOPLEFT", adviceContent, "TOPLEFT", 0, -96)
+    adviceRowsContent:SetPoint("TOPLEFT", adviceContent, "TOPLEFT", 0, -116)
 
     local adviceEmpty = adviceRowsContent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     adviceEmpty:SetPoint("TOPLEFT", 4, -4)
@@ -7016,6 +7191,7 @@ if _G.TBCGearExporterTestMode then
         ItemQualityColorHex = ItemQualityColorHex,
         CompactNumber = CompactNumber,
         NormalizeStatToken = GEAR_ENGINE.NormalizeStatToken,
+        ComparisonStatToken = GEAR_ENGINE.ComparisonStatToken,
         ColorizeItemName = ColorizeItemName,
         ItemColoredName = ItemColoredName,
         HtmlEscape = HtmlEscape,
@@ -7061,6 +7237,9 @@ if _G.TBCGearExporterTestMode then
         FormatLocalizedStats = GEAR_ENGINE.FormatLocalizedStats,
         DeltaText = GEAR_ENGINE.DeltaText,
         EvidenceLabel = GEAR_ENGINE.EvidenceLabel,
+        RecommendationVerdictLabel = GEAR_ENGINE.RecommendationVerdictLabel,
+        VerdictSummary = GEAR_ENGINE.VerdictSummary,
+        BenchmarkImpactText = GEAR_ENGINE.BenchmarkImpactText,
         ClientLocale = ClientLocale,
         PromptLocale = PromptLocale,
         LForLocale = LForLocale,
@@ -7109,6 +7288,9 @@ if _G.TBCGearExporterTestMode then
         ItemRelevantStatMap = GEAR_ENGINE.ItemRelevantStatMap,
         BuildStatDeltas = GEAR_ENGINE.BuildStatDeltas,
         RecommendationEvidence = GEAR_ENGINE.RecommendationEvidence,
+        BuildBenchmarkImpacts = GEAR_ENGINE.BuildBenchmarkImpacts,
+        RecommendationVerdict = GEAR_ENGINE.RecommendationVerdict,
+        VerdictCounts = GEAR_ENGINE.VerdictCounts,
         CandidateCompatibleWithClass = GEAR_ENGINE.CandidateCompatibleWithClass,
         PriorityStats = GEAR_ENGINE.PriorityStats,
         BuildGearRecommendations = GEAR_ENGINE.BuildGearRecommendations,
