@@ -23,15 +23,16 @@ It scans current equipment, visible bags, bank containers, talents, and characte
 - Prints scan/debug lines in chat so you know when the local database changed.
 - Groups items into useful categories such as gear, consumables, gems, recipes, reagents, quest items, trade goods, and more.
 - Records item name, count, location, item level, quality, quality color, item type, equip slot, stats, item link, item string, and TBC Wowhead URL.
+- Normalizes the TBC Anniversary stat-token variants used for armor, ratings, spell damage/healing, spell power, mana regen, and weapon DPS before role scoring.
 - Exports chart-ready totals by source, category, quality, equip slot, item level, and aggregate stat values.
-- Builds a strategy book that maps class, race, current talents, raid/party context, live stats, and gear totals to mitigation, threat, DPS, healing, and mana models.
-- Recommends compatible upgrades from saved bags/bank against current equipment, using role weights and open hit/defense/avoidance/expertise gaps; the GUI clearly labels the score as heuristic when set, socket, enchant, or proc details need manual review.
+- Builds a strategy book that maps class, race, current talents, raid/party context, live stats, and current equipped item stats to mitigation, threat, DPS, healing, and mana models; candidate inventory totals stay separate.
+- Recommends compatible upgrades from saved bags/bank against current equipment, using role weights and open hit/defense/avoidance/expertise gaps; each swap shows gained stats, lost stats, and a high/medium/low evidence level.
 - Opens to a localized Overview GUI page with compact inventory, talent, stat, quality, category, and role snapshots.
-- Shows an icon-based Gear Advice page with current-to-candidate comparisons, item tooltips, score gains, priority stats, and benchmark gaps.
-- Shows a localized Stats Analysis GUI page with character stats, role models, benchmark statuses, race/group notes, and gear stat highlights without leaving the game.
+- Shows an icon-based Gear Advice page with current-to-candidate comparisons, item tooltips, score gains, stat tradeoffs, evidence levels, priority stats, and benchmark gaps.
+- Shows a localized Stats Analysis GUI page with character stats, role-specific models, benchmark statuses, race/group notes, and current-gear highlights without repeating irrelevant tank or hit sections.
 - Filters exports by scope: all saved items, bags only, bank only, or gear only.
 - Filters by quality, including rare-or-better, epic-only, and epic gear-only views.
-- Exports as AI Text, JSON, Markdown, or plain text; Markdown is formatted as a readable report with quick summary, role snapshot, collapsible details, and Wowhead-linked item tables.
+- Exports as AI Text, JSON, Markdown, or plain text; AI Text/JSON retain the engineered prompt and full data, while the fully localized readable formats open directly to current equipment, recommendations, role judgment, detailed analysis, and candidate inventory.
 - Shows a visual item browser with saved item icons, colored names, counts, item levels, locations, quality/type labels, and item-link tooltips.
 - Generates a class-aware AI prompt before the data export so external GenAI tools can analyze gear by likely role/spec, using `character_stats`, `current_talents`, `chart_stats`, `strategy_book`, and `gear_recommendations`.
 - Supports English, simplified Chinese, and traditional Chinese client UI text.
