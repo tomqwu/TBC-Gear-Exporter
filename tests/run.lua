@@ -109,6 +109,9 @@ mock = {
     badInfoItems = {},
     badStatsItems = {},
     tableInfo = {},
+    equippedItems = {},
+    unequippableItems = {},
+    badEquippableItems = {},
     talentTabs = {},
     unspentTalentPoints = 0,
     badTalentTabs = {},
@@ -680,6 +683,26 @@ local function installGlobals()
         end,
     }
 
+    _G.GetInventoryItemLink = function(unit, slotID)
+        local itemID = unit == "player" and mock.equippedItems[slotID] or nil
+        local item = itemID and mock.items[itemID]
+        return item and item.link or nil
+    end
+
+    _G.GetInventoryItemTexture = function(unit, slotID)
+        local itemID = unit == "player" and mock.equippedItems[slotID] or nil
+        local item = itemID and mock.items[itemID]
+        return item and item.icon or nil
+    end
+
+    _G.IsEquippableItem = function(link)
+        local itemID = parseItemID(link)
+        if mock.badEquippableItems[itemID] then
+            error("equippable failure")
+        end
+        return not mock.unequippableItems[itemID]
+    end
+
     _G.GetContainerNumSlots = function(bagID)
         return mock.containerSlots[bagID] or 0
     end
@@ -817,6 +840,9 @@ end
 local function resetRuntimeState(Addon)
     mock.messages = {}
     mock.timers = {}
+    mock.equippedItems = { [1] = 6001 }
+    mock.unequippableItems = {}
+    mock.badEquippableItems = {}
     resetTalentMock()
     resetCharacterMock()
     _G.TBCGearExporterDB = nil
@@ -963,6 +989,96 @@ addItem({
     stats = { ITEM_MOD_NEGATIVE_SHORT = -5 },
 })
 
+addItem({
+    id = 6001,
+    name = "Worn Leather Cap",
+    color = "ff1eff00",
+    quality = 2,
+    itemLevel = 80,
+    requiredLevel = 70,
+    itemType = "Armor",
+    itemSubType = "Leather",
+    classID = 4,
+    subClassID = 2,
+    equipSlot = "INVTYPE_HEAD",
+    maxStack = 1,
+    icon = "worn-cap-icon",
+    sellPrice = 1000,
+    stats = { ITEM_MOD_STAMINA_SHORT = 10, ITEM_MOD_AGILITY_SHORT = 5 },
+})
+
+addItem({
+    id = 6002,
+    name = "Guardian Leather Crown",
+    color = "ffa335ee",
+    quality = 4,
+    itemLevel = 128,
+    requiredLevel = 70,
+    itemType = "Armor",
+    itemSubType = "Leather",
+    classID = 4,
+    subClassID = 2,
+    equipSlot = "INVTYPE_HEAD",
+    maxStack = 1,
+    icon = "guardian-crown-icon",
+    sellPrice = 24000,
+    stats = { ITEM_MOD_STAMINA_SHORT = 36, ITEM_MOD_AGILITY_SHORT = 24, ITEM_MOD_ARMOR = 420 },
+})
+
+addItem({
+    id = 6003,
+    name = "Feral Grips",
+    color = "ff0070dd",
+    quality = 3,
+    itemLevel = 115,
+    requiredLevel = 70,
+    itemType = "Armor",
+    itemSubType = "Leather",
+    classID = 4,
+    subClassID = 2,
+    equipSlot = "INVTYPE_HAND",
+    maxStack = 1,
+    icon = "feral-grips-icon",
+    sellPrice = 16000,
+    stats = { ITEM_MOD_STAMINA_SHORT = 22, ITEM_MOD_AGILITY_SHORT = 18, ITEM_MOD_HIT_RATING_SHORT = 12 },
+})
+
+addItem({
+    id = 6004,
+    name = "Forbidden Shield",
+    color = "ffa335ee",
+    quality = 4,
+    itemLevel = 141,
+    requiredLevel = 70,
+    itemType = "Armor",
+    itemSubType = "Shield",
+    classID = 4,
+    subClassID = 6,
+    equipSlot = "INVTYPE_SHIELD",
+    maxStack = 1,
+    icon = "shield-icon",
+    sellPrice = 30000,
+    stats = { ITEM_MOD_STAMINA_SHORT = 50, ITEM_MOD_BLOCK_VALUE_SHORT = 100 },
+})
+
+addItem({
+    id = 6005,
+    name = "Unusable Leather Hood",
+    color = "ffa335ee",
+    quality = 4,
+    itemLevel = 150,
+    requiredLevel = 70,
+    itemType = "Armor",
+    itemSubType = "Leather",
+    classID = 4,
+    subClassID = 2,
+    equipSlot = "INVTYPE_HEAD",
+    maxStack = 1,
+    icon = "unusable-hood-icon",
+    sellPrice = 35000,
+    stats = { ITEM_MOD_STAMINA_SHORT = 90, ITEM_MOD_AGILITY_SHORT = 60 },
+})
+
 setContainerItem(0, 1, 1001, 1)
 setContainerItem(0, 2, 2001, 5)
 mock.containerSlots[0] = 3
@@ -1014,6 +1130,7 @@ test("addon registers bag and bank scan events after load", function()
     assertTrue(addonRootFrame().events.BANKFRAME_OPENED, "bank open should be registered")
     assertTrue(addonRootFrame().events.PLAYER_TALENT_UPDATE, "talent updates should be registered")
     assertTrue(addonRootFrame().events.CHARACTER_POINTS_CHANGED, "character point changes should be registered")
+    assertTrue(addonRootFrame().events.PLAYER_EQUIPMENT_CHANGED, "equipment changes should be registered")
 end)
 
 test("private parsers handle links and nils", function()
@@ -1792,6 +1909,124 @@ test("strategy book ranks role models from talents gear race and raid context", 
     assertEquals(private.TalentSelectedPointsText(emptyTalents, "enUS"), "none")
 end)
 
+test("gear strategy engine compares current slots with compatible saved candidates", function()
+    resetRuntimeState(Addon)
+    local equipped = Addon:ScanEquipped()
+    assertEquals(equipped.api, "inventory")
+    assertEquals(#equipped.items, 1)
+    assertEquals(equipped.items[1].itemID, 6001)
+    assertEquals(equipped.items[1].slotKey, "HEAD")
+    assertEquals(equipped.items[1].location, "头部")
+
+    local profile = Addon:GetProfile()
+    profile.equipped = equipped
+    profile.talents = private.BuildTalentSnapshot()
+    profile.characterStats = private.BuildCharacterStatsSnapshot()
+
+    local function candidate(itemID, location)
+        return Addon:BuildItemFromLink("bags", mock.itemLinks[itemID], { bag = 0, slot = itemID, location = location })
+    end
+
+    local leatherHead = candidate(6002, "Backpack slot 8")
+    local emptyHands = candidate(6003, "Backpack slot 9")
+    local plateHead = candidate(1001, "Backpack slot 10")
+    local shield = candidate(6004, "Bank slot 4")
+    local unusable = candidate(6005, "Bank slot 5")
+    local potion = candidate(2001, "Backpack slot 11")
+    mock.unequippableItems[6005] = true
+
+    local candidates = { leatherHead, emptyHands, plateHead, shield, unusable, potion }
+    local strategyBook = private.BuildStrategyBook(profile, private.BuildChartStats(candidates))
+    local engine = private.BuildGearRecommendations(profile, candidates, strategyBook)
+    assertEquals(engine.roleKey, "bear_tank")
+    assertEquals(engine.roleConfidence, 100)
+    assertEquals(engine.equippedCount, 1)
+    assertEquals(engine.candidateCount, 2)
+    assertTrue(#engine.priorityStats <= 6)
+    assertTrue(#engine.benchmarkGaps >= 2)
+    assertEquals(#engine.upgrades, 2)
+    assertContains(engine.caveat, "启发式评分")
+
+    local bySlot = {}
+    for index = 1, #engine.upgrades do
+        bySlot[engine.upgrades[index].slotKey] = engine.upgrades[index]
+    end
+    assertEquals(bySlot.HEAD.current.itemID, 6001)
+    assertEquals(bySlot.HEAD.candidate.itemID, 6002)
+    assertTrue(bySlot.HEAD.scoreGain > 2)
+    assertEquals(bySlot.HANDS.current, nil)
+    assertEquals(bySlot.HANDS.candidate.itemID, 6003)
+    assertTrue(#bySlot.HANDS.matchedStats >= 2)
+
+    assertEquals(private.EquipmentSlotKey({ slotKey = "TRINKET" }), "TRINKET")
+    assertEquals(private.EquipmentSlotKey({ inventorySlot = 17 }), "OFFHAND")
+    assertEquals(private.EquipmentSlotKey({ equipSlot = "INVTYPE_CLOAK" }), "BACK")
+    assertEquals(private.EquipmentSlotKey(nil), nil)
+    assertEquals(private.EquipmentSlotLabel("HEAD", "zhCN"), "头部")
+    assertEquals(private.EquipmentSlotLabel("HEAD", "enUS"), "Head")
+    assertEquals(private.EquipmentSlotLabel("MYSTERY", "enUS"), "MYSTERY")
+
+    assertFalse(private.CandidateCompatibleWithClass(profile, nil))
+    assertFalse(private.CandidateCompatibleWithClass(profile, potion))
+    assertFalse(private.CandidateCompatibleWithClass(profile, plateHead))
+    assertFalse(private.CandidateCompatibleWithClass(profile, shield))
+    assertFalse(private.CandidateCompatibleWithClass(profile, unusable))
+    mock.unequippableItems[6005] = nil
+    mock.badEquippableItems[6005] = true
+    assertTrue(private.CandidateCompatibleWithClass(profile, unusable))
+    mock.badEquippableItems[6005] = nil
+    assertTrue(private.CandidateCompatibleWithClass(profile, leatherHead))
+
+    local aliasRole = {
+        statTokens = {
+            "ITEM_MOD_HIT_MELEE_RATING_SHORT",
+            "ITEM_MOD_CRIT_MELEE_RATING_SHORT",
+            "ITEM_MOD_HASTE_MELEE_RATING_SHORT",
+            "ITEM_MOD_STAMINA_SHORT",
+            "ITEM_MOD_AGILITY_SHORT",
+            "ITEM_MOD_STRENGTH_SHORT",
+            "ITEM_MOD_DODGE_RATING_SHORT",
+            "ITEM_MOD_PARRY_RATING_SHORT",
+        },
+        benchmarks = {
+            { key = "melee_special_hit", status = "below" },
+            { key = "avoidance_table", status = "near" },
+            { key = "unknown", status = "meets_or_exceeds" },
+        },
+    }
+    local weights = private.BuildRoleStatWeights(aliasRole)
+    local score, matched = private.ItemRoleScore({
+        itemLevel = 100,
+        quality = 3,
+        stats = {
+            { token = "ITEM_MOD_HIT_RATING_SHORT", label = "Hit", value = 10 },
+            { token = "ITEM_MOD_CRIT_RATING_SHORT", label = "Crit", value = 10 },
+            { token = "ITEM_MOD_HASTE_RATING_SHORT", label = "Haste", value = 10 },
+            { token = "EMPTY_SOCKET_BLUE", label = "Blue Socket", value = 1 },
+            { token = "ITEM_MOD_SPIRIT_SHORT", label = "Spirit", value = -2 },
+        },
+    }, aliasRole, weights)
+    assertTrue(score > 40)
+    assertEquals(#matched, 4)
+    assertEquals(private.GearMatchedStatsText({ matchedStats = matched }, "enUS"):find("Hit", 1, true) ~= nil, true)
+    assertEquals(#private.PriorityStats(aliasRole, weights), 6)
+    assertContains(private.GearPriorityText(engine, "zhCN"), "耐力")
+    assertContains(private.GearBenchmarkText(engine, "zhCN"), "/")
+    assertContains(private.GearBenchmarkText({ benchmarkGaps = {} }, "zhCN"), "没有")
+    assertEquals(private.GearRoleLabel(engine, "zhCN"), "熊形态野性坦克")
+
+    local emptyEngine = private.BuildGearRecommendations({ locale = "enUS", equipped = { items = {} } }, {}, nil)
+    assertEquals(emptyEngine.roleKey, "general_inventory")
+    assertEquals(#emptyEngine.upgrades, 0)
+
+    local oldInventoryLink = _G.GetInventoryItemLink
+    _G.GetInventoryItemLink = nil
+    local unavailable = Addon:ScanEquipped()
+    assertEquals(unavailable.api, "unavailable")
+    assertEquals(#unavailable.items, 0)
+    _G.GetInventoryItemLink = oldInventoryLink
+    assertEquals(Addon:BuildItemFromLink("equipped", nil), nil)
+end)
 test("container item values cover missing API, table info, tuple info, and link fallback", function()
     local oldInfo = _G.GetContainerItemInfo
     local oldContainerInfo = _G.C_Container.GetContainerItemInfo
@@ -1904,6 +2139,9 @@ test("scans bags and bank containers into saved snapshots", function()
     local bagSnapshot = Addon:ScanBags()
     assertTrue(#bagSnapshot.items >= 3)
     assertEquals(Addon:GetProfile().localDB.bagItemCount, #bagSnapshot.items)
+    assertEquals(Addon:GetProfile().localDB.equippedItemCount, 1)
+    assertEquals(Addon:GetProfile().equipped.items[1].itemID, 6001)
+    assertEquals(Addon:GetProfile().localDB.version, 2)
     assertEquals(Addon:GetProfile().localDB.name, "TBCGearExporterDB")
     assertEquals(Addon:GetProfile().classLocalized, "Druid")
     assertEquals(Addon:GetProfile().classEnglish, "DRUID")
@@ -1998,7 +2236,7 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(allExport, "AI_READY_WOW_TBC_INVENTORY_EXPORT v1")
     assertContains(allExport, "AI_PROMPT:")
     assertContains(allExport, "职业职责分析视角：")
-    assertContains(allExport, "character_stats、chart_stats、strategy_book")
+    assertContains(allExport, "character_stats、chart_stats、strategy_book、gear_recommendations")
     assertContains(allExport, "熊形态野性坦克")
     assertContains(allExport, "当前天赋：0/46/15; primary=Feral Combat; points=61")
     assertTrue(allExport:find("AI_PROMPT:", 1, true) < allExport:find("DATA_JSON:", 1, true))
@@ -2047,6 +2285,8 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(allExport, "\"talent_tree_points\": \"Balance 0, Feral Combat 46, Restoration 15\"")
     assertContains(allExport, "\"character_stats_saved_at\":")
     assertContains(allExport, "\"bag_item_count\":")
+    assertContains(allExport, "\"equipped_item_count\": 1")
+    assertContains(allExport, "\"equipped_saved_at\":")
     assertContains(allExport, "\"name\": \"Gear\"")
     assertContains(allExport, "\"name\": \"Consumables\"")
     assertContains(allExport, "\"stats_text\": \"+27 Stamina")
@@ -2067,6 +2307,10 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(allExport, "\"slot\": \"INVTYPE_HEAD\"")
     assertContains(allExport, "\"stat_totals\": [")
     assertContains(allExport, "\"strategy_book\": {")
+    assertContains(allExport, "\"gear_recommendations\": {")
+    assertContains(allExport, "\"equipped_gear\": [")
+    assertContains(allExport, "Worn Leather Cap")
+    assertContains(allExport, "\"caveat\": \"启发式评分")
     assertContains(allExport, "\"label\": \"Bear Feral Tank\"")
     assertContains(allExport, "\"confidence\": 100")
     assertContains(allExport, "\"tank_mitigation\"")
@@ -2118,6 +2362,9 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(markdownExport, "## Quick Summary")
     assertContains(markdownExport, "| Field | Value |")
     assertContains(markdownExport, "## Role Snapshot")
+    assertContains(markdownExport, "## Gear Recommendations")
+    assertContains(markdownExport, "Priority stats:")
+    assertContains(markdownExport, "背包和银行中没有找到")
     assertContains(markdownExport, "## AI Prompt")
     assertContains(markdownExport, "熊形态野性坦克")
     assertContains(markdownExport, "<summary>Character, strategy, and chart details</summary>")
@@ -2150,6 +2397,8 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(textExport, "Client locale: zhCN")
     assertContains(textExport, "CHARACTER STATS")
     assertContains(textExport, "STRATEGY BOOK")
+    assertContains(textExport, "GEAR RECOMMENDATIONS")
+    assertContains(textExport, "Equipped scan:")
     assertContains(textExport, "[Bear Feral Tank]")
     assertContains(textExport, "Observed hit: melee 8.5%")
     assertContains(textExport, "Benchmark: Defense crit-immunity benchmark = meets_or_exceeds")
@@ -2174,6 +2423,41 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(Addon:BuildExport("all", "text"), "No saved items are available")
 end)
 
+test("recommendation exports include current gear and concrete upgrades", function()
+    resetRuntimeState(Addon)
+    local profile = Addon:GetProfile()
+    profile.bags.items = {
+        Addon:BuildItemFromLink("bags", mock.itemLinks[6002], { bag = 0, slot = 8, location = "Backpack slot 8" }),
+        Addon:BuildItemFromLink("bags", mock.itemLinks[6003], { bag = 0, slot = 9, location = "Backpack slot 9" }),
+    }
+    profile.bank.items = {}
+
+    local json = Addon:BuildExport("all", "json")
+    assertContains(json, "\"gear_recommendations\": {")
+    assertContains(json, "\"role_key\": \"bear_tank\"")
+    assertContains(json, "\"equipped_count\": 1")
+    assertContains(json, "\"candidate_count\": 2")
+    assertContains(json, "\"slot_key\": \"HEAD\"")
+    assertContains(json, "\"current\": {")
+    assertContains(json, "Worn Leather Cap")
+    assertContains(json, "\"candidate\": {")
+    assertContains(json, "Guardian Leather Crown")
+    assertContains(json, "Feral Grips")
+    assertContains(json, "\"matched_stats\": [")
+    assertContains(json, "https://www.wowhead.com/tbc/item=6002")
+
+    local markdown = Addon:BuildExport("all", "markdown")
+    assertContains(markdown, "## Gear Recommendations")
+    assertContains(markdown, "| 头部 | [Worn Leather Cap](https://www.wowhead.com/tbc/item=6001)")
+    assertContains(markdown, "[Guardian Leather Crown](https://www.wowhead.com/tbc/item=6002)")
+    assertContains(markdown, "| 手部 | 填补空栏位 | [Feral Grips]")
+    assertContains(markdown, "启发式评分")
+
+    local textExport = Addon:BuildExport("all", "text")
+    assertContains(textExport, "头部: Worn Leather Cap -> Guardian Leather Crown")
+    assertContains(textExport, "手部: 填补空栏位 -> Feral Grips")
+    assertContains(textExport, "score +")
+end)
 test("readable export helpers compact noisy details", function()
 	local counts = {
 		{ name = "Gear", itemCount = 7 },
@@ -2215,11 +2499,15 @@ test("RefreshExport no-ops without frame and updates edit box with frame", funct
     assertEquals(Addon.exportScope, "all")
 
     Addon:ScanBags()
+    local profile = Addon:GetProfile()
+    profile.bags.items[#profile.bags.items + 1] = Addon:BuildItemFromLink("bags", mock.itemLinks[6002], { bag = 0, slot = 8, location = "Backpack slot 8" })
+    profile.bags.items[#profile.bags.items + 1] = Addon:BuildItemFromLink("bags", mock.itemLinks[6003], { bag = 0, slot = 9, location = "Backpack slot 9" })
     Addon:CreateExportFrame()
     Addon:RefreshExport("bags")
     assertContains(Addon.exportFrame.editBox.text, "Super Mana Potion")
     assertEquals(Addon.exportView, "overview")
     assertTrue(Addon.exportFrame.overviewScroll:IsShown())
+    assertFalse(Addon.exportFrame.adviceScroll:IsShown())
     assertFalse(Addon.exportFrame.visualScroll:IsShown())
     assertFalse(Addon.exportFrame.analysisScroll:IsShown())
     assertFalse(Addon.exportFrame.textScroll:IsShown())
@@ -2239,6 +2527,30 @@ test("RefreshExport no-ops without frame and updates edit box with frame", funct
     assertContains(Addon.exportFrame.overviewText.text, "库存：")
     assertContains(Addon.exportFrame.overviewText.text, "熊形态野性坦克")
     assertContains(Addon.exportFrame.status.text, "总览已更新")
+    assertContains(Addon.exportFrame.adviceSummary.text, "熊形态野性坦克")
+    assertContains(Addon.exportFrame.adviceSummary.text, "建议升级 2 件")
+    assertEquals(#Addon.exportFrame.adviceRows, 2)
+    Addon:SetExportView("advice")
+    Addon:RefreshExport("bags")
+    assertTrue(Addon.exportFrame.adviceScroll:IsShown())
+    assertFalse(Addon.exportFrame.overviewScroll:IsShown())
+    assertContains(Addon.exportFrame.status.text, "装备建议已更新")
+    assertContains(Addon.exportFrame.adviceRows[1].name.text .. Addon.exportFrame.adviceRows[2].name.text, "Guardian Leather Crown")
+    local adviceWithCurrent
+    local adviceWithoutCurrent
+    for index = 1, #Addon.exportFrame.adviceRows do
+        local row = Addon.exportFrame.adviceRows[index]
+        if row.currentButton.item then adviceWithCurrent = row else adviceWithoutCurrent = row end
+    end
+    adviceWithCurrent.currentButton.scripts.OnEnter(adviceWithCurrent.currentButton)
+    assertEquals(_G.GameTooltip.hyperlink, mock.itemLinks[6001])
+    adviceWithCurrent.candidateButton.scripts.OnEnter(adviceWithCurrent.candidateButton)
+    assertTrue(_G.GameTooltip.shown)
+    adviceWithCurrent.candidateButton.scripts.OnLeave()
+    assertFalse(_G.GameTooltip.shown)
+    adviceWithoutCurrent.currentButton.scripts.OnEnter(adviceWithoutCurrent.currentButton)
+    adviceWithoutCurrent.currentButton.scripts.OnLeave()
+
     Addon:SetExportView("analysis")
     Addon:RefreshExport("bags")
     assertTrue(Addon.exportFrame.analysisScroll:IsShown())
@@ -2268,15 +2580,21 @@ test("CreateExportFrame wires UI controls and scripts", function()
     assertTrue(exportFrame.sourceLabel ~= nil)
     assertTrue(exportFrame.filterLabel ~= nil)
     assertTrue(exportFrame.overviewScroll ~= nil)
+    assertTrue(exportFrame.adviceScroll ~= nil)
     assertTrue(exportFrame.visualScroll ~= nil)
     assertTrue(exportFrame.analysisScroll ~= nil)
     assertTrue(exportFrame.textScroll ~= nil)
     assertTrue(exportFrame.overviewContent ~= nil)
     assertTrue(exportFrame.overviewText ~= nil)
+    assertTrue(exportFrame.adviceContent ~= nil)
+    assertTrue(exportFrame.adviceSummary ~= nil)
+    assertTrue(exportFrame.adviceCaveat ~= nil)
+    assertTrue(exportFrame.adviceRowsContent ~= nil)
     assertTrue(exportFrame.itemListContent ~= nil)
     assertTrue(exportFrame.analysisContent ~= nil)
     assertTrue(exportFrame.analysisText ~= nil)
     assertTrue(exportFrame.overviewScroll:IsShown())
+    assertFalse(exportFrame.adviceScroll:IsShown())
     assertFalse(exportFrame.visualScroll:IsShown())
     assertFalse(exportFrame.analysisScroll:IsShown())
     assertFalse(exportFrame.textScroll:IsShown())
@@ -2297,16 +2615,25 @@ test("CreateExportFrame wires UI controls and scripts", function()
 
     Addon:SetExportView("text")
     assertFalse(exportFrame.overviewScroll:IsShown())
+    assertFalse(exportFrame.adviceScroll:IsShown())
     assertFalse(exportFrame.visualScroll:IsShown())
     assertFalse(exportFrame.analysisScroll:IsShown())
     assertTrue(exportFrame.textScroll:IsShown())
+    Addon:SetExportView("advice")
+    assertFalse(exportFrame.overviewScroll:IsShown())
+    assertTrue(exportFrame.adviceScroll:IsShown())
+    assertFalse(exportFrame.visualScroll:IsShown())
+    assertFalse(exportFrame.analysisScroll:IsShown())
+    assertFalse(exportFrame.textScroll:IsShown())
     Addon:SetExportView("analysis")
     assertFalse(exportFrame.overviewScroll:IsShown())
+    assertFalse(exportFrame.adviceScroll:IsShown())
     assertFalse(exportFrame.visualScroll:IsShown())
     assertTrue(exportFrame.analysisScroll:IsShown())
     assertFalse(exportFrame.textScroll:IsShown())
     Addon:SetExportView("bogus")
     assertTrue(exportFrame.overviewScroll:IsShown())
+    assertFalse(exportFrame.adviceScroll:IsShown())
     assertFalse(exportFrame.visualScroll:IsShown())
     assertFalse(exportFrame.analysisScroll:IsShown())
     assertFalse(exportFrame.textScroll:IsShown())
@@ -2381,6 +2708,7 @@ test("export frame buttons scan and change scopes", function()
     assertAnyMessageContains(ui("bags_scanned"))
     Addon:ScanBank()
     assertTrue(Addon.exportFrame.overviewScroll:IsShown())
+    assertFalse(Addon.exportFrame.adviceScroll:IsShown())
     assertFalse(Addon.exportFrame.visualScroll:IsShown())
     assertTrue(#Addon.exportFrame.itemRows >= 1)
     findButtonByText(ui("items_tab")).scripts.OnClick()
@@ -2589,6 +2917,16 @@ test("event dispatcher covers addon, login, bags, bank, and bank slot events", f
     Addon:OnEvent("PLAYER_TALENT_UPDATE")
     Addon:OnEvent("CHARACTER_POINTS_CHANGED")
     assertEquals(Addon:GetProfile().talents.summary, "0/42/19")
+
+    mock.equippedItems[1] = 6002
+    Addon:OnEvent("PLAYER_EQUIPMENT_CHANGED", 1, true)
+    assertEquals(Addon:GetProfile().equipped.items[1].itemID, 6002)
+    Addon:CreateExportFrame()
+    Addon.exportFrame:Show()
+    mock.equippedItems[1] = 6001
+    Addon:OnEvent("PLAYER_EQUIPMENT_CHANGED", 1, true)
+    assertEquals(Addon:GetProfile().equipped.items[1].itemID, 6001)
+    assertContains(Addon.exportFrame.overviewText.text, "总览")
 
     Addon:OnEvent("BAG_OPEN", 0)
     assertContains(mock.messages[#mock.messages], "调试：背包 0 已打开")

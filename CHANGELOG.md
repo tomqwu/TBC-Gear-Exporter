@@ -4,6 +4,13 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+## [0.1.9] - 2026-07-29
+
+- Save a fresh current-equipment snapshot with bag/bank scans, exports, login, and equipment changes.
+- Add a role-aware gear strategy engine that compares compatible bag/bank candidates against the weakest current item for each slot, boosts stats tied to open TBC benchmark gaps, and rejects class-incompatible armor, shields, and non-equippable items.
+- Add a localized, icon-based Gear Advice GUI page with current/candidate tooltips, estimated score gains, priority stats, benchmark gaps, and explicit heuristic caveats.
+- Export structured `gear_recommendations` and `equipped_gear` in AI/JSON, plus concise recommendation tables in Markdown and plain text.
+
 ## [0.1.8] - 2026-07-29
 
 - Add a default localized Overview GUI tab with compact inventory, talent, stat, category, quality, and role snapshots.
