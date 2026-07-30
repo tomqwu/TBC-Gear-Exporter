@@ -4,6 +4,14 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-07-30
+
+- Merge spell damage and spell power into one offensive spell stat for recommendation scoring and swap deltas, while preserving the original per-item stats in exports.
+- Classify advice as a clear upgrade, small improvement, tradeoff, or manual check instead of presenting every positive heuristic score as an equally certain upgrade.
+- Add localized per-swap benchmark impacts and verdict summaries to the Gear Advice GUI, JSON, Markdown, and plain-text reports.
+- Treat the 102.4% shield table as a combat-context check because the exported standing subtotal excludes attacker miss and temporary block effects.
+- Add real Protection Paladin regression cases for the Strongge necklace, trinket, and ring comparisons.
+
 ## [0.2.0] - 2026-07-30
 
 - Fully localize readable Markdown and plain-text reports for English, simplified Chinese, and traditional Chinese, including headings, metadata, item locations, categories, equipment slots, and stat labels.

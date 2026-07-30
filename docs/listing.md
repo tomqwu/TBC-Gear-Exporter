@@ -26,9 +26,10 @@ It scans current equipment, visible bags, bank containers, talents, and characte
 - Normalizes the TBC Anniversary stat-token variants used for armor, ratings, spell damage/healing, spell power, mana regen, and weapon DPS before role scoring.
 - Exports chart-ready totals by source, category, quality, equip slot, item level, and aggregate stat values.
 - Builds a strategy book that maps class, race, current talents, raid/party context, live stats, and current equipped item stats to mitigation, threat, DPS, healing, and mana models; candidate inventory totals stay separate.
-- Recommends compatible upgrades from saved bags/bank against current equipment, using role weights and open hit/defense/avoidance/expertise gaps; each swap shows gained stats, lost stats, and a high/medium/low evidence level.
+- Compares compatible saved gear against current equipment and labels each result as a clear upgrade, small improvement, tradeoff, or manual check; each swap shows net gained/lost stats, benchmark impact, and evidence.
 - Opens to a localized Overview GUI page with compact inventory, talent, stat, quality, category, and role snapshots.
-- Shows an icon-based Gear Advice page with current-to-candidate comparisons, item tooltips, score gains, stat tradeoffs, evidence levels, priority stats, and benchmark gaps.
+- Shows an icon-based Gear Advice page with current-to-candidate comparisons, item tooltips, decision labels, score gains, stat tradeoffs, evidence levels, priority stats, and benchmark checks.
+- Compares spell damage and spell power as one offensive stat, and treats the 102.4% shield table as a contextual check that still needs attacker miss and temporary block effects.
 - Shows a localized Stats Analysis GUI page with character stats, role-specific models, benchmark statuses, race/group notes, and current-gear highlights without repeating irrelevant tank or hit sections.
 - Filters exports by scope: all saved items, bags only, bank only, or gear only.
 - Filters by quality, including rare-or-better, epic-only, and epic gear-only views.
