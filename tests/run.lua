@@ -1280,8 +1280,10 @@ test("chart stats aggregate inventory counts, levels, and stat totals", function
     assertEquals(chartStats.equipSlotCounts[1].slot, "INVTYPE_HEAD")
     assertEquals(chartStats.statTotals[1].token, "ITEM_MOD_STAMINA_SHORT")
     assertEquals(chartStats.statTotals[1].value, 20)
-    assertContains(private.ChartCountLine("Bags", chartStats.sourceCounts[1]), "Bags: 2 item lines; stack 3")
-    assertContains(private.ChartStatLine(chartStats.statTotals[1]), "+20 Stamina")
+    assertContains(private.ChartCountLine("Bags", chartStats.sourceCounts[1], "enUS"), "Bags: 2 item lines; 3 stacks")
+    assertContains(private.ChartCountLine("背包", chartStats.sourceCounts[1], "zhCN"), "背包: 2 条物品; 3 件总数")
+    assertContains(private.ChartStatLine(chartStats.statTotals[1], "enUS"), "+20 Stamina")
+    assertContains(private.ChartStatLine(chartStats.statTotals[1], "zhCN"), "+20 耐力")
 
     local emptyStats = private.BuildChartStats({})
     assertEquals(emptyStats.itemCount, 0)
@@ -1406,7 +1408,7 @@ test("class-aware AI prompt covers Druid role lenses and fallback context", func
     local profile = Addon:GetProfile()
     local prompt = private.BuildAIPrompt(profile, "gear", { qualityID = 4 }, 1)
     assertContains(prompt.text, "魔兽世界：燃烧的远征")
-    assertContains(prompt.text, "角色：Tester - Test Realm（Druid）")
+    assertContains(prompt.text, "角色：Tester - Test Realm（德鲁伊）")
     assertContains(prompt.text, "客户端语言：zhCN")
     assertContains(prompt.text, "导出范围：仅装备")
     assertContains(prompt.text, "过滤器：仅史诗")
@@ -1446,14 +1448,32 @@ test("class-aware AI prompt covers Druid role lenses and fallback context", func
 end)
 
 test("location, source, category, copy, and sizing helpers cover branches", function()
-    assertEquals(private.LocationLabel("bags", 0, 2), "Backpack slot 2")
-    assertEquals(private.LocationLabel("bags", 3, 4), "Bag 3 slot 4")
-    assertEquals(private.LocationLabel("bank", -1, 5), "Bank slot 5")
-    assertEquals(private.LocationLabel("bank", 6, 7), "Bank bag 2 slot 7")
-    assertEquals(private.SourceLabel("bags"), "Bags")
-    assertEquals(private.SourceLabel("bank"), "Bank")
-    assertEquals(private.SourceLabel(nil), "Unknown")
-    assertEquals(private.SourceLabel("guild"), "guild")
+    assertEquals(private.LocationLabel("bags", 0, 2, "enUS"), "Backpack slot 2")
+    assertEquals(private.LocationLabel("bags", 3, 4, "enUS"), "Bag 3 slot 4")
+    assertEquals(private.LocationLabel("bank", -1, 5, "enUS"), "Bank slot 5")
+    assertEquals(private.LocationLabel("bank", 6, 7, "enUS"), "Bank bag 2 slot 7")
+    assertEquals(private.LocationLabel("bags", 0, 2, "zhCN"), "背包第 2 格")
+    assertEquals(private.LocationLabel("bank", 6, 7, "zhTW"), "銀行背包 2 第 7 格")
+    assertEquals(private.SourceLabel("bags", "enUS"), "Bags")
+    assertEquals(private.SourceLabel("bank", "zhCN"), "银行")
+    assertEquals(private.SourceLabel("equipped", "zhCN"), "当前装备")
+    assertEquals(private.SourceLabel(nil, "zhTW"), "未知")
+    assertEquals(private.SourceLabel("guild", "enUS"), "guild")
+    assertEquals(private.ItemLocationLabel({ source = "bags", bag = 0, slot = 3, location = "old" }, "zhCN"), "背包第 3 格")
+    assertEquals(private.ItemLocationLabel(nil, "zhCN"), "未知位置")
+    assertEquals(private.ItemLocationLabel({ source = "equipped", slotKey = "HEAD", location = "old" }, "zhCN"), "头部")
+    assertEquals(private.ItemLocationLabel({ source = "guild", location = "Guild Vault" }, "zhCN"), "Guild Vault")
+    assertEquals(private.ReportTerms("frFR").quick_summary, "Quick Summary")
+    assertEquals(private.CategoryLabel("Gear", "zhCN"), "装备")
+    assertEquals(private.CategoryLabel("Miscellaneous", "zhTW"), "雜項")
+    assertEquals(private.CategoryLabel("Mystery", "zhCN"), "Mystery")
+    assertEquals(private.LocalizedStatLabel({ token = "EMPTY_SOCKET_META", label = "Meta Socket" }, "zhTW"), "變換插槽")
+    assertContains(private.FormatLocalizedStats({
+        { token = "ITEM_MOD_STAMINA_SHORT", label = "Stamina", value = 12 },
+        { token = "ITEM_MOD_RESILIENCE_RATING_SHORT", label = "Resilience", value = 5 },
+    }, "zhCN"), "+12 耐力")
+    assertEquals(private.FormatLocalizedStats({ { token = "EMPTY_SOCKET_RED", label = "Red Socket", value = 1 } }, "zhCN"), "红色插槽")
+    assertEquals(private.FormatLocalizedStats({}, "zhTW"), "無")
     assertEquals(private.WowheadItemURL(1001), "https://www.wowhead.com/tbc/item=1001")
     assertEquals(private.WowheadItemURL("1002"), "https://www.wowhead.com/tbc/item=1002")
     assertEquals(private.WowheadItemURL("item:1002"), nil)
@@ -1626,10 +1646,15 @@ test("talent snapshot captures current build and fallback paths", function()
     assertContains(private.TalentSummaryText(snapshot, "enUS"), "primary=Feral Combat")
     assertContains(private.TalentSummaryText(snapshot, "enUS"), "trees=Balance 0, Feral Combat 46, Restoration 15")
     assertContains(private.TalentSummaryText(snapshot, "zhCN"), "0/46/15")
+    assertContains(private.TalentSummaryText(snapshot, "zhCN"), "主天赋=Feral Combat")
+    assertContains(private.TalentSummaryText(snapshot, "zhCN"), "已用点数=61")
+    assertContains(private.TalentSummaryText(snapshot, "zhTW"), "主天賦=Feral Combat")
+    assertContains(private.TalentSummaryText(snapshot, "zhTW"), "未分配=2")
     assertContains(private.TalentTreePointsText(snapshot, "zhCN"), "Feral Combat 46")
     assertContains(private.TalentSelectedPointsText(snapshot, "enUS", 1), "Ferocity 5/5")
     assertContains(private.TalentSelectedPointsText(snapshot, "enUS", 1), "+4 more")
     assertContains(private.TalentSelectedPointsText(snapshot, "zhCN", 1), "另 4 个")
+    assertContains(private.TalentSelectedPointsText(snapshot, "zhTW", 1), "另 4 個")
 
     mock.badTalentInfo["2:1"] = true
     snapshot = private.BuildTalentSnapshot()
@@ -1879,11 +1904,18 @@ test("strategy book ranks role models from talents gear race and raid context", 
     assertContains(analysisText, "达标")
     assertContains(analysisText, "防御免暴基准")
     assertContains(analysisText, "耐力和战争践踏")
-    assertContains(analysisText, "装备属性亮点")
-    assertContains(analysisText, "+27 耐力")
+    assertContains(analysisText, "当前装备属性亮点")
+    assertContains(analysisText, "+10 耐力")
+    assertFalse(analysisText:find("+27 耐力", 1, true), "candidate inventory totals must not be presented as current gear")
     assertFalse(analysisText:find("Bear Feral Tank", 1, true), "Chinese analysis should not show English role labels")
     assertFalse(analysisText:find("tank_mitigation", 1, true), "Chinese analysis should not show internal model tokens")
     assertFalse(analysisText:find("meets_or_exceeds", 1, true), "Chinese analysis should not show internal status tokens")
+    local _, tankLensCount = analysisText:gsub("坦克视角", "")
+    assertEquals(tankLensCount, 1)
+    assertTrue(private.RoleHasModel(firstRole, "tank_mitigation"))
+    assertFalse(private.RoleHasModel(firstRole, "caster_dps"))
+    assertTrue(private.RoleUsesHitModel(firstRole))
+    assertFalse(private.RoleUsesHitModel(strategyBook.roles[3]))
 
     profile.locale = "enUS"
     local englishAnalysis = private.BuildStatsAnalysisText(profile, chartStats, strategyBook)
@@ -1892,6 +1924,7 @@ test("strategy book ranks role models from talents gear race and raid context", 
     assertContains(englishAnalysis, "selected talents: Ferocity 5/5")
     assertContains(englishAnalysis, "Bear Feral Tank")
     assertContains(englishAnalysis, "Tank mitigation")
+    assertContains(englishAnalysis, "Current gear highlights: +10 Stamina")
     assertContains(englishAnalysis, "Meets / exceeds")
     assertFalse(englishAnalysis:find("tank_mitigation", 1, true), "English analysis should not show internal model tokens")
     assertFalse(englishAnalysis:find("meets_or_exceeds", 1, true), "English analysis should not show internal status tokens")
@@ -2027,6 +2060,95 @@ test("gear strategy engine compares current slots with compatible saved candidat
     _G.GetInventoryItemLink = oldInventoryLink
     assertEquals(Addon:BuildItemFromLink("equipped", nil), nil)
 end)
+
+test("protection paladin strategy compares visible gains and losses without inventory leakage", function()
+    resetRuntimeState(Addon)
+    local current = {
+        itemID = 7001, name = "Current Tank Neck", category = "Gear", equipSlot = "INVTYPE_NECK",
+        classID = 4, subClassID = 0, itemLevel = 120, quality = 4, source = "equipped", slotKey = "NECK",
+        stats = {
+            { token = "ITEM_MOD_STAMINA_SHORT", label = "Stamina", value = 20 },
+            { token = "RESISTANCE0_NAME", label = "Armor", value = 1000 },
+            { token = "ITEM_MOD_SPELL_DAMAGE_DONE", label = "魔法法术和效果的伤害量提高最多点。", value = 30 },
+        },
+    }
+    local candidate = {
+        itemID = 7002, name = "Candidate Tank Neck", category = "Gear", equipSlot = "INVTYPE_NECK",
+        classID = 4, subClassID = 0, itemLevel = 125, quality = 4, source = "bags",
+        stats = {
+            { token = "ITEM_MOD_STAMINA_SHORT", label = "Stamina", value = 30 },
+            { token = "RESISTANCE0_NAME", label = "Armor", value = 1200 },
+            { token = "ITEM_MOD_DEFENSE_SKILL_RATING", label = "防御等级提高。", value = 20 },
+            { token = "ITEM_MOD_DODGE_RATING_SHORT", label = "Dodge Rating", value = 10 },
+            { token = "ITEM_MOD_SPELL_DAMAGE_DONE", label = "魔法法术和效果的伤害量提高最多点。", value = 10 },
+            { token = "ITEM_MOD_POWER_REGEN0_SHORT", label = "每5秒的法力值恢复", value = 6 },
+        },
+    }
+    local profile = {
+        classEnglish = "PALADIN",
+        classLocalized = "圣骑士",
+        locale = "zhCN",
+        talents = {
+            available = true, primaryTabIndex = 2, primaryTab = "防护", totalPoints = 61, pointsSpent = 61,
+            summary = "0/43/18", unspentPoints = 0,
+            tabs = {
+                { index = 1, name = "神圣", points = 0, pointsSpent = 0, talents = {} },
+                { index = 2, name = "防护", points = 43, pointsSpent = 43, talents = {} },
+                { index = 3, name = "惩戒", points = 18, pointsSpent = 18, talents = {} },
+            },
+        },
+        characterStats = private.BuildCharacterStatsSnapshot(),
+        equipped = { items = { current } },
+    }
+    local candidateChart = private.BuildChartStats({ candidate })
+    local strategyBook = private.BuildStrategyBook(profile, candidateChart)
+    local role = strategyBook.roles[1]
+    local weights = private.BuildRoleStatWeights(role)
+    local engine = private.BuildGearRecommendations(profile, { candidate }, strategyBook)
+
+    assertEquals(role.key, "protection_tank")
+    assertEquals(role.talentPoints, 43)
+    assertEquals(role.confidence, 100)
+    assertTrue(weights.ITEM_MOD_ARMOR > 0)
+    assertTrue(weights.ITEM_MOD_DODGE_RATING_SHORT > 0)
+    assertTrue(weights.ITEM_MOD_PARRY_RATING_SHORT > 0)
+    assertTrue(weights.ITEM_MOD_BLOCK_RATING_SHORT > 0)
+    assertTrue(weights.ITEM_MOD_HIT_SPELL_RATING_SHORT > 0)
+    assertEquals(private.NormalizeStatToken("ITEM_MOD_POWER_REGEN0_SHORT"), "ITEM_MOD_MANA_REGENERATION_SHORT")
+    assertEquals(private.NormalizeStatToken("ITEM_MOD_SPELL_DAMAGE_DONE"), "ITEM_MOD_SPELL_DAMAGE_DONE_SHORT")
+    assertEquals(private.StatLabel("ITEM_MOD_DEFENSE_SKILL_RATING"), "Defense Rating")
+    assertEquals(role.observed.gearStatHighlights[1].value, 20)
+    assertFalse(role.observed.gearStatHighlights[1].value == 30, "candidate stamina must not leak into current gear highlights")
+
+    assertEquals(engine.version, 2)
+    assertEquals(#engine.upgrades, 1)
+    assertEquals(engine.upgrades[1].evidence, "high")
+    assertEquals(engine.upgrades[1].statGains[1].token, "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT")
+    assertEquals(engine.upgrades[1].statLosses[1].token, "ITEM_MOD_SPELL_DAMAGE_DONE_SHORT")
+    assertContains(private.DeltaText(engine.upgrades[1].statGains, "zhCN"), "防御等级")
+    assertContains(private.DeltaText(engine.upgrades[1].statLosses, "zhCN"), "法术伤害")
+    assertEquals(private.EvidenceLabel("high", "zhTW"), "高")
+
+    local relevant = private.ItemRelevantStatMap(candidate, weights)
+    assertEquals(relevant.ITEM_MOD_STAMINA_SHORT, 30)
+    assertEquals(relevant.ITEM_MOD_ARMOR, 1200)
+    assertEquals(relevant.ITEM_MOD_MANA_REGENERATION_SHORT, 6)
+    assertEquals(candidateChart.statTotals[2].token, "ITEM_MOD_ARMOR")
+    assertEquals(private.RecommendationEvidence(nil, candidate, {}, {}), "low")
+    assertEquals(private.RecommendationEvidence(
+        { stats = { { token = "ITEM_MOD_STAMINA_SHORT", value = 1 } } },
+        { stats = { { token = "ITEM_MOD_STAMINA_SHORT", value = 2 } }, equipSlot = "INVTYPE_NECK" },
+        { { token = "ITEM_MOD_STAMINA_SHORT" } },
+        {}
+    ), "medium")
+    assertEquals(private.RecommendationEvidence(
+        { stats = { { token = "ITEM_MOD_STAMINA_SHORT", value = 1 } } },
+        { stats = { { token = "ITEM_MOD_STAMINA_SHORT", value = 2 } }, equipSlot = "INVTYPE_TRINKET" },
+        { { token = "ITEM_MOD_STAMINA_SHORT" } },
+        {}
+    ), "low")
+end)
+
 test("container item values cover missing API, table info, tuple info, and link fallback", function()
     local oldInfo = _G.GetContainerItemInfo
     local oldContainerInfo = _G.C_Container.GetContainerItemInfo
@@ -2096,7 +2218,7 @@ test("BuildItem captures full item metadata and stats", function()
     assertEquals(item.itemID, 1001)
     assertEquals(item.name, "Defender Helm")
     assertEquals(item.category, "Gear")
-    assertEquals(item.location, "Backpack slot 1")
+    assertEquals(item.location, "背包第 1 格")
     assertEquals(item.qualityName, "Rare")
     assertEquals(item.wowheadUrl, "https://www.wowhead.com/tbc/item=1001")
     assertEquals(item.qualityColor, "#0070DD")
@@ -2238,7 +2360,7 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(allExport, "职业职责分析视角：")
     assertContains(allExport, "character_stats、chart_stats、strategy_book、gear_recommendations")
     assertContains(allExport, "熊形态野性坦克")
-    assertContains(allExport, "当前天赋：0/46/15; primary=Feral Combat; points=61")
+    assertContains(allExport, "当前天赋：0/46/15; 主天赋=Feral Combat; 已用点数=61")
     assertTrue(allExport:find("AI_PROMPT:", 1, true) < allExport:find("DATA_JSON:", 1, true))
     assertContains(allExport, "DATA_JSON:")
     assertContains(allExport, "\"ai_prompt\": {")
@@ -2290,7 +2412,7 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(allExport, "\"name\": \"Gear\"")
     assertContains(allExport, "\"name\": \"Consumables\"")
     assertContains(allExport, "\"stats_text\": \"+27 Stamina")
-    assertContains(allExport, "\"location\": \"Bank slot 1\"")
+    assertContains(allExport, "\"location\": \"银行第 1 格\"")
     assertContains(allExport, "\"token\": \"ITEM_MOD_STAMINA_SHORT\"")
     assertContains(allExport, "\"wowhead_url\": \"https://www.wowhead.com/tbc/item=1001\"")
     assertContains(allExport, "\"name_colored\": \"|cff0070ddDefender Helm|r\"")
@@ -2300,7 +2422,7 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(allExport, "\"gear_item_count\": 2")
     assertContains(allExport, "\"average\": 86.6")
     assertContains(allExport, "\"source_counts\": [")
-    assertContains(allExport, "\"source_label\": \"Bags\"")
+    assertContains(allExport, "\"source_label\": \"背包\"")
     assertContains(allExport, "\"category_counts\": [")
     assertContains(allExport, "\"quality_counts\": [")
     assertContains(allExport, "\"equip_slot_counts\": [")
@@ -2344,7 +2466,7 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertFalse(epicGearExport:find("Super Mana Potion", 1, true), "epic gear export should omit consumables")
 
     local rarePlusText = Addon:BuildExport("all", "text", "rare+")
-    assertContains(rarePlusText, "Filter: Rare+")
+    assertContains(rarePlusText, "过滤: 精良及以上")
     assertContains(rarePlusText, "Defender Helm")
     assertContains(rarePlusText, "Arcane Blade")
     assertFalse(rarePlusText:find("Super Mana Potion", 1, true), "rare+ export should omit common consumables")
@@ -2358,59 +2480,58 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertFalse(jsonExport:find("AI_READY_WOW_TBC_INVENTORY_EXPORT", 1, true), "json export should be pure JSON")
 
     local markdownExport = Addon:BuildExport("all", "markdown")
-    assertContains(markdownExport, "# TBC Gear Exporter")
-    assertContains(markdownExport, "## Quick Summary")
-    assertContains(markdownExport, "| Field | Value |")
-    assertContains(markdownExport, "## Role Snapshot")
-    assertContains(markdownExport, "## Gear Recommendations")
-    assertContains(markdownExport, "Priority stats:")
+    assertContains(markdownExport, "# TBC 装备导出器")
+    assertContains(markdownExport, "## 角色概览")
+    assertContains(markdownExport, "| 项目 | 当前结果 |")
+    assertContains(markdownExport, "## 职责判断")
+    assertContains(markdownExport, "## 换装建议")
+    assertContains(markdownExport, "优先属性:")
     assertContains(markdownExport, "背包和银行中没有找到")
-    assertContains(markdownExport, "## AI Prompt")
+    assertFalse(markdownExport:find("职业职责分析视角", 1, true), "human-readable Markdown should not duplicate the AI prompt")
     assertContains(markdownExport, "熊形态野性坦克")
-    assertContains(markdownExport, "<summary>Character, strategy, and chart details</summary>")
-    assertContains(markdownExport, "## Export Metadata")
-    assertContains(markdownExport, "Current talents: 0/46/15; primary=Feral Combat; points=61")
-    assertContains(markdownExport, "Client locale: zhCN")
-    assertContains(markdownExport, "## Character Stats")
-    assertContains(markdownExport, "## Strategy Book")
-    assertContains(markdownExport, "### Bear Feral Tank")
-    assertContains(markdownExport, "Observed hit: melee 8.5%")
-    assertContains(markdownExport, "Defense crit-immunity benchmark: meets_or_exceeds")
-    assertContains(markdownExport, "## Item Tables")
+    assertContains(markdownExport, "<summary>角色、策略与候选库存详细数据</summary>")
+    assertContains(markdownExport, "## 导出信息")
+    assertContains(markdownExport, "天赋: 0/46/15; 主天赋=Feral Combat; 已用点数=61")
+    assertContains(markdownExport, "客户端语言: zhCN")
+    assertContains(markdownExport, "## 属性分析")
+    assertContains(markdownExport, "实测命中/暴击：近战命中 8.5%")
+    assertContains(markdownExport, "防御免暴基准")
+    assertContains(markdownExport, "## 候选物品")
     assertContains(markdownExport, "<details open>")
-    assertContains(markdownExport, "<summary>Gear (2)</summary>")
-    assertContains(markdownExport, "| Item | Q | iLvl | Source | Location | Stats |")
+    assertContains(markdownExport, "<summary>装备 (2)</summary>")
+    assertContains(markdownExport, "| 物品 | 品质 | 物品等级 | 来源 | 位置 | 属性 |")
     assertContains(markdownExport, "[Defender Helm](https://www.wowhead.com/tbc/item=1001)")
     assertContains(markdownExport, "Rare (#0070DD)")
     assertContains(markdownExport, "| 115 |")
     assertFalse(markdownExport:find("<span style=", 1, true), "markdown report should use readable links instead of HTML-colored item names")
-    assertContains(markdownExport, "## Chart Stats")
-    assertContains(markdownExport, "### Stat Totals")
-    assertContains(markdownExport, "+16 Crit Rating")
+    assertContains(markdownExport, "## 候选库存统计")
+    assertContains(markdownExport, "### 属性合计")
+    assertContains(markdownExport, "+16 暴击等级")
+    assertFalse(markdownExport:find("INVTYPE_HEAD", 1, true), "readable Chinese Markdown should hide internal slot tokens")
 
     local textExport = Addon:BuildExport("all", "text")
-    assertContains(textExport, "TBC Gear Exporter")
-    assertContains(textExport, "AI PROMPT")
-    assertContains(textExport, "EXPORT METADATA")
+    assertContains(textExport, "TBC 装备导出器")
+    assertFalse(textExport:find("AI 分析指令", 1, true), "plain text should be a readable report; AI Text keeps the prompt")
+    assertContains(textExport, "导出信息")
     assertContains(textExport, "熊形态野性坦克")
-    assertContains(textExport, "Current talents: 0/46/15; primary=Feral Combat; points=61")
-    assertContains(textExport, "Client locale: zhCN")
-    assertContains(textExport, "CHARACTER STATS")
-    assertContains(textExport, "STRATEGY BOOK")
-    assertContains(textExport, "GEAR RECOMMENDATIONS")
-    assertContains(textExport, "Equipped scan:")
-    assertContains(textExport, "[Bear Feral Tank]")
-    assertContains(textExport, "Observed hit: melee 8.5%")
-    assertContains(textExport, "Benchmark: Defense crit-immunity benchmark = meets_or_exceeds")
-    assertContains(textExport, "[Gear]")
+    assertContains(textExport, "天赋: 0/46/15; 主天赋=Feral Combat; 已用点数=61")
+    assertContains(textExport, "客户端语言: zhCN")
+    assertContains(textExport, "属性分析")
+    assertContains(textExport, "换装建议")
+    assertContains(textExport, "当前装备扫描:")
+    assertContains(textExport, "实测命中/暴击：近战命中 8.5%")
+    assertContains(textExport, "基准：防御免暴基准 = 达标")
+    assertContains(textExport, "[装备]")
     assertContains(textExport, "- |cff0070ddDefender Helm|r")
     assertContains(textExport, "Rare (#0070DD)")
-    assertContains(textExport, "iLvl: 115")
-    assertContains(textExport, "Type: Armor / Plate")
+    assertContains(textExport, "物品等级: 115")
+    assertContains(textExport, "Armor / Plate")
     assertContains(textExport, "Wowhead: https://www.wowhead.com/tbc/item=1001")
-    assertContains(textExport, "CHART STATS")
-    assertContains(textExport, "Source Counts")
-    assertContains(textExport, "+16 Crit Rating")
+    assertContains(textExport, "候选库存统计")
+    assertContains(textExport, "来源统计")
+    assertContains(textExport, "+16 暴击等级")
+    assertFalse(textExport:find("GEAR RECOMMENDATIONS", 1, true), "Chinese text export should not mix English headings")
+    assertFalse(textExport:find("INVTYPE_HEAD", 1, true), "Chinese text export should hide internal slot tokens")
     assertFalse(textExport:find("# TBC Gear Exporter", 1, true), "text export should be plain text")
 
     Addon:ClearProfile()
@@ -2419,8 +2540,8 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(empty, "\"stack_count\": 0")
     assertContains(empty, "\"stat_totals\": [")
     assertContains(empty, "No saved items match")
-    assertContains(Addon:BuildExport("all", "markdown"), "No saved items are available")
-    assertContains(Addon:BuildExport("all", "text"), "No saved items are available")
+    assertContains(Addon:BuildExport("all", "markdown"), "没有已保存物品")
+    assertContains(Addon:BuildExport("all", "text"), "没有已保存物品")
 end)
 
 test("recommendation exports include current gear and concrete upgrades", function()
@@ -2444,19 +2565,28 @@ test("recommendation exports include current gear and concrete upgrades", functi
     assertContains(json, "Guardian Leather Crown")
     assertContains(json, "Feral Grips")
     assertContains(json, "\"matched_stats\": [")
+    assertContains(json, "\"stat_gains\": [")
+    assertContains(json, "\"stat_losses\": [")
+    assertContains(json, "\"evidence\": \"high\"")
+    assertContains(json, "\"evidence\": \"low\"")
     assertContains(json, "https://www.wowhead.com/tbc/item=6002")
 
     local markdown = Addon:BuildExport("all", "markdown")
-    assertContains(markdown, "## Gear Recommendations")
+    assertContains(markdown, "## 换装建议")
     assertContains(markdown, "| 头部 | [Worn Leather Cap](https://www.wowhead.com/tbc/item=6001)")
     assertContains(markdown, "[Guardian Leather Crown](https://www.wowhead.com/tbc/item=6002)")
     assertContains(markdown, "| 手部 | 填补空栏位 | [Feral Grips]")
+    assertContains(markdown, "获得:")
+    assertContains(markdown, "失去:")
+    assertContains(markdown, "高")
     assertContains(markdown, "启发式评分")
 
     local textExport = Addon:BuildExport("all", "text")
     assertContains(textExport, "头部: Worn Leather Cap -> Guardian Leather Crown")
     assertContains(textExport, "手部: 填补空栏位 -> Feral Grips")
-    assertContains(textExport, "score +")
+    assertContains(textExport, "评分变化 +")
+    assertContains(textExport, "证据 高")
+    assertContains(textExport, "证据 低")
 end)
 test("readable export helpers compact noisy details", function()
 	local counts = {
@@ -2776,11 +2906,11 @@ test("export frame buttons scan and change scopes", function()
 
     findButtonByText("Markdown").scripts.OnClick()
     assertEquals(Addon.exportFormat, "markdown")
-    assertContains(Addon.exportFrame.editBox.text, "# TBC Gear Exporter")
+    assertContains(Addon.exportFrame.editBox.text, "# TBC 装备导出器")
 
     findButtonByText(ui("format_text_title")).scripts.OnClick()
     assertEquals(Addon.exportFormat, "text")
-    assertContains(Addon.exportFrame.editBox.text, "TBC Gear Exporter")
+    assertContains(Addon.exportFrame.editBox.text, "TBC 装备导出器")
 
     findButtonByText("AI").scripts.OnClick()
     assertEquals(Addon.exportFormat, "ai")

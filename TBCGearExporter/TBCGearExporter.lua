@@ -223,7 +223,7 @@ local AI_OUTPUT_REQUESTS = {
     "Summarize likely class/spec roles represented by the saved items.",
     "Use current_talents when available to anchor the main-spec recommendation, while still calling out useful offspec items.",
     "Use chart_stats for high-level totals by source, category, quality, equip slot, item level, and stat totals before drilling into individual items.",
-    "For each plausible role, rank strong keepers, weak slots, and upgrade priorities.",
+    "For each plausible role, rank strong keepers, weak slots, and upgrade priorities. Validate every proposed swap with gear_recommendations.upgrades[].stat_gains, stat_losses, evidence, and both item links.",
     "Separate mitigation, threat, DPS, healing, caster, and utility value when relevant.",
     "Flag duplicates, offspec pieces, consumables, materials, or items that are probably safe to vendor, bank, disenchant, or keep.",
     "Use wowhead_url fields when naming specific items so the user can inspect them quickly.",
@@ -278,7 +278,7 @@ local AI_OUTPUT_REQUESTS_ZHCN = {
     "总结这些已保存物品最可能对应的职业天赋/职责。",
     "如果 current_talents 可用，请用当前天赋锚定主天赋建议，同时指出有价值的副天赋物品。",
     "在逐件分析前，请先使用 character_stats、chart_stats 和 strategy_book 按当前天赋、职业、种族、队伍/团队环境、命中、暴击、防御、免伤、仇恨、治疗、续航和输出价值做整体对比。",
-    "针对每个可能职责，列出值得保留的强力装备、薄弱部位和升级优先级。",
+    "针对每个可能职责，列出值得保留的强力装备、薄弱部位和升级优先级；每条换装建议必须核对 gear_recommendations.upgrades[] 中的 stat_gains、stat_losses、evidence 和新旧物品链接。",
     "在相关时分别分析减伤、仇恨、输出、治疗、法系和功能性价值。",
     "标记重复物品、副天赋装备、消耗品、材料，或可能适合出售、存银行、分解、保留的物品。",
     "提到具体物品时使用 wowhead_url 字段，方便用户快速查看。",
@@ -303,7 +303,7 @@ local AI_OUTPUT_REQUESTS_ZHTW = {
     "總結這些已儲存物品最可能對應的職業天賦/職責。",
     "如果 current_talents 可用，請用目前天賦錨定主天賦建議，同時指出有價值的副天賦物品。",
     "在逐件分析前，請先使用 character_stats、chart_stats 和 strategy_book 按目前天賦、職業、種族、隊伍/團隊環境、命中、致命、防禦、減傷、仇恨、治療、續航和輸出價值做整體比較。",
-    "針對每個可能職責，列出值得保留的強力裝備、薄弱部位和升級優先順序。",
+    "針對每個可能職責，列出值得保留的強力裝備、薄弱部位和升級優先順序；每條換裝建議必須核對 gear_recommendations.upgrades[] 中的 stat_gains、stat_losses、evidence 和新舊物品連結。",
     "在相關時分別分析減傷、仇恨、輸出、治療、法系和功能性價值。",
     "標記重複物品、副天賦裝備、消耗品、材料，或可能適合出售、存銀行、分解、保留的物品。",
     "提到具體物品時使用 wowhead_url 欄位，方便使用者快速查看。",
@@ -397,7 +397,43 @@ GEAR_ENGINE.STAT_SCORE_SCALES = {
     ITEM_MOD_SPELL_DAMAGE_DONE_SHORT = 0.30,
     ITEM_MOD_SPELL_HEALING_DONE_SHORT = 0.12,
     ITEM_MOD_BLOCK_VALUE_SHORT = 0.20,
+    ITEM_MOD_DAMAGE_PER_SECOND_SHORT = 1.50,
 }
+
+GEAR_ENGINE.STAT_TOKEN_ALIASES = {
+    RESISTANCE0_NAME = "ITEM_MOD_ARMOR",
+    ITEM_MOD_CRIT_RATING = "ITEM_MOD_CRIT_RATING_SHORT",
+    ITEM_MOD_CRIT_MELEE_RATING = "ITEM_MOD_CRIT_MELEE_RATING_SHORT",
+    ITEM_MOD_CRIT_RANGED_RATING = "ITEM_MOD_CRIT_RANGED_RATING_SHORT",
+    ITEM_MOD_CRIT_SPELL_RATING = "ITEM_MOD_CRIT_SPELL_RATING_SHORT",
+    ITEM_MOD_DEFENSE_SKILL_RATING = "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT",
+    ITEM_MOD_DODGE_RATING = "ITEM_MOD_DODGE_RATING_SHORT",
+    ITEM_MOD_EXPERTISE_RATING = "ITEM_MOD_EXPERTISE_RATING_SHORT",
+    ITEM_MOD_HASTE_RATING = "ITEM_MOD_HASTE_RATING_SHORT",
+    ITEM_MOD_HASTE_MELEE_RATING = "ITEM_MOD_HASTE_MELEE_RATING_SHORT",
+    ITEM_MOD_HASTE_RANGED_RATING = "ITEM_MOD_HASTE_RANGED_RATING_SHORT",
+    ITEM_MOD_HASTE_SPELL_RATING = "ITEM_MOD_HASTE_SPELL_RATING_SHORT",
+    ITEM_MOD_HIT_RATING = "ITEM_MOD_HIT_RATING_SHORT",
+    ITEM_MOD_HIT_MELEE_RATING = "ITEM_MOD_HIT_MELEE_RATING_SHORT",
+    ITEM_MOD_HIT_RANGED_RATING = "ITEM_MOD_HIT_RANGED_RATING_SHORT",
+    ITEM_MOD_HIT_SPELL_RATING = "ITEM_MOD_HIT_SPELL_RATING_SHORT",
+    ITEM_MOD_PARRY_RATING = "ITEM_MOD_PARRY_RATING_SHORT",
+    ITEM_MOD_BLOCK_RATING = "ITEM_MOD_BLOCK_RATING_SHORT",
+    ITEM_MOD_BLOCK_VALUE = "ITEM_MOD_BLOCK_VALUE_SHORT",
+    ITEM_MOD_ATTACK_POWER = "ITEM_MOD_ATTACK_POWER_SHORT",
+    ITEM_MOD_RANGED_ATTACK_POWER = "ITEM_MOD_RANGED_ATTACK_POWER_SHORT",
+    ITEM_MOD_FERAL_ATTACK_POWER = "ITEM_MOD_FERAL_ATTACK_POWER_SHORT",
+    ITEM_MOD_POWER_REGEN0_SHORT = "ITEM_MOD_MANA_REGENERATION_SHORT",
+    ITEM_MOD_RESILIENCE_RATING = "ITEM_MOD_RESILIENCE_RATING_SHORT",
+    ITEM_MOD_SPELL_DAMAGE_DONE = "ITEM_MOD_SPELL_DAMAGE_DONE_SHORT",
+    ITEM_MOD_SPELL_HEALING_DONE = "ITEM_MOD_SPELL_HEALING_DONE_SHORT",
+    ITEM_MOD_SPELL_POWER = "ITEM_MOD_SPELL_POWER_SHORT",
+    ITEM_MOD_HEALTH_REGEN = "ITEM_MOD_HEALTH_REGEN_SHORT",
+}
+
+function GEAR_ENGINE.NormalizeStatToken(token)
+    return GEAR_ENGINE.STAT_TOKEN_ALIASES[token] or token
+end
 
 GEAR_ENGINE.BENCHMARK_STAT_TOKENS = {
     defense_crit_immunity = { "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT" },
@@ -567,6 +603,8 @@ local ANALYSIS_LOCALIZATION = {
             },
         },
         stats = {
+            ITEM_MOD_MANA = "法力值",
+            ITEM_MOD_HEALTH = "生命值",
             ITEM_MOD_STAMINA_SHORT = "耐力",
             ITEM_MOD_ARMOR = "护甲",
             ITEM_MOD_BONUS_ARMOR_SHORT = "额外护甲",
@@ -582,6 +620,7 @@ local ANALYSIS_LOCALIZATION = {
             ITEM_MOD_ATTACK_POWER_SHORT = "攻击强度",
             ITEM_MOD_RANGED_ATTACK_POWER_SHORT = "远程攻击强度",
             ITEM_MOD_FERAL_ATTACK_POWER_SHORT = "野性攻击强度",
+            ITEM_MOD_DAMAGE_PER_SECOND_SHORT = "每秒伤害",
             ITEM_MOD_HIT_RATING_SHORT = "命中等级",
             ITEM_MOD_HIT_MELEE_RATING_SHORT = "近战命中等级",
             ITEM_MOD_HIT_RANGED_RATING_SHORT = "远程命中等级",
@@ -590,12 +629,21 @@ local ANALYSIS_LOCALIZATION = {
             ITEM_MOD_CRIT_MELEE_RATING_SHORT = "近战暴击等级",
             ITEM_MOD_CRIT_RANGED_RATING_SHORT = "远程暴击等级",
             ITEM_MOD_CRIT_SPELL_RATING_SHORT = "法术暴击等级",
+            ITEM_MOD_HASTE_RATING_SHORT = "急速等级",
+            ITEM_MOD_HASTE_MELEE_RATING_SHORT = "近战急速等级",
+            ITEM_MOD_HASTE_RANGED_RATING_SHORT = "远程急速等级",
             ITEM_MOD_HASTE_SPELL_RATING_SHORT = "法术急速等级",
+            ITEM_MOD_RESILIENCE_RATING_SHORT = "韧性等级",
             ITEM_MOD_EXPERTISE_RATING_SHORT = "熟练等级",
             ITEM_MOD_SPELL_POWER_SHORT = "法术强度",
             ITEM_MOD_SPELL_DAMAGE_DONE_SHORT = "法术伤害",
             ITEM_MOD_SPELL_HEALING_DONE_SHORT = "治疗",
             ITEM_MOD_MANA_REGENERATION_SHORT = "法力回复",
+            ITEM_MOD_HEALTH_REGEN_SHORT = "生命回复",
+            EMPTY_SOCKET_BLUE = "蓝色插槽",
+            EMPTY_SOCKET_RED = "红色插槽",
+            EMPTY_SOCKET_YELLOW = "黄色插槽",
+            EMPTY_SOCKET_META = "多彩插槽",
         },
     },
     zhTW = {
@@ -711,6 +759,8 @@ local ANALYSIS_LOCALIZATION = {
             },
         },
         stats = {
+            ITEM_MOD_MANA = "法力",
+            ITEM_MOD_HEALTH = "生命",
             ITEM_MOD_STAMINA_SHORT = "耐力",
             ITEM_MOD_ARMOR = "護甲",
             ITEM_MOD_BONUS_ARMOR_SHORT = "額外護甲",
@@ -726,6 +776,7 @@ local ANALYSIS_LOCALIZATION = {
             ITEM_MOD_ATTACK_POWER_SHORT = "攻擊強度",
             ITEM_MOD_RANGED_ATTACK_POWER_SHORT = "遠程攻擊強度",
             ITEM_MOD_FERAL_ATTACK_POWER_SHORT = "野性攻擊強度",
+            ITEM_MOD_DAMAGE_PER_SECOND_SHORT = "每秒傷害",
             ITEM_MOD_HIT_RATING_SHORT = "命中等級",
             ITEM_MOD_HIT_MELEE_RATING_SHORT = "近戰命中等級",
             ITEM_MOD_HIT_RANGED_RATING_SHORT = "遠程命中等級",
@@ -734,12 +785,21 @@ local ANALYSIS_LOCALIZATION = {
             ITEM_MOD_CRIT_MELEE_RATING_SHORT = "近戰致命等級",
             ITEM_MOD_CRIT_RANGED_RATING_SHORT = "遠程致命等級",
             ITEM_MOD_CRIT_SPELL_RATING_SHORT = "法術致命等級",
+            ITEM_MOD_HASTE_RATING_SHORT = "加速等級",
+            ITEM_MOD_HASTE_MELEE_RATING_SHORT = "近戰加速等級",
+            ITEM_MOD_HASTE_RANGED_RATING_SHORT = "遠程加速等級",
             ITEM_MOD_HASTE_SPELL_RATING_SHORT = "法術加速等級",
+            ITEM_MOD_RESILIENCE_RATING_SHORT = "韌性等級",
             ITEM_MOD_EXPERTISE_RATING_SHORT = "熟練等級",
             ITEM_MOD_SPELL_POWER_SHORT = "法術強度",
             ITEM_MOD_SPELL_DAMAGE_DONE_SHORT = "法術傷害",
             ITEM_MOD_SPELL_HEALING_DONE_SHORT = "治療",
             ITEM_MOD_MANA_REGENERATION_SHORT = "法力回復",
+            ITEM_MOD_HEALTH_REGEN_SHORT = "生命回復",
+            EMPTY_SOCKET_BLUE = "藍色插槽",
+            EMPTY_SOCKET_RED = "紅色插槽",
+            EMPTY_SOCKET_YELLOW = "黃色插槽",
+            EMPTY_SOCKET_META = "變換插槽",
         },
     },
 }
@@ -767,14 +827,14 @@ local CLASS_STRATEGY_BOOK = {
     WARRIOR = {
         roles = {
             { key = "protection_tank", label = "Protection Tank", talentTabs = { 3 }, models = { "tank_mitigation", "tank_threat" }, priorities = { "stamina", "armor", "defense", "avoidance", "shield block/value", "hit/expertise", "threat stats" }, benchmarkKeys = { "defense_crit_immunity", "avoidance_table", "melee_special_hit", "expertise_dodge" }, statTokens = { "ITEM_MOD_STAMINA_SHORT", "ITEM_MOD_ARMOR", "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT", "ITEM_MOD_DODGE_RATING_SHORT", "ITEM_MOD_PARRY_RATING_SHORT", "ITEM_MOD_BLOCK_RATING_SHORT", "ITEM_MOD_BLOCK_VALUE_SHORT", "ITEM_MOD_HIT_RATING_SHORT" } },
-            { key = "arms_fury_dps", label = "Arms/Fury DPS", talentTabs = { 1, 2 }, models = { "melee_dps", "weapon_selection" }, priorities = { "weapon damage/speed", "strength", "attack power", "crit", "hit/expertise", "set bonuses" }, benchmarkKeys = { "melee_special_hit", "expertise_dodge" }, statTokens = { "ITEM_MOD_STRENGTH_SHORT", "ITEM_MOD_ATTACK_POWER_SHORT", "ITEM_MOD_CRIT_RATING_SHORT", "ITEM_MOD_HIT_RATING_SHORT", "ITEM_MOD_EXPERTISE_RATING_SHORT" } },
+            { key = "arms_fury_dps", label = "Arms/Fury DPS", talentTabs = { 1, 2 }, models = { "melee_dps", "weapon_selection" }, priorities = { "weapon damage/speed", "strength", "attack power", "crit", "hit/expertise", "set bonuses" }, benchmarkKeys = { "melee_special_hit", "expertise_dodge" }, statTokens = { "ITEM_MOD_DAMAGE_PER_SECOND_SHORT", "ITEM_MOD_STRENGTH_SHORT", "ITEM_MOD_ATTACK_POWER_SHORT", "ITEM_MOD_CRIT_RATING_SHORT", "ITEM_MOD_HIT_RATING_SHORT", "ITEM_MOD_EXPERTISE_RATING_SHORT" } },
         },
     },
     PALADIN = {
         roles = {
-            { key = "protection_tank", label = "Protection Tank", talentTabs = { 2 }, models = { "tank_mitigation", "spell_threat" }, priorities = { "stamina", "defense", "avoidance", "block value", "spell damage/threat", "mana sustain" }, benchmarkKeys = { "defense_crit_immunity", "avoidance_table", "spell_hit" }, statTokens = { "ITEM_MOD_STAMINA_SHORT", "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT", "ITEM_MOD_BLOCK_VALUE_SHORT", "ITEM_MOD_SPELL_POWER_SHORT", "ITEM_MOD_MANA_REGENERATION_SHORT" } },
+            { key = "protection_tank", label = "Protection Tank", talentTabs = { 2 }, models = { "tank_mitigation", "spell_threat" }, priorities = { "stamina", "defense", "avoidance", "block value", "spell damage/threat", "mana sustain" }, benchmarkKeys = { "defense_crit_immunity", "avoidance_table", "spell_hit" }, statTokens = { "ITEM_MOD_STAMINA_SHORT", "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT", "ITEM_MOD_ARMOR", "ITEM_MOD_DODGE_RATING_SHORT", "ITEM_MOD_PARRY_RATING_SHORT", "ITEM_MOD_BLOCK_RATING_SHORT", "ITEM_MOD_BLOCK_VALUE_SHORT", "ITEM_MOD_SPELL_POWER_SHORT", "ITEM_MOD_SPELL_DAMAGE_DONE_SHORT", "ITEM_MOD_HIT_SPELL_RATING_SHORT", "ITEM_MOD_INTELLECT_SHORT", "ITEM_MOD_MANA_REGENERATION_SHORT" } },
             { key = "holy_healer", label = "Holy Healing", talentTabs = { 1 }, models = { "healing_throughput", "mana_longevity" }, priorities = { "bonus healing", "intellect", "mp5", "spell crit", "mana longevity" }, benchmarkKeys = {}, statTokens = { "ITEM_MOD_SPELL_HEALING_DONE_SHORT", "ITEM_MOD_INTELLECT_SHORT", "ITEM_MOD_MANA_REGENERATION_SHORT", "ITEM_MOD_CRIT_SPELL_RATING_SHORT" } },
-            { key = "retribution_dps", label = "Retribution DPS", talentTabs = { 3 }, models = { "melee_dps", "utility_dps" }, priorities = { "weapon quality", "strength", "attack power", "crit", "hit/expertise", "set synergy" }, benchmarkKeys = { "melee_special_hit", "expertise_dodge" }, statTokens = { "ITEM_MOD_STRENGTH_SHORT", "ITEM_MOD_ATTACK_POWER_SHORT", "ITEM_MOD_CRIT_RATING_SHORT", "ITEM_MOD_HIT_RATING_SHORT" } },
+            { key = "retribution_dps", label = "Retribution DPS", talentTabs = { 3 }, models = { "melee_dps", "utility_dps" }, priorities = { "weapon quality", "strength", "attack power", "crit", "hit/expertise", "set synergy" }, benchmarkKeys = { "melee_special_hit", "expertise_dodge" }, statTokens = { "ITEM_MOD_DAMAGE_PER_SECOND_SHORT", "ITEM_MOD_STRENGTH_SHORT", "ITEM_MOD_ATTACK_POWER_SHORT", "ITEM_MOD_CRIT_RATING_SHORT", "ITEM_MOD_HIT_RATING_SHORT" } },
         },
     },
     PRIEST = {
@@ -787,17 +847,17 @@ local CLASS_STRATEGY_BOOK = {
         roles = {
             { key = "restoration_healer", label = "Restoration Healing", talentTabs = { 3 }, models = { "healing_throughput", "mana_longevity" }, priorities = { "bonus healing", "mp5", "intellect", "crit", "haste", "mana longevity" }, benchmarkKeys = {}, statTokens = { "ITEM_MOD_SPELL_HEALING_DONE_SHORT", "ITEM_MOD_MANA_REGENERATION_SHORT", "ITEM_MOD_INTELLECT_SHORT", "ITEM_MOD_CRIT_SPELL_RATING_SHORT" } },
             { key = "elemental_dps", label = "Elemental DPS", talentTabs = { 1 }, models = { "caster_dps", "mana_longevity" }, priorities = { "spell damage", "spell hit", "spell crit", "haste", "mana sustain" }, benchmarkKeys = { "spell_hit" }, statTokens = { "ITEM_MOD_SPELL_POWER_SHORT", "ITEM_MOD_HIT_SPELL_RATING_SHORT", "ITEM_MOD_CRIT_SPELL_RATING_SHORT", "ITEM_MOD_HASTE_SPELL_RATING_SHORT" } },
-            { key = "enhancement_dps", label = "Enhancement DPS", talentTabs = { 2 }, models = { "melee_dps", "weapon_selection" }, priorities = { "weapon options", "attack power", "agility", "strength", "crit", "hit/expertise" }, benchmarkKeys = { "melee_special_hit", "expertise_dodge" }, statTokens = { "ITEM_MOD_ATTACK_POWER_SHORT", "ITEM_MOD_AGILITY_SHORT", "ITEM_MOD_STRENGTH_SHORT", "ITEM_MOD_CRIT_RATING_SHORT", "ITEM_MOD_HIT_RATING_SHORT" } },
+            { key = "enhancement_dps", label = "Enhancement DPS", talentTabs = { 2 }, models = { "melee_dps", "weapon_selection" }, priorities = { "weapon options", "attack power", "agility", "strength", "crit", "hit/expertise" }, benchmarkKeys = { "melee_special_hit", "expertise_dodge" }, statTokens = { "ITEM_MOD_DAMAGE_PER_SECOND_SHORT", "ITEM_MOD_ATTACK_POWER_SHORT", "ITEM_MOD_AGILITY_SHORT", "ITEM_MOD_STRENGTH_SHORT", "ITEM_MOD_CRIT_RATING_SHORT", "ITEM_MOD_HIT_RATING_SHORT" } },
         },
     },
     HUNTER = {
         roles = {
-            { key = "ranged_dps", label = "Ranged DPS", talentTabs = { 1, 2, 3 }, models = { "ranged_dps", "pet_synergy" }, priorities = { "ranged weapon", "agility", "attack power", "crit", "hit", "ammo/quiver support", "set bonuses" }, benchmarkKeys = { "ranged_hit" }, statTokens = { "ITEM_MOD_AGILITY_SHORT", "ITEM_MOD_ATTACK_POWER_SHORT", "ITEM_MOD_RANGED_ATTACK_POWER_SHORT", "ITEM_MOD_CRIT_RANGED_RATING_SHORT", "ITEM_MOD_HIT_RANGED_RATING_SHORT", "ITEM_MOD_HIT_RATING_SHORT" } },
+            { key = "ranged_dps", label = "Ranged DPS", talentTabs = { 1, 2, 3 }, models = { "ranged_dps", "pet_synergy" }, priorities = { "ranged weapon", "agility", "attack power", "crit", "hit", "ammo/quiver support", "set bonuses" }, benchmarkKeys = { "ranged_hit" }, statTokens = { "ITEM_MOD_DAMAGE_PER_SECOND_SHORT", "ITEM_MOD_AGILITY_SHORT", "ITEM_MOD_ATTACK_POWER_SHORT", "ITEM_MOD_RANGED_ATTACK_POWER_SHORT", "ITEM_MOD_CRIT_RANGED_RATING_SHORT", "ITEM_MOD_HIT_RANGED_RATING_SHORT", "ITEM_MOD_HIT_RATING_SHORT" } },
         },
     },
     ROGUE = {
         roles = {
-            { key = "melee_dps", label = "Melee DPS", talentTabs = { 1, 2, 3 }, models = { "melee_dps", "weapon_selection" }, priorities = { "weapon speed/type", "agility", "attack power", "crit", "hit/expertise", "set bonuses" }, benchmarkKeys = { "melee_special_hit", "expertise_dodge" }, statTokens = { "ITEM_MOD_AGILITY_SHORT", "ITEM_MOD_ATTACK_POWER_SHORT", "ITEM_MOD_CRIT_RATING_SHORT", "ITEM_MOD_HIT_RATING_SHORT", "ITEM_MOD_EXPERTISE_RATING_SHORT" } },
+            { key = "melee_dps", label = "Melee DPS", talentTabs = { 1, 2, 3 }, models = { "melee_dps", "weapon_selection" }, priorities = { "weapon speed/type", "agility", "attack power", "crit", "hit/expertise", "set bonuses" }, benchmarkKeys = { "melee_special_hit", "expertise_dodge" }, statTokens = { "ITEM_MOD_DAMAGE_PER_SECOND_SHORT", "ITEM_MOD_AGILITY_SHORT", "ITEM_MOD_ATTACK_POWER_SHORT", "ITEM_MOD_CRIT_RATING_SHORT", "ITEM_MOD_HIT_RATING_SHORT", "ITEM_MOD_EXPERTISE_RATING_SHORT" } },
         },
     },
     MAGE = {
@@ -865,6 +925,12 @@ local UI_STRINGS = {
         advice_replace = "Estimated +%s score; %s",
         advice_ilvl = "item level %s → %s",
         advice_stats = "matched stats: %s",
+        advice_gains = "Gains: %s",
+        advice_losses = "Gives up: %s",
+        advice_evidence = "%s evidence",
+        advice_evidence_high = "High",
+        advice_evidence_medium = "Medium",
+        advice_evidence_low = "Low",
         advice_caveat = "Heuristic score uses visible item stats. Confirm set bonuses, sockets, enchants and proc effects in the tooltip.",
         overview_title = "Overview",
         overview_inventory = "Inventory: %d item lines, %d stacks, %d gear, %d equippable",
@@ -892,7 +958,7 @@ local UI_STRINGS = {
         analysis_role_hit = "Observed hit/crit: hit melee %s, spell %s; crit melee %s, spell %s",
         analysis_role_tank = "Tank lens: defense %s, armor %s, known avoidance/block %s",
         analysis_benchmark = "Benchmark: %s = %s (observed %s; target %s %s)",
-        analysis_highlights = "Gear highlights: %s",
+        analysis_highlights = "Current gear highlights: %s",
         analysis_no_roles = "No role models available yet. Scan bags or generate an export to refresh the local DB.",
         item_view_empty = "No saved items match this view.",
         export_opened = "%s export opened from local DB: %d bag items, %d bank items. Filter: %s.",
@@ -957,6 +1023,12 @@ local UI_STRINGS = {
         advice_replace = "预计评分 +%s；%s",
         advice_ilvl = "物品等级 %s → %s",
         advice_stats = "匹配属性：%s",
+        advice_gains = "获得：%s",
+        advice_losses = "失去：%s",
+        advice_evidence = "%s证据",
+        advice_evidence_high = "高",
+        advice_evidence_medium = "中",
+        advice_evidence_low = "低",
         advice_caveat = "启发式评分只使用可见物品属性；套装、宝石、附魔和触发效果请结合提示框确认。",
         overview_title = "总览",
         overview_inventory = "库存：%d 条物品，%d 堆叠，%d 件装备，%d 件可装备",
@@ -984,7 +1056,7 @@ local UI_STRINGS = {
         analysis_role_hit = "实测命中/暴击：近战命中 %s，法术命中 %s；近战暴击 %s，法术暴击 %s",
         analysis_role_tank = "坦克视角：防御 %s，护甲 %s，已知免伤/格挡 %s",
         analysis_benchmark = "基准：%s = %s（实测 %s；目标 %s %s）",
-        analysis_highlights = "装备属性亮点：%s",
+        analysis_highlights = "当前装备属性亮点：%s",
         analysis_no_roles = "还没有可用的职责模型。扫描背包或生成导出以刷新本地数据库。",
         item_view_empty = "没有已保存物品匹配当前视图。",
         export_opened = "%s 已从本地数据库打开：背包 %d 件，银行 %d 件。过滤：%s。",
@@ -1049,6 +1121,12 @@ local UI_STRINGS = {
         advice_replace = "預估評分 +%s；%s",
         advice_ilvl = "物品等級 %s → %s",
         advice_stats = "匹配屬性：%s",
+        advice_gains = "獲得：%s",
+        advice_losses = "失去：%s",
+        advice_evidence = "%s證據",
+        advice_evidence_high = "高",
+        advice_evidence_medium = "中",
+        advice_evidence_low = "低",
         advice_caveat = "啟發式評分只使用可見物品屬性；套裝、寶石、附魔和觸發效果請結合提示框確認。",
         overview_title = "總覽",
         overview_inventory = "庫存：%d 條物品，%d 堆疊，%d 件裝備，%d 件可裝備",
@@ -1076,7 +1154,7 @@ local UI_STRINGS = {
         analysis_role_hit = "實測命中/致命：近戰命中 %s，法術命中 %s；近戰致命 %s，法術致命 %s",
         analysis_role_tank = "坦克視角：防禦 %s，護甲 %s，已知減傷/格擋 %s",
         analysis_benchmark = "基準：%s = %s（實測 %s；目標 %s %s）",
-        analysis_highlights = "裝備屬性亮點：%s",
+        analysis_highlights = "目前裝備屬性亮點：%s",
         analysis_no_roles = "還沒有可用的職責模型。掃描背包或產生匯出以重新整理本地資料庫。",
         item_view_empty = "沒有已儲存物品符合目前檢視。",
         export_opened = "%s 已從本地資料庫開啟：背包 %d 件，銀行 %d 件。篩選：%s。",
@@ -1096,6 +1174,94 @@ local UI_STRINGS = {
         debug_bank_open = "偵錯：銀行已開啟；%s。",
     },
 }
+
+GEAR_ENGINE.REPORT_TERMS = {
+    enUS = {
+        human_note = "Readable strategy report. Use AI Text or JSON for the complete machine-readable dataset.",
+        quick_summary = "Quick Summary", field = "Field", value = "Value", character = "Character", class = "Class",
+        scope_filter = "Scope / filter", items = "Candidate inventory", talents = "Talents", selected_talents = "Selected talents",
+        top_role = "Primary role", core_stats = "Live core stats", categories = "Categories", top_stats = "Candidate stat totals",
+        role_snapshot = "Role Snapshot", role = "Role", confidence = "Confidence", talent_points = "Talent points",
+        models = "Models", current_highlights = "Current gear highlights", gear_recommendations = "Gear Recommendations",
+        priority_stats = "Priority stats", benchmark_gaps = "Open benchmark gaps", caveat = "Limit",
+        slot = "Slot", current = "Current", suggested = "Candidate", score = "Score", evidence = "Evidence",
+        gains = "Gains", losses = "Gives up", high = "High", medium = "Medium", low = "Low",
+        ai_prompt = "AI Analysis Prompt", details = "Detailed character, strategy, and inventory statistics",
+        export_metadata = "Export Metadata", client_locale = "Client locale", local_db = "Local DB",
+        scope = "Scope", filter = "Filter", bag_scan = "Bag scan", bank_scan = "Bank scan", equipped_scan = "Equipped scan",
+        stats_analysis = "Stats Analysis", inventory_stats = "Candidate Inventory Statistics", current_equipment = "Current Equipment", item_tables = "Candidate Items",
+        item = "Item", quality = "Quality", item_level = "iLvl", source = "Source", location = "Location", stats = "Stats",
+        item_lines = "item lines", stacks = "stacks", gear = "gear", equippable = "equippable",
+        item_level_summary = "Item level: min %s, max %s, average %s across %s items",
+        source_counts = "Source counts", category_counts = "Category counts", quality_counts = "Quality counts",
+        slot_counts = "Equipment slot counts", stat_totals = "Stat totals", none = "none",
+        no_items = "No saved items are available. Scan bags, and scan again while the bank is open.",
+        more = "+%d more", equipped_count = "%d equipped", candidate_count = "%d candidates", upgrade_count = "%d suggestions",
+        bags = "Bags", bank = "Bank", equipped = "Equipped", unknown = "Unknown", unknown_location = "Unknown location",
+        backpack_slot = "Backpack slot %s", bag_slot = "Bag %s slot %s", bank_slot = "Bank slot %s", bank_bag_slot = "Bank bag %s slot %s",
+        categories_map = { Equipped = "Current Equipment", Gear = "Gear", Consumables = "Consumables", ["Trade Goods"] = "Trade Goods", Gems = "Gems", Enhancements = "Enhancements", Recipes = "Recipes", Reagents = "Reagents", ["Quest Items"] = "Quest Items", Containers = "Containers", Keys = "Keys", Projectiles = "Projectiles", Currency = "Currency", Permanent = "Permanent", Miscellaneous = "Miscellaneous", Other = "Other" },
+    },
+    zhCN = {
+        human_note = "便于阅读的配装策略报告；需要完整机器数据时请选择 AI 文本或 JSON。",
+        quick_summary = "角色概览", field = "项目", value = "当前结果", character = "角色", class = "职业",
+        scope_filter = "范围 / 过滤", items = "候选库存", talents = "天赋", selected_talents = "已点天赋",
+        top_role = "主要职责", core_stats = "实时核心属性", categories = "物品分类", top_stats = "候选库存属性合计",
+        role_snapshot = "职责判断", role = "职责", confidence = "置信度", talent_points = "天赋点",
+        models = "分析模型", current_highlights = "当前装备属性重点", gear_recommendations = "换装建议",
+        priority_stats = "优先属性", benchmark_gaps = "未达标项目", caveat = "分析限制",
+        slot = "栏位", current = "当前装备", suggested = "候选装备", score = "评分变化", evidence = "证据",
+        gains = "获得", losses = "失去", high = "高", medium = "中", low = "低",
+        ai_prompt = "AI 分析指令", details = "角色、策略与候选库存详细数据",
+        export_metadata = "导出信息", client_locale = "客户端语言", local_db = "本地数据库",
+        scope = "范围", filter = "过滤", bag_scan = "背包扫描", bank_scan = "银行扫描", equipped_scan = "当前装备扫描",
+        stats_analysis = "属性分析", inventory_stats = "候选库存统计", current_equipment = "当前装备", item_tables = "候选物品",
+        item = "物品", quality = "品质", item_level = "物品等级", source = "来源", location = "位置", stats = "属性",
+        item_lines = "条物品", stacks = "件总数", gear = "件装备", equippable = "件可装备",
+        item_level_summary = "物品等级：最低 %s，最高 %s，平均 %s（%s 件）",
+        source_counts = "来源统计", category_counts = "分类统计", quality_counts = "品质统计",
+        slot_counts = "装备栏位统计", stat_totals = "属性合计", none = "无",
+        no_items = "没有已保存物品。请扫描背包，并在银行打开时再次扫描。",
+        more = "另 %d 项", equipped_count = "已装备 %d 件", candidate_count = "候选 %d 件", upgrade_count = "建议 %d 条",
+        bags = "背包", bank = "银行", equipped = "当前装备", unknown = "未知", unknown_location = "未知位置",
+        backpack_slot = "背包第 %s 格", bag_slot = "%s 号背包第 %s 格", bank_slot = "银行第 %s 格", bank_bag_slot = "银行背包 %s 第 %s 格",
+        categories_map = { Equipped = "当前装备", Gear = "装备", Consumables = "消耗品", ["Trade Goods"] = "材料", Gems = "宝石", Enhancements = "强化物品", Recipes = "配方", Reagents = "施法材料", ["Quest Items"] = "任务物品", Containers = "容器", Keys = "钥匙", Projectiles = "弹药", Currency = "货币", Permanent = "永久物品", Miscellaneous = "杂项", Other = "其他" },
+    },
+    zhTW = {
+        human_note = "便於閱讀的配裝策略報告；需要完整機器資料時請選擇 AI 文字或 JSON。",
+        quick_summary = "角色概覽", field = "項目", value = "目前結果", character = "角色", class = "職業",
+        scope_filter = "範圍 / 篩選", items = "候選庫存", talents = "天賦", selected_talents = "已點天賦",
+        top_role = "主要職責", core_stats = "即時核心屬性", categories = "物品分類", top_stats = "候選庫存屬性合計",
+        role_snapshot = "職責判斷", role = "職責", confidence = "信心", talent_points = "天賦點",
+        models = "分析模型", current_highlights = "目前裝備屬性重點", gear_recommendations = "換裝建議",
+        priority_stats = "優先屬性", benchmark_gaps = "未達標項目", caveat = "分析限制",
+        slot = "欄位", current = "目前裝備", suggested = "候選裝備", score = "評分變化", evidence = "證據",
+        gains = "獲得", losses = "失去", high = "高", medium = "中", low = "低",
+        ai_prompt = "AI 分析指令", details = "角色、策略與候選庫存詳細資料",
+        export_metadata = "匯出資訊", client_locale = "客戶端語言", local_db = "本地資料庫",
+        scope = "範圍", filter = "篩選", bag_scan = "背包掃描", bank_scan = "銀行掃描", equipped_scan = "目前裝備掃描",
+        stats_analysis = "屬性分析", inventory_stats = "候選庫存統計", current_equipment = "目前裝備", item_tables = "候選物品",
+        item = "物品", quality = "品質", item_level = "物品等級", source = "來源", location = "位置", stats = "屬性",
+        item_lines = "筆物品", stacks = "件總數", gear = "件裝備", equippable = "件可裝備",
+        item_level_summary = "物品等級：最低 %s，最高 %s，平均 %s（%s 件）",
+        source_counts = "來源統計", category_counts = "分類統計", quality_counts = "品質統計",
+        slot_counts = "裝備欄位統計", stat_totals = "屬性合計", none = "無",
+        no_items = "沒有已儲存物品。請掃描背包，並在銀行開啟時再次掃描。",
+        more = "另 %d 項", equipped_count = "已裝備 %d 件", candidate_count = "候選 %d 件", upgrade_count = "建議 %d 條",
+        bags = "背包", bank = "銀行", equipped = "目前裝備", unknown = "未知", unknown_location = "未知位置",
+        backpack_slot = "背包第 %s 格", bag_slot = "%s 號背包第 %s 格", bank_slot = "銀行第 %s 格", bank_bag_slot = "銀行背包 %s 第 %s 格",
+        categories_map = { Equipped = "目前裝備", Gear = "裝備", Consumables = "消耗品", ["Trade Goods"] = "材料", Gems = "寶石", Enhancements = "強化物品", Recipes = "配方", Reagents = "施法材料", ["Quest Items"] = "任務物品", Containers = "容器", Keys = "鑰匙", Projectiles = "彈藥", Currency = "貨幣", Permanent = "永久物品", Miscellaneous = "雜項", Other = "其他" },
+    },
+}
+
+function GEAR_ENGINE.ReportTerms(locale)
+    locale = locale == "zhCN" and "zhCN" or (locale == "zhTW" and "zhTW" or "enUS")
+    return GEAR_ENGINE.REPORT_TERMS[locale]
+end
+
+function GEAR_ENGINE.CategoryLabel(category, locale)
+    local terms = GEAR_ENGINE.ReportTerms(locale)
+    return terms.categories_map[category] or tostring(category or terms.none)
+end
 
 local STAT_LABELS = {
     ITEM_MOD_MANA = "Mana",
@@ -1128,6 +1294,7 @@ local STAT_LABELS = {
     ITEM_MOD_ATTACK_POWER_SHORT = "Attack Power",
     ITEM_MOD_RANGED_ATTACK_POWER_SHORT = "Ranged Attack Power",
     ITEM_MOD_FERAL_ATTACK_POWER_SHORT = "Feral Attack Power",
+    ITEM_MOD_DAMAGE_PER_SECOND_SHORT = "Damage per Second",
     ITEM_MOD_SPELL_POWER_SHORT = "Spell Power",
     ITEM_MOD_SPELL_DAMAGE_DONE_SHORT = "Spell Damage",
     ITEM_MOD_SPELL_HEALING_DONE_SHORT = "Healing",
@@ -1183,6 +1350,7 @@ local STAT_ORDER = {
     "ITEM_MOD_ATTACK_POWER_SHORT",
     "ITEM_MOD_RANGED_ATTACK_POWER_SHORT",
     "ITEM_MOD_FERAL_ATTACK_POWER_SHORT",
+    "ITEM_MOD_DAMAGE_PER_SECOND_SHORT",
     "ITEM_MOD_SPELL_POWER_SHORT",
     "ITEM_MOD_SPELL_DAMAGE_DONE_SHORT",
     "ITEM_MOD_SPELL_HEALING_DONE_SHORT",
@@ -1593,8 +1761,9 @@ local function CleanStatLabel(label)
 end
 
 local function StatLabel(statToken)
-    if STAT_LABELS[statToken] then
-        return STAT_LABELS[statToken]
+    local normalized = GEAR_ENGINE.NormalizeStatToken(statToken)
+    if STAT_LABELS[normalized] then
+        return STAT_LABELS[normalized]
     end
 
     if _G and _G[statToken] then
@@ -1689,6 +1858,47 @@ local function CompactNumber(value, decimals)
     end
 
     return text
+end
+
+function GEAR_ENGINE.LocalizedStatLabel(stat, locale)
+    local localized = ANALYSIS_LOCALIZATION[locale == "zhCN" and "zhCN" or (locale == "zhTW" and "zhTW" or "enUS")]
+    local token = GEAR_ENGINE.NormalizeStatToken(stat and stat.token)
+    return localized and localized.stats and localized.stats[token]
+        or stat and (stat.label or StatLabel(stat.token))
+        or "Unknown Stat"
+end
+
+function GEAR_ENGINE.FormatLocalizedStats(stats, locale, maxCount)
+    if not stats or #stats == 0 then
+        return GEAR_ENGINE.ReportTerms(locale).none
+    end
+
+    local parts = {}
+    local count = math.min(#stats, maxCount or #stats)
+    for index = 1, count do
+        local stat = stats[index]
+        local value = tonumber(stat and stat.value) or 0
+        local label = GEAR_ENGINE.LocalizedStatLabel(stat, locale)
+        if tostring(stat and stat.token or ""):find("EMPTY_SOCKET", 1, true) then
+            parts[#parts + 1] = value == 1 and label or (CompactNumber(value, 2) .. " " .. label)
+        else
+            local prefix = value < 0 and "" or "+"
+            parts[#parts + 1] = prefix .. CompactNumber(value, 2) .. " " .. label
+        end
+    end
+    if #stats > count then
+        parts[#parts + 1] = string.format(GEAR_ENGINE.ReportTerms(locale).more, #stats - count)
+    end
+    return table.concat(parts, ", ")
+end
+
+function GEAR_ENGINE.DeltaText(entries, locale)
+    return GEAR_ENGINE.FormatLocalizedStats(entries, locale, 3)
+end
+
+function GEAR_ENGINE.EvidenceLabel(evidence, locale)
+    local terms = GEAR_ENGINE.ReportTerms(locale)
+    return terms[evidence or "low"] or terms.low
 end
 
 local function FormatStats(stats)
@@ -2138,32 +2348,56 @@ local function AppendTalentJson(lines, indent, talents, comma)
     AppendIndented(lines, indent + 2, "]")
     AppendIndented(lines, indent, "}" .. (comma and "," or ""))
 end
-local function LocationLabel(source, bagID, slotID)
+local function LocationLabel(source, bagID, slotID, locale)
+    local terms = GEAR_ENGINE.ReportTerms(locale or ClientLocale())
     if source == "bags" then
         if bagID == 0 then
-            return "Backpack slot " .. slotID
+            return string.format(terms.backpack_slot, tostring(slotID))
         end
 
-        return "Bag " .. bagID .. " slot " .. slotID
+        return string.format(terms.bag_slot, tostring(bagID), tostring(slotID))
     end
 
     if bagID == BANK_CONTAINER_ID then
-        return "Bank slot " .. slotID
+        return string.format(terms.bank_slot, tostring(slotID))
     end
 
-    return "Bank bag " .. (bagID - PLAYER_BAG_SLOTS) .. " slot " .. slotID
+    return string.format(terms.bank_bag_slot, tostring(bagID - PLAYER_BAG_SLOTS), tostring(slotID))
 end
 
-local function SourceLabel(source)
+local function SourceLabel(source, locale)
+    local terms = GEAR_ENGINE.ReportTerms(locale or ClientLocale())
     if source == "bags" then
-        return "Bags"
+        return terms.bags
     end
 
     if source == "bank" then
-        return "Bank"
+        return terms.bank
     end
 
-    return source or "Unknown"
+    if source == "equipped" then
+        return terms.equipped
+    end
+
+    return source or terms.unknown
+end
+
+function GEAR_ENGINE.ItemLocationLabel(item, locale)
+    if not item then
+        return GEAR_ENGINE.ReportTerms(locale).unknown_location
+    end
+    if item.source == "bags" or item.source == "bank" then
+        if item.bag ~= nil and item.slot ~= nil then
+            return LocationLabel(item.source, item.bag, item.slot, locale)
+        end
+    end
+    if item.source == "equipped" then
+        local slotKey = GEAR_ENGINE.EquipmentSlotKey(item)
+        if slotKey then
+            return GEAR_ENGINE.EquipmentSlotLabel(slotKey, locale)
+        end
+    end
+    return item.location or GEAR_ENGINE.ReportTerms(locale).unknown_location
 end
 
 function ClientLocale()
@@ -2764,12 +2998,12 @@ local function TalentTreePointsText(talents, locale)
     local promptLocale = PromptLocale(locale)
 
     if not talents or not talents.available then
-        return (promptLocale == "enUS") and "unavailable" or "不可用"
+        return promptLocale == "enUS" and "unavailable" or (promptLocale == "zhTW" and "無法取得" or "不可用")
     end
 
     local treePoints = TalentTreePoints(talents)
     if #treePoints == 0 then
-        return (promptLocale == "enUS") and "none" or "无"
+        return promptLocale == "enUS" and "none" or (promptLocale == "zhTW" and "無" or "无")
     end
 
     local parts = {}
@@ -2785,7 +3019,7 @@ local function TalentSelectedPointsText(talents, locale, maxCount)
     local promptLocale = PromptLocale(locale)
 
     if not talents or not talents.available then
-        return (promptLocale == "enUS") and "unavailable" or "不可用"
+        return promptLocale == "enUS" and "unavailable" or (promptLocale == "zhTW" and "無法取得" or "不可用")
     end
 
     local parts = {}
@@ -2809,12 +3043,14 @@ local function TalentSelectedPointsText(talents, locale, maxCount)
     end
 
     if #parts == 0 then
-        return (promptLocale == "enUS") and "none" or "无"
+        return promptLocale == "enUS" and "none" or (promptLocale == "zhTW" and "無" or "无")
     end
 
     if omitted > 0 then
         if promptLocale == "enUS" then
             parts[#parts + 1] = "+" .. tostring(omitted) .. " more"
+        elseif promptLocale == "zhTW" then
+            parts[#parts + 1] = "另 " .. tostring(omitted) .. " 個"
         else
             parts[#parts + 1] = "另 " .. tostring(omitted) .. " 个"
         end
@@ -2825,22 +3061,47 @@ end
 
 local function TalentSummaryText(talents, locale)
     talents = talents or {}
+    local promptLocale = PromptLocale(locale)
 
     if not talents.available then
-        return (PromptLocale(locale) == "enUS") and "unavailable" or "不可用"
+        return promptLocale == "enUS" and "unavailable" or (promptLocale == "zhTW" and "無法取得" or "不可用")
     end
 
-    local primary = talents.primaryTab or ((PromptLocale(locale) == "enUS") and "none" or "无")
+    local primary = talents.primaryTab or (promptLocale == "enUS" and "none" or (promptLocale == "zhTW" and "無" or "无"))
     local unspent = talents.unspentPoints
-    local parts = {
-        tostring(talents.summary or ""),
-        "primary=" .. tostring(primary),
-        "points=" .. tostring(talents.totalPoints or talents.pointsSpent or 0),
-        "trees=" .. TalentTreePointsText(talents, locale),
-    }
+    local parts
+
+    if promptLocale == "zhCN" then
+        parts = {
+            tostring(talents.summary or ""),
+            "主天赋=" .. tostring(primary),
+            "已用点数=" .. tostring(talents.totalPoints or talents.pointsSpent or 0),
+            "天赋树=" .. TalentTreePointsText(talents, locale),
+        }
+    elseif promptLocale == "zhTW" then
+        parts = {
+            tostring(talents.summary or ""),
+            "主天賦=" .. tostring(primary),
+            "已用點數=" .. tostring(talents.totalPoints or talents.pointsSpent or 0),
+            "天賦樹=" .. TalentTreePointsText(talents, locale),
+        }
+    else
+        parts = {
+            tostring(talents.summary or ""),
+            "primary=" .. tostring(primary),
+            "points=" .. tostring(talents.totalPoints or talents.pointsSpent or 0),
+            "trees=" .. TalentTreePointsText(talents, locale),
+        }
+    end
 
     if unspent ~= nil then
-        parts[#parts + 1] = "unspent=" .. tostring(unspent)
+        if promptLocale == "zhCN" then
+            parts[#parts + 1] = "未分配=" .. tostring(unspent)
+        elseif promptLocale == "zhTW" then
+            parts[#parts + 1] = "未分配=" .. tostring(unspent)
+        else
+            parts[#parts + 1] = "unspent=" .. tostring(unspent)
+        end
     end
 
     return table.concat(parts, "; ")
@@ -2881,9 +3142,11 @@ end
 
 local function BuildAIPrompt(profile, scope, filter, itemCount)
     local classToken = ClassToken(profile.classEnglish or profile.class or "UNKNOWN")
-    local classDisplay = profile.classLocalized or profile.classEnglish or "Unknown Class"
     local locale = profile.locale or ClientLocale()
     local promptLocale = PromptLocale(locale)
+    local localized = ANALYSIS_LOCALIZATION[promptLocale]
+    local classDisplay = localized and localized.classes and localized.classes[classToken]
+        or profile.classLocalized or profile.classEnglish or "Unknown Class"
     local roleContext = LocalizedRoleContext(classToken, promptLocale)
     local outputRequests = LocalizedOutputRequests(promptLocale)
     local talentSummary = TalentSummaryText(profile.talents, promptLocale)
@@ -3085,7 +3348,7 @@ local function BuildChartStats(items)
             local value = stat and tonumber(stat.value)
 
             if value and value ~= 0 then
-                local token = tostring(stat.token or stat.label or "Unknown Stat")
+                local token = GEAR_ENGINE.NormalizeStatToken(tostring(stat.token or stat.label or "Unknown Stat"))
                 local entry = statMap[token]
                 if not entry then
                     entry = {
@@ -3223,119 +3486,127 @@ local function AppendChartStatsJson(lines, indent, chartStats, comma)
     AppendIndented(lines, indent, "}" .. (comma and "," or ""))
 end
 
-local function ChartCountLine(label, entry)
-    return tostring(label) .. ": " .. tostring(entry.itemCount or 0) .. " item lines; stack " .. tostring(entry.stackCount or 0)
+local function ChartCountLine(label, entry, locale)
+    local terms = GEAR_ENGINE.ReportTerms(locale)
+    return tostring(label) .. ": " .. tostring(entry.itemCount or 0) .. " " .. terms.item_lines .. "; " .. tostring(entry.stackCount or 0) .. " " .. terms.stacks
 end
 
-local function ChartStatLine(entry)
-    return FormatStats({ entry }) .. " (" .. tostring(entry.itemCount or 0) .. " item lines; stack " .. tostring(entry.stackCount or 0) .. ")"
+local function ChartStatLine(entry, locale)
+    local terms = GEAR_ENGINE.ReportTerms(locale)
+    return GEAR_ENGINE.FormatLocalizedStats({ entry }, locale) .. " (" .. tostring(entry.itemCount or 0) .. " " .. terms.item_lines .. "; " .. tostring(entry.stackCount or 0) .. " " .. terms.stacks .. ")"
 end
 
-local function AppendMarkdownChartCountSection(lines, title, entries, labeler)
+local function AppendMarkdownChartCountSection(lines, title, entries, labeler, locale)
+    local terms = GEAR_ENGINE.ReportTerms(locale)
     lines[#lines + 1] = "### " .. title
     lines[#lines + 1] = ""
 
     if #(entries or {}) == 0 then
-        lines[#lines + 1] = "_None._"
+        lines[#lines + 1] = "_" .. terms.none .. "._"
     else
         for index = 1, #entries do
-            lines[#lines + 1] = "- " .. ChartCountLine(labeler(entries[index]), entries[index])
+            lines[#lines + 1] = "- " .. ChartCountLine(labeler(entries[index]), entries[index], locale)
         end
     end
 
     lines[#lines + 1] = ""
 end
 
-local function AppendChartStatsMarkdown(lines, chartStats)
+local function AppendChartStatsMarkdown(lines, chartStats, locale)
     chartStats = chartStats or BuildChartStats({})
-    lines[#lines + 1] = "## Chart Stats"
+    local terms = GEAR_ENGINE.ReportTerms(locale)
+    lines[#lines + 1] = "## " .. terms.inventory_stats
     lines[#lines + 1] = ""
-    lines[#lines + 1] = "- Item lines: " .. tostring(chartStats.itemCount or 0)
-    lines[#lines + 1] = "- Total stack count: " .. tostring(chartStats.stackCount or 0)
-    lines[#lines + 1] = "- Gear item lines: " .. tostring(chartStats.gearItemCount or 0) .. "; gear stack count: " .. tostring(chartStats.gearStackCount or 0)
-    lines[#lines + 1] = "- Equippable item lines: " .. tostring(chartStats.equippableItemCount or 0)
+    lines[#lines + 1] = "- " .. tostring(chartStats.itemCount or 0) .. " " .. terms.item_lines
+        .. "; " .. tostring(chartStats.stackCount or 0) .. " " .. terms.stacks
+        .. "; " .. tostring(chartStats.gearItemCount or 0) .. " " .. terms.gear
+        .. "; " .. tostring(chartStats.equippableItemCount or 0) .. " " .. terms.equippable
 
     if chartStats.itemLevel and chartStats.itemLevel.count and chartStats.itemLevel.count > 0 then
-        lines[#lines + 1] = "- Item level: min " .. tostring(chartStats.itemLevel.min) .. "; max " .. tostring(chartStats.itemLevel.max) .. "; average " .. tostring(chartStats.itemLevel.average) .. " across " .. tostring(chartStats.itemLevel.count) .. " item lines"
+        lines[#lines + 1] = "- " .. string.format(terms.item_level_summary, tostring(chartStats.itemLevel.min), tostring(chartStats.itemLevel.max), tostring(chartStats.itemLevel.average), tostring(chartStats.itemLevel.count))
     else
-        lines[#lines + 1] = "- Item level: none"
+        lines[#lines + 1] = "- " .. terms.item_level .. ": " .. terms.none
     end
 
     lines[#lines + 1] = ""
-    AppendMarkdownChartCountSection(lines, "Source Counts", chartStats.sourceCounts, function(entry)
+    AppendMarkdownChartCountSection(lines, terms.source_counts, chartStats.sourceCounts, function(entry)
         return entry.sourceLabel or entry.source
-    end)
-    AppendMarkdownChartCountSection(lines, "Category Counts", chartStats.categoryCounts, function(entry)
-        return entry.name
-    end)
-    AppendMarkdownChartCountSection(lines, "Quality Counts", chartStats.qualityCounts, function(entry)
-        return tostring(entry.quality or "Unknown") .. (entry.color and " (" .. entry.color .. ")" or "")
-    end)
-    AppendMarkdownChartCountSection(lines, "Equip Slot Counts", chartStats.equipSlotCounts, function(entry)
-        return entry.slot
-    end)
-    lines[#lines + 1] = "### Stat Totals"
+    end, locale)
+    AppendMarkdownChartCountSection(lines, terms.category_counts, chartStats.categoryCounts, function(entry)
+        return GEAR_ENGINE.CategoryLabel(entry.name, locale)
+    end, locale)
+    AppendMarkdownChartCountSection(lines, terms.quality_counts, chartStats.qualityCounts, function(entry)
+        return tostring(entry.quality or terms.none) .. (entry.color and " (" .. entry.color .. ")" or "")
+    end, locale)
+    AppendMarkdownChartCountSection(lines, terms.slot_counts, chartStats.equipSlotCounts, function(entry)
+        local slotKey = GEAR_ENGINE.EquipmentSlotKey({ equipSlot = entry.slot })
+        return slotKey and GEAR_ENGINE.EquipmentSlotLabel(slotKey, locale) or entry.slot
+    end, locale)
+    lines[#lines + 1] = "### " .. terms.stat_totals
     lines[#lines + 1] = ""
 
     if #(chartStats.statTotals or {}) == 0 then
-        lines[#lines + 1] = "_No item stats recorded._"
+        lines[#lines + 1] = "_" .. terms.none .. "._"
     else
         for index = 1, #chartStats.statTotals do
-            lines[#lines + 1] = "- " .. ChartStatLine(chartStats.statTotals[index])
+            lines[#lines + 1] = "- " .. ChartStatLine(chartStats.statTotals[index], locale)
         end
     end
 
     lines[#lines + 1] = ""
 end
 
-local function AppendTextChartCountSection(lines, title, entries, labeler)
+local function AppendTextChartCountSection(lines, title, entries, labeler, locale)
+    local terms = GEAR_ENGINE.ReportTerms(locale)
     lines[#lines + 1] = title
 
     if #(entries or {}) == 0 then
-        lines[#lines + 1] = "None"
+        lines[#lines + 1] = terms.none
     else
         for index = 1, #entries do
-            lines[#lines + 1] = "- " .. ChartCountLine(labeler(entries[index]), entries[index])
+            lines[#lines + 1] = "- " .. ChartCountLine(labeler(entries[index]), entries[index], locale)
         end
     end
 
     lines[#lines + 1] = ""
 end
 
-local function AppendChartStatsText(lines, chartStats)
+local function AppendChartStatsText(lines, chartStats, locale)
     chartStats = chartStats or BuildChartStats({})
-    lines[#lines + 1] = "CHART STATS"
-    lines[#lines + 1] = "Item lines: " .. tostring(chartStats.itemCount or 0)
-    lines[#lines + 1] = "Total stack count: " .. tostring(chartStats.stackCount or 0)
-    lines[#lines + 1] = "Gear item lines: " .. tostring(chartStats.gearItemCount or 0) .. "; gear stack count: " .. tostring(chartStats.gearStackCount or 0)
-    lines[#lines + 1] = "Equippable item lines: " .. tostring(chartStats.equippableItemCount or 0)
+    local terms = GEAR_ENGINE.ReportTerms(locale)
+    lines[#lines + 1] = terms.inventory_stats
+    lines[#lines + 1] = tostring(chartStats.itemCount or 0) .. " " .. terms.item_lines
+        .. "; " .. tostring(chartStats.stackCount or 0) .. " " .. terms.stacks
+        .. "; " .. tostring(chartStats.gearItemCount or 0) .. " " .. terms.gear
+        .. "; " .. tostring(chartStats.equippableItemCount or 0) .. " " .. terms.equippable
 
     if chartStats.itemLevel and chartStats.itemLevel.count and chartStats.itemLevel.count > 0 then
-        lines[#lines + 1] = "Item level: min " .. tostring(chartStats.itemLevel.min) .. "; max " .. tostring(chartStats.itemLevel.max) .. "; average " .. tostring(chartStats.itemLevel.average) .. " across " .. tostring(chartStats.itemLevel.count) .. " item lines"
+        lines[#lines + 1] = string.format(terms.item_level_summary, tostring(chartStats.itemLevel.min), tostring(chartStats.itemLevel.max), tostring(chartStats.itemLevel.average), tostring(chartStats.itemLevel.count))
     else
-        lines[#lines + 1] = "Item level: none"
+        lines[#lines + 1] = terms.item_level .. ": " .. terms.none
     end
 
     lines[#lines + 1] = ""
-    AppendTextChartCountSection(lines, "Source Counts", chartStats.sourceCounts, function(entry)
+    AppendTextChartCountSection(lines, terms.source_counts, chartStats.sourceCounts, function(entry)
         return entry.sourceLabel or entry.source
-    end)
-    AppendTextChartCountSection(lines, "Category Counts", chartStats.categoryCounts, function(entry)
-        return entry.name
-    end)
-    AppendTextChartCountSection(lines, "Quality Counts", chartStats.qualityCounts, function(entry)
-        return tostring(entry.quality or "Unknown") .. (entry.color and " (" .. entry.color .. ")" or "")
-    end)
-    AppendTextChartCountSection(lines, "Equip Slot Counts", chartStats.equipSlotCounts, function(entry)
-        return entry.slot
-    end)
-    lines[#lines + 1] = "Stat Totals"
+    end, locale)
+    AppendTextChartCountSection(lines, terms.category_counts, chartStats.categoryCounts, function(entry)
+        return GEAR_ENGINE.CategoryLabel(entry.name, locale)
+    end, locale)
+    AppendTextChartCountSection(lines, terms.quality_counts, chartStats.qualityCounts, function(entry)
+        return tostring(entry.quality or terms.none) .. (entry.color and " (" .. entry.color .. ")" or "")
+    end, locale)
+    AppendTextChartCountSection(lines, terms.slot_counts, chartStats.equipSlotCounts, function(entry)
+        local slotKey = GEAR_ENGINE.EquipmentSlotKey({ equipSlot = entry.slot })
+        return slotKey and GEAR_ENGINE.EquipmentSlotLabel(slotKey, locale) or entry.slot
+    end, locale)
+    lines[#lines + 1] = terms.stat_totals
 
     if #(chartStats.statTotals or {}) == 0 then
-        lines[#lines + 1] = "No item stats recorded."
+        lines[#lines + 1] = terms.none
     else
         for index = 1, #chartStats.statTotals do
-            lines[#lines + 1] = "- " .. ChartStatLine(chartStats.statTotals[index])
+            lines[#lines + 1] = "- " .. ChartStatLine(chartStats.statTotals[index], locale)
         end
     end
 
@@ -3576,6 +3847,7 @@ end
 local function BuildStrategyBook(profile, chartStats)
     local classToken = ClassToken(profile and profile.classEnglish or "UNKNOWN")
     local characterStats = profile and profile.characterStats or BuildCharacterStatsSnapshot()
+    local equippedChartStats = BuildChartStats(profile and profile.equipped and profile.equipped.items or {})
     local race = characterStats and characterStats.race or GetPlayerRaceInfo()
     local group = characterStats and characterStats.group or GetGroupContext()
     local roles = {}
@@ -3583,7 +3855,7 @@ local function BuildStrategyBook(profile, chartStats)
 
     for index = 1, #sourceRoles do
         local role = sourceRoles[index]
-        local observed = BuildRoleObservedStats(role, characterStats, chartStats)
+        local observed = BuildRoleObservedStats(role, characterStats, equippedChartStats)
         local talentPoints = TalentPointsForTabs(profile and profile.talents, role.talentTabs)
         local primaryMatch = TalentPrimaryMatches(profile and profile.talents, role.talentTabs)
         roles[#roles + 1] = {
@@ -3598,7 +3870,7 @@ local function BuildStrategyBook(profile, chartStats)
             observed = observed,
             benchmarks = BuildRoleBenchmarks(role, observed),
             notes = {
-                "Mapped from class, race, current talent distribution, live character stats, and exported gear stat totals.",
+                "Mapped from class, race, current talent distribution, live character stats, and currently equipped gear stats.",
                 "Use confidence as a role-lens hint, not a final spec declaration.",
             },
         }
@@ -3661,6 +3933,7 @@ function GEAR_ENGINE.MaximumWeight(weights, tokens)
 end
 
 function GEAR_ENGINE.StatWeightForToken(weights, token)
+    token = GEAR_ENGINE.NormalizeStatToken(token)
     if weights[token] then
         return weights[token]
     end
@@ -3715,12 +3988,13 @@ function GEAR_ENGINE.ItemRoleScore(item, role, weights)
     for index = 1, #(item and item.stats or {}) do
         local stat = item.stats[index]
         local value = tonumber(stat and stat.value)
-        local weight = GEAR_ENGINE.StatWeightForToken(weights, stat and stat.token)
+        local token = GEAR_ENGINE.NormalizeStatToken(stat and stat.token)
+        local weight = GEAR_ENGINE.StatWeightForToken(weights, token)
         if value and value > 0 and weight then
             score = score + (value * weight)
             matched[#matched + 1] = {
-                token = stat.token,
-                label = stat.label or StatLabel(stat.token),
+                token = token,
+                label = StatLabel(token),
                 value = value,
                 weight = RoundedStatNumber(weight),
             }
@@ -3737,6 +4011,83 @@ function GEAR_ENGINE.ItemRoleScore(item, role, weights)
     end)
 
     return RoundedStatNumber(score), matched
+end
+
+function GEAR_ENGINE.ItemRelevantStatMap(item, weights)
+    local values = {}
+
+    for index = 1, #(item and item.stats or {}) do
+        local stat = item.stats[index]
+        local token = GEAR_ENGINE.NormalizeStatToken(stat and stat.token)
+        local value = tonumber(stat and stat.value)
+        if token and value and GEAR_ENGINE.StatWeightForToken(weights, token) then
+            values[token] = (values[token] or 0) + value
+        end
+    end
+
+    return values
+end
+
+function GEAR_ENGINE.BuildStatDeltas(currentItem, candidateItem, weights)
+    local current = GEAR_ENGINE.ItemRelevantStatMap(currentItem, weights)
+    local candidate = GEAR_ENGINE.ItemRelevantStatMap(candidateItem, weights)
+    local tokens = {}
+    local seen = {}
+    local gains = {}
+    local losses = {}
+
+    for token in pairs(current) do
+        seen[token] = true
+        tokens[#tokens + 1] = token
+    end
+    for token in pairs(candidate) do
+        if not seen[token] then
+            tokens[#tokens + 1] = token
+        end
+    end
+
+    for index = 1, #tokens do
+        local token = tokens[index]
+        local delta = (candidate[token] or 0) - (current[token] or 0)
+        if delta ~= 0 then
+            local entry = {
+                token = token,
+                label = StatLabel(token),
+                value = RoundedStatNumber(math.abs(delta)),
+                weightedValue = RoundedStatNumber(math.abs(delta) * (GEAR_ENGINE.StatWeightForToken(weights, token) or 0)),
+            }
+            if delta > 0 then
+                gains[#gains + 1] = entry
+            else
+                losses[#losses + 1] = entry
+            end
+        end
+    end
+
+    local function SortDeltas(left, right)
+        if left.weightedValue ~= right.weightedValue then
+            return left.weightedValue > right.weightedValue
+        end
+        return tostring(left.label) < tostring(right.label)
+    end
+    table.sort(gains, SortDeltas)
+    table.sort(losses, SortDeltas)
+    return gains, losses
+end
+
+function GEAR_ENGINE.RecommendationEvidence(currentItem, candidateItem, gains, losses)
+    local currentStats = #(currentItem and currentItem.stats or {})
+    local candidateStats = #(candidateItem and candidateItem.stats or {})
+    local comparedStats = #(gains or {}) + #(losses or {})
+    local slotKey = GEAR_ENGINE.EquipmentSlotKey(candidateItem)
+
+    if not currentItem or currentStats == 0 or candidateStats == 0 or slotKey == "TRINKET" or slotKey == "RANGED" then
+        return "low"
+    end
+    if comparedStats >= 3 then
+        return "high"
+    end
+    return "medium"
 end
 
 function GEAR_ENGINE.CandidateCompatibleWithClass(profile, item)
@@ -3827,6 +4178,7 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
             local current = currentBySlot[slotKey]
             local gain = score - (current and current.score or 0)
             if gain >= 2 and #matched > 0 then
+                local statGains, statLosses = GEAR_ENGINE.BuildStatDeltas(current and current.item or nil, item, weights)
                 local recommendation = {
                     slotKey = slotKey,
                     current = current and current.item or nil,
@@ -3835,6 +4187,9 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
                     candidateScore = score,
                     scoreGain = RoundedStatNumber(gain),
                     matchedStats = matched,
+                    statGains = statGains,
+                    statLosses = statLosses,
+                    evidence = GEAR_ENGINE.RecommendationEvidence(current and current.item or nil, item, statGains, statLosses),
                 }
                 if not bestBySlot[slotKey] or score > bestBySlot[slotKey].candidateScore then
                     bestBySlot[slotKey] = recommendation
@@ -3868,11 +4223,12 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
     end
 
     return {
-        version = 1,
+        version = 2,
         generatedAt = Now(),
         roleKey = role.key,
         roleLabel = role.label,
         roleConfidence = role.confidence or 0,
+        roleWeights = weights,
         equippedCount = #equippedItems,
         candidateCount = candidateCount,
         priorityStats = GEAR_ENGINE.PriorityStats(role, weights),
@@ -4095,7 +4451,7 @@ function GEAR_ENGINE.AppendGearRecommendationsJson(lines, indent, engine, comma)
     AppendIndented(lines, indent + 2, "\"equipped_gear\": [")
     for index = 1, #(engine.equipped or {}) do
         local item = engine.equipped[index]
-        local score = GEAR_ENGINE.ItemRoleScore(item, { statTokens = {} }, {})
+        local score = GEAR_ENGINE.ItemRoleScore(item, nil, engine.roleWeights or {})
         AppendIndented(lines, indent + 4, "{")
         GEAR_ENGINE.AppendGearItemJson(lines, indent + 6, "item", item, score, false)
         AppendIndented(lines, indent + 4, "}" .. (index < #(engine.equipped or {}) and "," or ""))
@@ -4107,6 +4463,7 @@ function GEAR_ENGINE.AppendGearRecommendationsJson(lines, indent, engine, comma)
         AppendIndented(lines, indent + 4, "{")
         AppendIndented(lines, indent + 6, JsonField("slot_key", upgrade.slotKey, true))
         AppendIndented(lines, indent + 6, JsonField("score_gain", upgrade.scoreGain, true))
+        AppendIndented(lines, indent + 6, JsonField("evidence", upgrade.evidence, true))
         GEAR_ENGINE.AppendGearItemJson(lines, indent + 6, "current", upgrade.current, upgrade.currentScore, true)
         GEAR_ENGINE.AppendGearItemJson(lines, indent + 6, "candidate", upgrade.candidate, upgrade.candidateScore, true)
         AppendJsonObjectArray(lines, indent + 6, "matched_stats", upgrade.matchedStats, {
@@ -4114,127 +4471,23 @@ function GEAR_ENGINE.AppendGearRecommendationsJson(lines, indent, engine, comma)
             { name = "label", value = "label" },
             { name = "value", value = "value" },
             { name = "weight", value = "weight" },
+        }, true)
+        AppendJsonObjectArray(lines, indent + 6, "stat_gains", upgrade.statGains, {
+            { name = "token", value = "token" },
+            { name = "label", value = "label" },
+            { name = "value", value = "value" },
+            { name = "weighted_value", value = "weightedValue" },
+        }, true)
+        AppendJsonObjectArray(lines, indent + 6, "stat_losses", upgrade.statLosses, {
+            { name = "token", value = "token" },
+            { name = "label", value = "label" },
+            { name = "value", value = "value" },
+            { name = "weighted_value", value = "weightedValue" },
         }, false)
         AppendIndented(lines, indent + 4, "}" .. (index < #(engine.upgrades or {}) and "," or ""))
     end
     AppendIndented(lines, indent + 2, "]")
     AppendIndented(lines, indent, "}" .. (comma and "," or ""))
-end
-
-local function PercentText(value)
-    if type(value) ~= "number" then
-        return "unknown"
-    end
-
-    return CompactNumber(value, 2) .. "%"
-end
-
-local function AppendCharacterStatsMarkdown(lines, characterStats)
-    characterStats = characterStats or BuildCharacterStatsSnapshot()
-    lines[#lines + 1] = "## Character Stats"
-    lines[#lines + 1] = ""
-    lines[#lines + 1] = "- Race: " .. tostring(characterStats.race and characterStats.race.localized or "Unknown") .. " (" .. tostring(characterStats.race and characterStats.race.english or "UNKNOWN") .. ")"
-    lines[#lines + 1] = "- Group: " .. tostring(characterStats.group and characterStats.group.type or "solo") .. "; size " .. tostring(characterStats.group and characterStats.group.size or 1)
-    lines[#lines + 1] = "- Defense: " .. tostring(characterStats.defense and characterStats.defense.effective or "unknown") .. "; Armor: " .. tostring(characterStats.armor and characterStats.armor.effective or "unknown")
-    lines[#lines + 1] = "- Hit: melee " .. PercentText(RatingBonus(characterStats, "melee_hit")) .. "; ranged " .. PercentText(RatingBonus(characterStats, "ranged_hit")) .. "; spell " .. PercentText(RatingBonus(characterStats, "spell_hit"))
-    lines[#lines + 1] = "- Crit: melee " .. PercentText(characterStats.chances and characterStats.chances.meleeCrit) .. "; ranged " .. PercentText(characterStats.chances and characterStats.chances.rangedCrit) .. "; spell best " .. PercentText(BestSpellValue(characterStats.chances and characterStats.chances.spellCrit, "crit"))
-    lines[#lines + 1] = ""
-end
-
-local function AppendStrategyBookMarkdown(lines, strategyBook)
-    strategyBook = strategyBook or BuildStrategyBook({}, BuildChartStats({}))
-    lines[#lines + 1] = "## Strategy Book"
-    lines[#lines + 1] = ""
-    lines[#lines + 1] = "- Class: " .. tostring(strategyBook.classToken or "UNKNOWN")
-    lines[#lines + 1] = "- Race: " .. tostring(strategyBook.raceToken or "UNKNOWN")
-    lines[#lines + 1] = "- Group context: " .. tostring(strategyBook.groupType or "solo")
-
-    for index = 1, #(strategyBook.raceNotes or {}) do
-        lines[#lines + 1] = "- Race note: " .. strategyBook.raceNotes[index]
-    end
-
-    for index = 1, #(strategyBook.groupNotes or {}) do
-        lines[#lines + 1] = "- Group note: " .. strategyBook.groupNotes[index]
-    end
-
-    lines[#lines + 1] = ""
-
-    for roleIndex = 1, #(strategyBook.roles or {}) do
-        local role = strategyBook.roles[roleIndex]
-        lines[#lines + 1] = "### " .. tostring(role.label or role.key)
-        lines[#lines + 1] = ""
-        lines[#lines + 1] = "- Confidence: " .. tostring(role.confidence or 0) .. "; talent points: " .. tostring(role.talentPoints or 0) .. "; primary match: " .. tostring(role.primaryTalentMatch and "yes" or "no")
-        lines[#lines + 1] = "- Models: " .. table.concat(role.models or {}, ", ")
-        lines[#lines + 1] = "- Priorities: " .. table.concat(role.priorities or {}, ", ")
-        lines[#lines + 1] = "- Observed hit: melee " .. PercentText(role.observed and role.observed.hit and role.observed.hit.melee) .. "; ranged " .. PercentText(role.observed and role.observed.hit and role.observed.hit.ranged) .. "; spell " .. PercentText(role.observed and role.observed.hit and role.observed.hit.spell)
-        lines[#lines + 1] = "- Observed crit: melee " .. PercentText(role.observed and role.observed.crit and role.observed.crit.melee) .. "; ranged " .. PercentText(role.observed and role.observed.crit and role.observed.crit.ranged) .. "; spell best " .. PercentText(role.observed and role.observed.crit and role.observed.crit.spellBest)
-        lines[#lines + 1] = "- Tank model: defense " .. tostring(role.observed and role.observed.tank and role.observed.tank.defense or "unknown") .. "; armor " .. tostring(role.observed and role.observed.tank and role.observed.tank.armor or "unknown") .. "; known avoidance/block " .. PercentText(role.observed and role.observed.tank and role.observed.tank.knownAvoidanceBlock)
-
-        if #(role.benchmarks or {}) > 0 then
-            lines[#lines + 1] = "- Benchmarks:"
-            for benchmarkIndex = 1, #role.benchmarks do
-                local benchmark = role.benchmarks[benchmarkIndex]
-                lines[#lines + 1] = "  - " .. tostring(benchmark.label or benchmark.key) .. ": " .. tostring(benchmark.status) .. " (observed " .. tostring(benchmark.observed or "unknown") .. "; target " .. tostring(benchmark.target or "unknown") .. " " .. tostring(benchmark.unit or "") .. ")"
-            end
-        end
-
-        if role.observed and role.observed.gearStatHighlights and #role.observed.gearStatHighlights > 0 then
-            lines[#lines + 1] = "- Gear stat highlights: " .. FormatStats(role.observed.gearStatHighlights)
-        end
-
-        lines[#lines + 1] = ""
-    end
-end
-
-local function AppendCharacterStatsText(lines, characterStats)
-    characterStats = characterStats or BuildCharacterStatsSnapshot()
-    lines[#lines + 1] = "CHARACTER STATS"
-    lines[#lines + 1] = "Race: " .. tostring(characterStats.race and characterStats.race.localized or "Unknown") .. " (" .. tostring(characterStats.race and characterStats.race.english or "UNKNOWN") .. ")"
-    lines[#lines + 1] = "Group: " .. tostring(characterStats.group and characterStats.group.type or "solo") .. "; size " .. tostring(characterStats.group and characterStats.group.size or 1)
-    lines[#lines + 1] = "Defense: " .. tostring(characterStats.defense and characterStats.defense.effective or "unknown") .. "; Armor: " .. tostring(characterStats.armor and characterStats.armor.effective or "unknown")
-    lines[#lines + 1] = "Hit: melee " .. PercentText(RatingBonus(characterStats, "melee_hit")) .. "; ranged " .. PercentText(RatingBonus(characterStats, "ranged_hit")) .. "; spell " .. PercentText(RatingBonus(characterStats, "spell_hit"))
-    lines[#lines + 1] = "Crit: melee " .. PercentText(characterStats.chances and characterStats.chances.meleeCrit) .. "; ranged " .. PercentText(characterStats.chances and characterStats.chances.rangedCrit) .. "; spell best " .. PercentText(BestSpellValue(characterStats.chances and characterStats.chances.spellCrit, "crit"))
-    lines[#lines + 1] = ""
-end
-
-local function AppendStrategyBookText(lines, strategyBook)
-    strategyBook = strategyBook or BuildStrategyBook({}, BuildChartStats({}))
-    lines[#lines + 1] = "STRATEGY BOOK"
-    lines[#lines + 1] = "Class: " .. tostring(strategyBook.classToken or "UNKNOWN")
-    lines[#lines + 1] = "Race: " .. tostring(strategyBook.raceToken or "UNKNOWN")
-    lines[#lines + 1] = "Group context: " .. tostring(strategyBook.groupType or "solo")
-
-    for index = 1, #(strategyBook.raceNotes or {}) do
-        lines[#lines + 1] = "Race note: " .. strategyBook.raceNotes[index]
-    end
-
-    for index = 1, #(strategyBook.groupNotes or {}) do
-        lines[#lines + 1] = "Group note: " .. strategyBook.groupNotes[index]
-    end
-
-    lines[#lines + 1] = ""
-
-    for roleIndex = 1, #(strategyBook.roles or {}) do
-        local role = strategyBook.roles[roleIndex]
-        lines[#lines + 1] = "[" .. tostring(role.label or role.key) .. "]"
-        lines[#lines + 1] = "Confidence: " .. tostring(role.confidence or 0) .. "; talent points: " .. tostring(role.talentPoints or 0) .. "; primary match: " .. tostring(role.primaryTalentMatch and "yes" or "no")
-        lines[#lines + 1] = "Models: " .. table.concat(role.models or {}, ", ")
-        lines[#lines + 1] = "Priorities: " .. table.concat(role.priorities or {}, ", ")
-        lines[#lines + 1] = "Observed hit: melee " .. PercentText(role.observed and role.observed.hit and role.observed.hit.melee) .. "; ranged " .. PercentText(role.observed and role.observed.hit and role.observed.hit.ranged) .. "; spell " .. PercentText(role.observed and role.observed.hit and role.observed.hit.spell)
-        lines[#lines + 1] = "Observed crit: melee " .. PercentText(role.observed and role.observed.crit and role.observed.crit.melee) .. "; ranged " .. PercentText(role.observed and role.observed.crit and role.observed.crit.ranged) .. "; spell best " .. PercentText(role.observed and role.observed.crit and role.observed.crit.spellBest)
-        lines[#lines + 1] = "Tank model: defense " .. tostring(role.observed and role.observed.tank and role.observed.tank.defense or "unknown") .. "; armor " .. tostring(role.observed and role.observed.tank and role.observed.tank.armor or "unknown") .. "; known avoidance/block " .. PercentText(role.observed and role.observed.tank and role.observed.tank.knownAvoidanceBlock)
-
-        for benchmarkIndex = 1, #(role.benchmarks or {}) do
-            local benchmark = role.benchmarks[benchmarkIndex]
-            lines[#lines + 1] = "Benchmark: " .. tostring(benchmark.label or benchmark.key) .. " = " .. tostring(benchmark.status) .. " (observed " .. tostring(benchmark.observed or "unknown") .. "; target " .. tostring(benchmark.target or "unknown") .. " " .. tostring(benchmark.unit or "") .. ")"
-        end
-
-        if role.observed and role.observed.gearStatHighlights and #role.observed.gearStatHighlights > 0 then
-            lines[#lines + 1] = "Gear stat highlights: " .. FormatStats(role.observed.gearStatHighlights)
-        end
-
-        lines[#lines + 1] = ""
-    end
 end
 
 function GEAR_ENGINE.GearRoleLabel(engine, locale)
@@ -4264,35 +4517,32 @@ function GEAR_ENGINE.GearBenchmarkText(engine, locale)
 end
 
 function GEAR_ENGINE.GearMatchedStatsText(upgrade, locale)
-    local values = {}
-    local localized = ANALYSIS_LOCALIZATION[PromptLocale(locale or ClientLocale())]
-    for index = 1, math.min(3, #(upgrade and upgrade.matchedStats or {})) do
-        local stat = upgrade.matchedStats[index]
-        local label = localized and localized.stats and localized.stats[stat.token] or stat.label
-        values[#values + 1] = "+" .. CompactNumber(stat.value, 2) .. " " .. tostring(label)
-    end
-    return #values > 0 and table.concat(values, ", ") or "item level / quality"
+    return GEAR_ENGINE.FormatLocalizedStats(upgrade and upgrade.matchedStats or {}, locale, 3)
 end
 
 function GEAR_ENGINE.AppendGearRecommendationsMarkdown(lines, engine, locale)
-    lines[#lines + 1] = "## Gear Recommendations"
+    local terms = GEAR_ENGINE.ReportTerms(locale)
+    lines[#lines + 1] = "## " .. terms.gear_recommendations
     lines[#lines + 1] = ""
-    lines[#lines + 1] = "- Role: " .. tostring(GEAR_ENGINE.GearRoleLabel(engine, locale)) .. " (confidence " .. tostring(engine.roleConfidence or 0) .. ")"
-    lines[#lines + 1] = "- Priority stats: " .. GEAR_ENGINE.GearPriorityText(engine, locale)
-    lines[#lines + 1] = "- Benchmark gaps: " .. GEAR_ENGINE.GearBenchmarkText(engine, locale)
-    lines[#lines + 1] = "- Caveat: " .. tostring(engine.caveat)
+    lines[#lines + 1] = "- " .. terms.role .. ": " .. tostring(GEAR_ENGINE.GearRoleLabel(engine, locale)) .. " (" .. terms.confidence .. " " .. tostring(engine.roleConfidence or 0) .. ")"
+    lines[#lines + 1] = "- " .. terms.priority_stats .. ": " .. GEAR_ENGINE.GearPriorityText(engine, locale)
+    lines[#lines + 1] = "- " .. terms.benchmark_gaps .. ": " .. GEAR_ENGINE.GearBenchmarkText(engine, locale)
+    lines[#lines + 1] = "- " .. terms.caveat .. ": " .. tostring(engine.caveat)
     lines[#lines + 1] = ""
-    lines[#lines + 1] = "| Slot | Current | Suggested | Gain | Why |"
+    lines[#lines + 1] = "| " .. terms.slot .. " | " .. terms.current .. " | " .. terms.suggested .. " | " .. terms.score .. " | " .. terms.evidence .. " |"
     lines[#lines + 1] = "|---|---|---|---:|---|"
     for index = 1, #(engine.upgrades or {}) do
         local upgrade = engine.upgrades[index]
         local current = upgrade.current and Addon.MarkdownPlainItemName(upgrade.current) or LForLocale(locale, "advice_empty_slot")
         local candidate = Addon.MarkdownPlainItemName(upgrade.candidate)
+        local evidence = terms.gains .. ": " .. GEAR_ENGINE.DeltaText(upgrade.statGains, locale)
+            .. "; " .. terms.losses .. ": " .. GEAR_ENGINE.DeltaText(upgrade.statLosses, locale)
+            .. "; " .. GEAR_ENGINE.EvidenceLabel(upgrade.evidence, locale)
         lines[#lines + 1] = "| " .. Addon.MarkdownEscape(GEAR_ENGINE.EquipmentSlotLabel(upgrade.slotKey, locale))
             .. " | " .. current
             .. " | " .. candidate
             .. " | +" .. Addon.MarkdownEscape(CompactNumber(upgrade.scoreGain, 2))
-            .. " | " .. Addon.MarkdownEscape(GEAR_ENGINE.GearMatchedStatsText(upgrade, locale)) .. " |"
+            .. " | " .. Addon.MarkdownEscape(evidence) .. " |"
     end
     if #(engine.upgrades or {}) == 0 then
         lines[#lines + 1] = "| - | - | " .. Addon.MarkdownEscape(LForLocale(locale, "advice_no_upgrades")) .. " | - | - |"
@@ -4301,21 +4551,25 @@ function GEAR_ENGINE.AppendGearRecommendationsMarkdown(lines, engine, locale)
 end
 
 function GEAR_ENGINE.AppendGearRecommendationsText(lines, engine, locale)
-    lines[#lines + 1] = "GEAR RECOMMENDATIONS"
-    lines[#lines + 1] = "Role: " .. tostring(GEAR_ENGINE.GearRoleLabel(engine, locale)) .. "; confidence " .. tostring(engine.roleConfidence or 0)
-    lines[#lines + 1] = "Priority stats: " .. GEAR_ENGINE.GearPriorityText(engine, locale)
-    lines[#lines + 1] = "Benchmark gaps: " .. GEAR_ENGINE.GearBenchmarkText(engine, locale)
+    local terms = GEAR_ENGINE.ReportTerms(locale)
+    lines[#lines + 1] = terms.gear_recommendations
+    lines[#lines + 1] = terms.role .. ": " .. tostring(GEAR_ENGINE.GearRoleLabel(engine, locale)) .. "; " .. terms.confidence .. " " .. tostring(engine.roleConfidence or 0)
+    lines[#lines + 1] = terms.priority_stats .. ": " .. GEAR_ENGINE.GearPriorityText(engine, locale)
+    lines[#lines + 1] = terms.benchmark_gaps .. ": " .. GEAR_ENGINE.GearBenchmarkText(engine, locale)
     for index = 1, #(engine.upgrades or {}) do
         local upgrade = engine.upgrades[index]
         local current = upgrade.current and upgrade.current.name or LForLocale(locale, "advice_empty_slot")
         lines[#lines + 1] = GEAR_ENGINE.EquipmentSlotLabel(upgrade.slotKey, locale) .. ": " .. tostring(current)
             .. " -> " .. tostring(upgrade.candidate and upgrade.candidate.name)
-            .. " (score +" .. CompactNumber(upgrade.scoreGain, 2) .. "; " .. GEAR_ENGINE.GearMatchedStatsText(upgrade, locale) .. ")"
+            .. " (" .. terms.score .. " +" .. CompactNumber(upgrade.scoreGain, 2)
+            .. "; " .. terms.gains .. " " .. GEAR_ENGINE.DeltaText(upgrade.statGains, locale)
+            .. "; " .. terms.losses .. " " .. GEAR_ENGINE.DeltaText(upgrade.statLosses, locale)
+            .. "; " .. terms.evidence .. " " .. GEAR_ENGINE.EvidenceLabel(upgrade.evidence, locale) .. ")"
     end
     if #(engine.upgrades or {}) == 0 then
         lines[#lines + 1] = LForLocale(locale, "advice_no_upgrades")
     end
-    lines[#lines + 1] = "Caveat: " .. tostring(engine.caveat)
+    lines[#lines + 1] = terms.caveat .. ": " .. tostring(engine.caveat)
     lines[#lines + 1] = ""
 end
 
@@ -4371,6 +4625,23 @@ local function AnalysisModelLabels(models, locale)
     end
 
     return table.concat(labels, ", ")
+end
+
+function GEAR_ENGINE.RoleHasModel(role, expected)
+    for index = 1, #(role and role.models or {}) do
+        if role.models[index] == expected then
+            return true
+        end
+    end
+    return false
+end
+
+function GEAR_ENGINE.RoleUsesHitModel(role)
+    return GEAR_ENGINE.RoleHasModel(role, "tank_threat")
+        or GEAR_ENGINE.RoleHasModel(role, "spell_threat")
+        or GEAR_ENGINE.RoleHasModel(role, "melee_dps")
+        or GEAR_ENGINE.RoleHasModel(role, "ranged_dps")
+        or GEAR_ENGINE.RoleHasModel(role, "caster_dps")
 end
 
 local function AnalysisBenchmarkLabel(benchmark, locale)
@@ -4496,15 +4767,19 @@ local function BuildStatsAnalysisText(profile, chartStats, strategyBook)
         lines[#lines + 1] = ""
         lines[#lines + 1] = LForLocale(locale, "analysis_role", AnalysisRoleLabel(role, locale), AnalysisValue(role.confidence, nil, locale), AnalysisValue(role.talentPoints, nil, locale))
         lines[#lines + 1] = LForLocale(locale, "analysis_models", AnalysisModelLabels(role.models, locale))
-        lines[#lines + 1] = LForLocale(locale, "analysis_role_hit",
-            AnalysisValue(hit.melee, "%", locale),
-            AnalysisValue(hit.spell, "%", locale),
-            AnalysisValue(crit.melee, "%", locale),
-            AnalysisValue(crit.spellBest, "%", locale))
-        lines[#lines + 1] = LForLocale(locale, "analysis_role_tank",
-            AnalysisValue(tank.defense, nil, locale),
-            AnalysisValue(tank.armor, nil, locale),
-            AnalysisValue(tank.knownAvoidanceBlock, "%", locale))
+        if GEAR_ENGINE.RoleUsesHitModel(role) then
+            lines[#lines + 1] = LForLocale(locale, "analysis_role_hit",
+                AnalysisValue(hit.melee, "%", locale),
+                AnalysisValue(hit.spell, "%", locale),
+                AnalysisValue(crit.melee, "%", locale),
+                AnalysisValue(crit.spellBest, "%", locale))
+        end
+        if GEAR_ENGINE.RoleHasModel(role, "tank_mitigation") then
+            lines[#lines + 1] = LForLocale(locale, "analysis_role_tank",
+                AnalysisValue(tank.defense, nil, locale),
+                AnalysisValue(tank.armor, nil, locale),
+                AnalysisValue(tank.knownAvoidanceBlock, "%", locale))
+        end
 
         for benchmarkIndex = 1, math.min(#(role.benchmarks or {}), 4) do
             local benchmark = role.benchmarks[benchmarkIndex]
@@ -4576,24 +4851,8 @@ function Addon.MarkdownPlainItemName(item)
     return name
 end
 
-function Addon.ShortStats(stats, maxCount)
-    if not stats or #stats == 0 then
-        return "none"
-    end
-
-    local selected = {}
-    maxCount = maxCount or 4
-
-    for index = 1, math.min(#stats, maxCount) do
-        selected[#selected + 1] = stats[index]
-    end
-
-    local text = FormatStats(selected)
-    if #stats > maxCount then
-        text = text .. ", +" .. tostring(#stats - maxCount) .. " more"
-    end
-
-    return text
+function Addon.ShortStats(stats, maxCount, locale)
+    return GEAR_ENGINE.FormatLocalizedStats(stats, locale or "enUS", maxCount or 4)
 end
 
 function Addon.BuildOverviewText(profile, chartStats, strategyBook, items)
@@ -4658,52 +4917,62 @@ function Addon.AppendMarkdownQuickSummary(lines, profile, scope, filter, items, 
     local characterStats = profile.characterStats or BuildCharacterStatsSnapshot()
     local roles = strategyBook.roles or {}
     local topRole = roles[1]
+    local locale = profile.locale or ClientLocale()
+    local terms = GEAR_ENGINE.ReportTerms(locale)
 
-    lines[#lines + 1] = "## Quick Summary"
+    lines[#lines + 1] = "## " .. terms.quick_summary
     lines[#lines + 1] = ""
-    lines[#lines + 1] = "| Field | Value |"
+    lines[#lines + 1] = "| " .. terms.field .. " | " .. terms.value .. " |"
     lines[#lines + 1] = "| --- | --- |"
-    lines[#lines + 1] = "| Character | " .. Addon.MarkdownEscape(tostring(profile.player or "Unknown Player") .. " - " .. tostring(profile.realm or "Unknown Realm")) .. " |"
-    lines[#lines + 1] = "| Class | " .. Addon.MarkdownEscape(profile.classLocalized or profile.classEnglish or "Unknown Class") .. " |"
-    lines[#lines + 1] = "| Scope / Filter | " .. Addon.MarkdownEscape(ScopeTitle(scope) .. " / " .. ExportFilterTitle(filter)) .. " |"
-    lines[#lines + 1] = "| Items | " .. tostring(#items) .. " lines, " .. tostring(chartStats.stackCount or 0) .. " stacked; gear " .. tostring(chartStats.gearItemCount or 0) .. " |"
-    lines[#lines + 1] = "| Talents | " .. Addon.MarkdownEscape(TalentTreePointsText(profile.talents, profile.locale)) .. " |"
-    lines[#lines + 1] = "| Selected talents | " .. Addon.MarkdownEscape(TalentSelectedPointsText(profile.talents, profile.locale, 8)) .. " |"
-    lines[#lines + 1] = "| Top role | " .. Addon.MarkdownEscape(topRole and ((topRole.label or topRole.key) .. " (" .. tostring(topRole.confidence or 0) .. " confidence)") or "none") .. " |"
-    lines[#lines + 1] = "| Core stats | Defense " .. Addon.MarkdownEscape(AnalysisValue(characterStats.defense and characterStats.defense.effective)) .. ", armor " .. Addon.MarkdownEscape(AnalysisValue(characterStats.armor and characterStats.armor.effective)) .. ", melee hit " .. Addon.MarkdownEscape(AnalysisValue(RatingBonus(characterStats, "melee_hit"), "%")) .. ", spell hit " .. Addon.MarkdownEscape(AnalysisValue(RatingBonus(characterStats, "spell_hit"), "%")) .. " |"
-    lines[#lines + 1] = "| Categories | " .. Addon.MarkdownEscape(Addon.CompactCountList(chartStats.categoryCounts, function(entry) return entry.name end, 5)) .. " |"
-    lines[#lines + 1] = "| Top stats | " .. Addon.MarkdownEscape(FormatStats(Addon.FirstEntries(chartStats.statTotals, 8))) .. " |"
+    lines[#lines + 1] = "| " .. terms.character .. " | " .. Addon.MarkdownEscape(tostring(profile.player or "Unknown Player") .. " - " .. tostring(profile.realm or "Unknown Realm")) .. " |"
+    lines[#lines + 1] = "| " .. terms.class .. " | " .. Addon.MarkdownEscape(AnalysisClassName(profile, locale)) .. " |"
+    lines[#lines + 1] = "| " .. terms.scope_filter .. " | " .. Addon.MarkdownEscape(LocalizedScopeTitle(scope, locale) .. " / " .. LocalizedExportFilterTitle(filter, locale)) .. " |"
+    lines[#lines + 1] = "| " .. terms.items .. " | " .. tostring(#items) .. " " .. terms.item_lines .. ", " .. tostring(chartStats.stackCount or 0) .. " " .. terms.stacks .. ", " .. tostring(chartStats.gearItemCount or 0) .. " " .. terms.gear .. " |"
+    lines[#lines + 1] = "| " .. terms.talents .. " | " .. Addon.MarkdownEscape(TalentTreePointsText(profile.talents, locale)) .. " |"
+    lines[#lines + 1] = "| " .. terms.selected_talents .. " | " .. Addon.MarkdownEscape(TalentSelectedPointsText(profile.talents, locale, 8)) .. " |"
+    lines[#lines + 1] = "| " .. terms.top_role .. " | " .. Addon.MarkdownEscape(topRole and (AnalysisRoleLabel(topRole, locale) .. " (" .. terms.confidence .. " " .. tostring(topRole.confidence or 0) .. ")") or terms.none) .. " |"
+    lines[#lines + 1] = "| " .. terms.core_stats .. " | " .. Addon.MarkdownEscape(LForLocale(locale, "overview_stats",
+        AnalysisValue(characterStats.defense and characterStats.defense.effective, nil, locale),
+        AnalysisValue(characterStats.armor and characterStats.armor.effective, nil, locale),
+        AnalysisValue(RatingBonus(characterStats, "melee_hit"), "%", locale),
+        AnalysisValue(RatingBonus(characterStats, "spell_hit"), "%", locale),
+        AnalysisValue(characterStats.chances and characterStats.chances.meleeCrit, "%", locale),
+        AnalysisValue(BestSpellValue(characterStats.chances and characterStats.chances.spellCrit, "crit"), "%", locale))) .. " |"
+    lines[#lines + 1] = "| " .. terms.categories .. " | " .. Addon.MarkdownEscape(Addon.CompactCountList(chartStats.categoryCounts, function(entry) return GEAR_ENGINE.CategoryLabel(entry.name, locale) end, 5)) .. " |"
+    lines[#lines + 1] = "| " .. terms.top_stats .. " | " .. Addon.MarkdownEscape(GEAR_ENGINE.FormatLocalizedStats(chartStats.statTotals, locale, 8)) .. " |"
     lines[#lines + 1] = ""
 end
 
-function Addon.AppendMarkdownRoleSnapshot(lines, strategyBook)
-    lines[#lines + 1] = "## Role Snapshot"
+function Addon.AppendMarkdownRoleSnapshot(lines, strategyBook, locale)
+    local terms = GEAR_ENGINE.ReportTerms(locale)
+    lines[#lines + 1] = "## " .. terms.role_snapshot
     lines[#lines + 1] = ""
-    lines[#lines + 1] = "| Role | Confidence | Talent points | Models | Gear highlights |"
+    lines[#lines + 1] = "| " .. terms.role .. " | " .. terms.confidence .. " | " .. terms.talent_points .. " | " .. terms.models .. " | " .. terms.current_highlights .. " |"
     lines[#lines + 1] = "| --- | ---: | ---: | --- | --- |"
 
     for roleIndex = 1, math.min(#(strategyBook.roles or {}), 5) do
         local role = strategyBook.roles[roleIndex]
-        lines[#lines + 1] = "| " .. Addon.MarkdownEscape(role.label or role.key)
+        lines[#lines + 1] = "| " .. Addon.MarkdownEscape(AnalysisRoleLabel(role, locale))
             .. " | " .. tostring(role.confidence or 0)
             .. " | " .. tostring(role.talentPoints or 0)
-            .. " | " .. Addon.MarkdownEscape(table.concat(role.models or {}, ", "))
-            .. " | " .. Addon.MarkdownEscape(FormatStats(role.observed and role.observed.gearStatHighlights))
+            .. " | " .. Addon.MarkdownEscape(AnalysisModelLabels(role.models, locale))
+            .. " | " .. Addon.MarkdownEscape(GEAR_ENGINE.FormatLocalizedStats(role.observed and role.observed.gearStatHighlights, locale, 6))
             .. " |"
     end
 
     if #(strategyBook.roles or {}) == 0 then
-        lines[#lines + 1] = "| none | 0 | 0 | none | none |"
+        lines[#lines + 1] = "| " .. terms.none .. " | 0 | 0 | " .. terms.none .. " | " .. terms.none .. " |"
     end
 
     lines[#lines + 1] = ""
 end
 
-function Addon.AppendMarkdownItemTable(lines, category, bucket, defaultOpen)
+function Addon.AppendMarkdownItemTable(lines, category, bucket, defaultOpen, locale)
+    local terms = GEAR_ENGINE.ReportTerms(locale)
     lines[#lines + 1] = defaultOpen and "<details open>" or "<details>"
-    lines[#lines + 1] = "<summary>" .. Addon.MarkdownEscape(category) .. " (" .. tostring(#(bucket or {})) .. ")</summary>"
+    lines[#lines + 1] = "<summary>" .. Addon.MarkdownEscape(GEAR_ENGINE.CategoryLabel(category, locale)) .. " (" .. tostring(#(bucket or {})) .. ")</summary>"
     lines[#lines + 1] = ""
-    lines[#lines + 1] = "| Item | Q | iLvl | Source | Location | Stats |"
+    lines[#lines + 1] = "| " .. terms.item .. " | " .. terms.quality .. " | " .. terms.item_level .. " | " .. terms.source .. " | " .. terms.location .. " | " .. terms.stats .. " |"
     lines[#lines + 1] = "| --- | --- | ---: | --- | --- | --- |"
 
     for itemIndex = 1, #(bucket or {}) do
@@ -4712,14 +4981,14 @@ function Addon.AppendMarkdownItemTable(lines, category, bucket, defaultOpen)
             .. " x" .. tostring(item.count or 1)
             .. " | " .. Addon.MarkdownEscape(QualityDisplay(item))
             .. " | " .. Addon.MarkdownEscape(ItemLevelDisplay(item))
-            .. " | " .. Addon.MarkdownEscape(SourceLabel(item.source))
-            .. " | " .. Addon.MarkdownEscape(item.location or "Unknown Location")
-            .. " | " .. Addon.MarkdownEscape(Addon.ShortStats(item.stats, 4))
+            .. " | " .. Addon.MarkdownEscape(SourceLabel(item.source, locale))
+            .. " | " .. Addon.MarkdownEscape(GEAR_ENGINE.ItemLocationLabel(item, locale))
+            .. " | " .. Addon.MarkdownEscape(Addon.ShortStats(item.stats, 4, locale))
             .. " |"
     end
 
     if #(bucket or {}) == 0 then
-        lines[#lines + 1] = "| none | - | - | - | - | - |"
+        lines[#lines + 1] = "| " .. terms.none .. " | - | - | - | - | - |"
     end
 
     lines[#lines + 1] = ""
@@ -5264,10 +5533,12 @@ function Addon:CollectExportItems(scope, filter)
 end
 
 function Addon:BuildMarkdownExport(scope, profile, items, categories, buckets, filter, prompt, chartStats, characterStats, strategyBook, gearEngine)
+    local locale = profile.locale or ClientLocale()
+    local terms = GEAR_ENGINE.ReportTerms(locale)
     local lines = {
-        "# TBC Gear Exporter",
+        "# " .. LForLocale(locale, "addon_title"),
         "",
-        "> Human-readable report. Use JSON or AI Text when another tool needs the full raw dataset.",
+        "> " .. terms.human_note,
         "",
     }
 
@@ -5275,97 +5546,111 @@ function Addon:BuildMarkdownExport(scope, profile, items, categories, buckets, f
     strategyBook = strategyBook or BuildStrategyBook(profile, chartStats)
     gearEngine = gearEngine or GEAR_ENGINE.BuildGearRecommendations(profile, items or {}, strategyBook)
     Addon.AppendMarkdownQuickSummary(lines, profile, scope, filter, items or {}, chartStats, strategyBook)
-    Addon.AppendMarkdownRoleSnapshot(lines, strategyBook)
-    GEAR_ENGINE.AppendGearRecommendationsMarkdown(lines, gearEngine, profile.locale)
-
-    lines[#lines + 1] = "## AI Prompt"
+    GEAR_ENGINE.AppendGearRecommendationsMarkdown(lines, gearEngine, locale)
+    Addon.AppendMarkdownRoleSnapshot(lines, strategyBook, locale)
+    lines[#lines + 1] = "## " .. terms.current_equipment
     lines[#lines + 1] = ""
-    lines[#lines + 1] = "```text"
-    lines[#lines + 1] = prompt and prompt.text or ""
-    lines[#lines + 1] = "```"
-    lines[#lines + 1] = ""
+    Addon.AppendMarkdownItemTable(lines, "Equipped", profile.equipped and profile.equipped.items or {}, false, locale)
 
     lines[#lines + 1] = "<details>"
-    lines[#lines + 1] = "<summary>Character, strategy, and chart details</summary>"
+    lines[#lines + 1] = "<summary>" .. terms.details .. "</summary>"
     lines[#lines + 1] = ""
-    lines[#lines + 1] = "## Export Metadata"
+    lines[#lines + 1] = "## " .. terms.export_metadata
     lines[#lines + 1] = ""
-    lines[#lines + 1] = "- Character: " .. tostring(profile.player or "Unknown Player") .. " - " .. tostring(profile.realm or "Unknown Realm")
-    lines[#lines + 1] = "- Class: " .. tostring(profile.classLocalized or profile.classEnglish or "Unknown Class")
-    lines[#lines + 1] = "- Current talents: " .. TalentSummaryText(profile.talents, profile.locale)
-    lines[#lines + 1] = "- Talent points: " .. TalentTreePointsText(profile.talents, profile.locale)
-    lines[#lines + 1] = "- Selected talents: " .. TalentSelectedPointsText(profile.talents, profile.locale, 12)
-    lines[#lines + 1] = "- Client locale: " .. tostring(profile.locale or "enUS")
-    lines[#lines + 1] = "- Local DB: " .. DB_NAME .. " saved at " .. FormatTime(profile.localDB and profile.localDB.savedAt)
-    lines[#lines + 1] = "- Scope: " .. ScopeTitle(scope)
-    lines[#lines + 1] = "- Filter: " .. ExportFilterTitle(filter)
-    lines[#lines + 1] = "- Items: " .. #(items or {})
-    lines[#lines + 1] = "- Bag scan: " .. FormatTime(profile.bags and profile.bags.updatedAt)
-    lines[#lines + 1] = "- Bank scan: " .. FormatTime(profile.bank and profile.bank.updatedAt)
-    lines[#lines + 1] = "- Equipped scan: " .. FormatTime(profile.equipped and profile.equipped.updatedAt)
+    lines[#lines + 1] = "- " .. terms.character .. ": " .. tostring(profile.player or terms.unknown) .. " - " .. tostring(profile.realm or terms.unknown)
+    lines[#lines + 1] = "- " .. terms.class .. ": " .. AnalysisClassName(profile, locale)
+    lines[#lines + 1] = "- " .. terms.talents .. ": " .. TalentSummaryText(profile.talents, locale)
+    lines[#lines + 1] = "- " .. terms.talent_points .. ": " .. TalentTreePointsText(profile.talents, locale)
+    lines[#lines + 1] = "- " .. terms.selected_talents .. ": " .. TalentSelectedPointsText(profile.talents, locale, 12)
+    lines[#lines + 1] = "- " .. terms.client_locale .. ": " .. tostring(locale)
+    lines[#lines + 1] = "- " .. terms.local_db .. ": " .. DB_NAME .. " @ " .. FormatTime(profile.localDB and profile.localDB.savedAt)
+    lines[#lines + 1] = "- " .. terms.scope .. ": " .. LocalizedScopeTitle(scope, locale)
+    lines[#lines + 1] = "- " .. terms.filter .. ": " .. LocalizedExportFilterTitle(filter, locale)
+    lines[#lines + 1] = "- " .. terms.items .. ": " .. #(items or {})
+    lines[#lines + 1] = "- " .. terms.bag_scan .. ": " .. FormatTime(profile.bags and profile.bags.updatedAt)
+    lines[#lines + 1] = "- " .. terms.bank_scan .. ": " .. FormatTime(profile.bank and profile.bank.updatedAt)
+    lines[#lines + 1] = "- " .. terms.equipped_scan .. ": " .. FormatTime(profile.equipped and profile.equipped.updatedAt)
     lines[#lines + 1] = ""
 
-    AppendCharacterStatsMarkdown(lines, characterStats)
-    AppendStrategyBookMarkdown(lines, strategyBook)
-    AppendChartStatsMarkdown(lines, chartStats)
+    lines[#lines + 1] = "## " .. terms.stats_analysis
+    lines[#lines + 1] = ""
+    lines[#lines + 1] = "```text"
+    lines[#lines + 1] = BuildStatsAnalysisText(profile, chartStats, strategyBook)
+    lines[#lines + 1] = "```"
+    lines[#lines + 1] = ""
+    AppendChartStatsMarkdown(lines, chartStats, locale)
     lines[#lines + 1] = "</details>"
     lines[#lines + 1] = ""
 
     if #(items or {}) == 0 then
-        lines[#lines + 1] = "_No saved items are available. Use `/tbcgear scan` to save bags, and open the bank while scanning to save bank items._"
+        lines[#lines + 1] = "_" .. terms.no_items .. "_"
         return table.concat(lines, "\n")
     end
 
-    lines[#lines + 1] = "## Item Tables"
+    lines[#lines + 1] = "## " .. terms.item_tables
     lines[#lines + 1] = ""
 
     for categoryIndex = 1, #categories do
         local category = categories[categoryIndex]
         local bucket = buckets[category] or {}
-        Addon.AppendMarkdownItemTable(lines, category, bucket, category == "Gear")
+        Addon.AppendMarkdownItemTable(lines, category, bucket, category == "Gear", locale)
     end
 
     return table.concat(lines, "\n")
 end
 function Addon:BuildTextExport(scope, profile, items, categories, buckets, filter, prompt, chartStats, characterStats, strategyBook, gearEngine)
+    local locale = profile.locale or ClientLocale()
+    local terms = GEAR_ENGINE.ReportTerms(locale)
     local lines = {
-        "TBC Gear Exporter",
+        LForLocale(locale, "addon_title"),
         "",
-        "AI PROMPT",
-        prompt and prompt.text or "",
-        "",
-        "EXPORT METADATA",
-        "Character: " .. tostring(profile.player or "Unknown Player") .. " - " .. tostring(profile.realm or "Unknown Realm"),
-        "Class: " .. tostring(profile.classLocalized or profile.classEnglish or "Unknown Class"),
-        "Current talents: " .. TalentSummaryText(profile.talents, profile.locale),
-        "Talent points: " .. TalentTreePointsText(profile.talents, profile.locale),
-        "Selected talents: " .. TalentSelectedPointsText(profile.talents, profile.locale, 12),
-        "Client locale: " .. tostring(profile.locale or "enUS"),
-        "Local DB: " .. DB_NAME .. " saved at " .. FormatTime(profile.localDB and profile.localDB.savedAt),
-        "Scope: " .. ScopeTitle(scope),
-        "Filter: " .. ExportFilterTitle(filter),
-        "Items: " .. #items,
-        "Bag scan: " .. FormatTime(profile.bags and profile.bags.updatedAt),
-        "Bank scan: " .. FormatTime(profile.bank and profile.bank.updatedAt),
-        "Equipped scan: " .. FormatTime(profile.equipped and profile.equipped.updatedAt),
+        terms.export_metadata,
+        terms.character .. ": " .. tostring(profile.player or terms.unknown) .. " - " .. tostring(profile.realm or terms.unknown),
+        terms.class .. ": " .. AnalysisClassName(profile, locale),
+        terms.talents .. ": " .. TalentSummaryText(profile.talents, locale),
+        terms.talent_points .. ": " .. TalentTreePointsText(profile.talents, locale),
+        terms.selected_talents .. ": " .. TalentSelectedPointsText(profile.talents, locale, 12),
+        terms.client_locale .. ": " .. tostring(locale),
+        terms.local_db .. ": " .. DB_NAME .. " @ " .. FormatTime(profile.localDB and profile.localDB.savedAt),
+        terms.scope .. ": " .. LocalizedScopeTitle(scope, locale),
+        terms.filter .. ": " .. LocalizedExportFilterTitle(filter, locale),
+        terms.items .. ": " .. #items,
+        terms.bag_scan .. ": " .. FormatTime(profile.bags and profile.bags.updatedAt),
+        terms.bank_scan .. ": " .. FormatTime(profile.bank and profile.bank.updatedAt),
+        terms.equipped_scan .. ": " .. FormatTime(profile.equipped and profile.equipped.updatedAt),
         "",
     }
 
     gearEngine = gearEngine or GEAR_ENGINE.BuildGearRecommendations(profile, items or {}, strategyBook)
-    GEAR_ENGINE.AppendGearRecommendationsText(lines, gearEngine, profile.locale)
-    AppendCharacterStatsText(lines, characterStats)
-    AppendStrategyBookText(lines, strategyBook)
-    AppendChartStatsText(lines, chartStats)
+    GEAR_ENGINE.AppendGearRecommendationsText(lines, gearEngine, locale)
+    lines[#lines + 1] = BuildStatsAnalysisText(profile, chartStats, strategyBook)
+    lines[#lines + 1] = ""
+    lines[#lines + 1] = terms.current_equipment
+    for itemIndex = 1, #(profile.equipped and profile.equipped.items or {}) do
+        local item = profile.equipped.items[itemIndex]
+        local wowheadUrl = ItemWowheadURL(item)
+        lines[#lines + 1] = "- " .. GEAR_ENGINE.EquipmentSlotLabel(GEAR_ENGINE.EquipmentSlotKey(item), locale)
+            .. ": " .. ItemColoredName(item)
+            .. " | " .. terms.item_level .. " " .. ItemLevelDisplay(item)
+            .. " | " .. terms.stats .. ": " .. GEAR_ENGINE.FormatLocalizedStats(item.stats, locale)
+            .. (wowheadUrl and " | Wowhead: " .. wowheadUrl or "")
+    end
+    if #(profile.equipped and profile.equipped.items or {}) == 0 then
+        lines[#lines + 1] = terms.none
+    end
+    lines[#lines + 1] = ""
+    AppendChartStatsText(lines, chartStats, locale)
 
     if #items == 0 then
-        lines[#lines + 1] = "No saved items are available. Use /tbcgear scan to save bags."
+        lines[#lines + 1] = terms.no_items
         return table.concat(lines, "\n")
     end
 
+    lines[#lines + 1] = terms.item_tables
     for categoryIndex = 1, #categories do
         local category = categories[categoryIndex]
         local bucket = buckets[category] or {}
-        lines[#lines + 1] = "[" .. category .. "]"
+        lines[#lines + 1] = "[" .. GEAR_ENGINE.CategoryLabel(category, locale) .. "]"
 
         for itemIndex = 1, #bucket do
             local item = bucket[itemIndex]
@@ -5373,17 +5658,17 @@ function Addon:BuildTextExport(scope, profile, items, categories, buckets, filte
             local line = "- " .. ItemColoredName(item)
                 .. " x" .. tostring(item.count or 1)
                 .. " | " .. QualityDisplay(item)
-                .. " | iLvl: " .. ItemLevelDisplay(item)
-                .. " | Type: " .. ItemTypeDisplay(item)
-                .. " | " .. SourceLabel(item.source)
-                .. " | " .. tostring(item.location or "Unknown Location")
+                .. " | " .. terms.item_level .. ": " .. ItemLevelDisplay(item)
+                .. " | " .. ItemTypeDisplay(item)
+                .. " | " .. SourceLabel(item.source, locale)
+                .. " | " .. GEAR_ENGINE.ItemLocationLabel(item, locale)
 
             if wowheadUrl then
                 line = line .. " | Wowhead: " .. wowheadUrl
             end
 
             lines[#lines + 1] = line
-                .. " | Stats: " .. FormatStats(item.stats)
+                .. " | " .. terms.stats .. ": " .. GEAR_ENGINE.FormatLocalizedStats(item.stats, locale)
         end
 
         lines[#lines + 1] = ""
@@ -5742,9 +6027,9 @@ function Addon:CreateVisualItemRow(parent, index)
             GameTooltip:SetText(item.name or "Unknown Item")
         end
         if GameTooltip.AddLine then
-            GameTooltip:AddLine(tostring(item.location or item.sourceLabel or item.source or ""))
-            local stats = FormatStats(item.stats)
-            if stats ~= "none" then
+            GameTooltip:AddLine(GEAR_ENGINE.ItemLocationLabel(item, ClientLocale()))
+            local stats = GEAR_ENGINE.FormatLocalizedStats(item.stats, ClientLocale())
+            if stats ~= GEAR_ENGINE.ReportTerms(ClientLocale()).none then
                 GameTooltip:AddLine(stats)
             end
         end
@@ -5772,19 +6057,14 @@ function GEAR_ENGINE.ShowRecommendationTooltip(owner, item)
         GameTooltip:SetText(item.name or "Unknown Item")
     end
     if GameTooltip.AddLine then
-        GameTooltip:AddLine(tostring(item.location or item.source or ""))
-        GameTooltip:AddLine(FormatStats(item.stats))
+        GameTooltip:AddLine(GEAR_ENGINE.ItemLocationLabel(item, ClientLocale()))
+        GameTooltip:AddLine(GEAR_ENGINE.FormatLocalizedStats(item.stats, ClientLocale()))
     end
     GameTooltip:Show()
 end
 
 function GEAR_ENGINE.LocalizedMatchedStats(upgrade, locale)
-    local values = {}
-    for index = 1, math.min(3, #(upgrade and upgrade.matchedStats or {})) do
-        local stat = upgrade.matchedStats[index]
-        values[#values + 1] = "+" .. CompactNumber(stat.value, 2) .. " " .. AnalysisStatLabel(stat, locale)
-    end
-    return #values > 0 and table.concat(values, ", ") or LForLocale(locale, "analysis_unknown")
+    return GEAR_ENGINE.FormatLocalizedStats(upgrade and upgrade.matchedStats or {}, locale, 3)
 end
 
 function Addon:CreateGearAdviceRow(parent, index)
@@ -5889,11 +6169,10 @@ function Addon:RefreshGearAdvice(profile, engine)
         row.candidateIcon:SetTexture(upgrade.candidate and upgrade.candidate.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
         row.slot:SetText(GEAR_ENGINE.EquipmentSlotLabel(upgrade.slotKey, locale))
         row.name:SetText(ItemColoredName(upgrade.candidate))
-        row.gain:SetText("|cff33ff99+" .. CompactNumber(upgrade.scoreGain, 2) .. "|r")
-        local detail = upgrade.current
-            and LForLocale(locale, "advice_ilvl", ItemLevelDisplay(upgrade.current), ItemLevelDisplay(upgrade.candidate))
-            or LForLocale(locale, "advice_empty_slot")
-        row.reason:SetText(detail .. "; " .. LForLocale(locale, "advice_stats", GEAR_ENGINE.LocalizedMatchedStats(upgrade, locale)))
+        row.gain:SetText("|cff33ff99+" .. CompactNumber(upgrade.scoreGain, 2) .. "|r\n"
+            .. LForLocale(locale, "advice_evidence", LForLocale(locale, "advice_evidence_" .. tostring(upgrade.evidence or "low"))))
+        row.reason:SetText(LForLocale(locale, "advice_gains", GEAR_ENGINE.DeltaText(upgrade.statGains, locale))
+            .. "; " .. LForLocale(locale, "advice_losses", GEAR_ENGINE.DeltaText(upgrade.statLosses, locale)))
         row:Show()
     end
 
@@ -5939,7 +6218,9 @@ function Addon:RefreshVisualItems(items)
         row.item = item
         row.icon:SetTexture(item.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
         row.name:SetText(item.nameColored or item.name or "Unknown Item")
-        row.meta:SetText(tostring(item.location or "") .. "  " .. QualityDisplay(item) .. "  iLvl " .. ItemLevelDisplay(item) .. "  " .. ItemTypeDisplay(item))
+        local locale = ClientLocale()
+        row.meta:SetText(GEAR_ENGINE.ItemLocationLabel(item, locale) .. "  " .. QualityDisplay(item) .. "  "
+            .. GEAR_ENGINE.ReportTerms(locale).item_level .. " " .. ItemLevelDisplay(item) .. "  " .. ItemTypeDisplay(item))
         if item.count and item.count > 1 then
             row.count:SetText("x" .. tostring(item.count))
         else
@@ -6734,6 +7015,7 @@ if _G.TBCGearExporterTestMode then
         ParseItemLinkColorHex = ParseItemLinkColorHex,
         ItemQualityColorHex = ItemQualityColorHex,
         CompactNumber = CompactNumber,
+        NormalizeStatToken = GEAR_ENGINE.NormalizeStatToken,
         ColorizeItemName = ColorizeItemName,
         ItemColoredName = ItemColoredName,
         HtmlEscape = HtmlEscape,
@@ -6772,6 +7054,13 @@ if _G.TBCGearExporterTestMode then
         AppendTalentJson = AppendTalentJson,
         LocationLabel = LocationLabel,
         SourceLabel = SourceLabel,
+        ItemLocationLabel = GEAR_ENGINE.ItemLocationLabel,
+        ReportTerms = GEAR_ENGINE.ReportTerms,
+        CategoryLabel = GEAR_ENGINE.CategoryLabel,
+        LocalizedStatLabel = GEAR_ENGINE.LocalizedStatLabel,
+        FormatLocalizedStats = GEAR_ENGINE.FormatLocalizedStats,
+        DeltaText = GEAR_ENGINE.DeltaText,
+        EvidenceLabel = GEAR_ENGINE.EvidenceLabel,
         ClientLocale = ClientLocale,
         PromptLocale = PromptLocale,
         LForLocale = LForLocale,
@@ -6817,6 +7106,9 @@ if _G.TBCGearExporterTestMode then
         EquipmentSlotLabel = GEAR_ENGINE.EquipmentSlotLabel,
         BuildRoleStatWeights = GEAR_ENGINE.BuildRoleStatWeights,
         ItemRoleScore = GEAR_ENGINE.ItemRoleScore,
+        ItemRelevantStatMap = GEAR_ENGINE.ItemRelevantStatMap,
+        BuildStatDeltas = GEAR_ENGINE.BuildStatDeltas,
+        RecommendationEvidence = GEAR_ENGINE.RecommendationEvidence,
         CandidateCompatibleWithClass = GEAR_ENGINE.CandidateCompatibleWithClass,
         PriorityStats = GEAR_ENGINE.PriorityStats,
         BuildGearRecommendations = GEAR_ENGINE.BuildGearRecommendations,
@@ -6824,6 +7116,8 @@ if _G.TBCGearExporterTestMode then
         GearPriorityText = GEAR_ENGINE.GearPriorityText,
         GearBenchmarkText = GEAR_ENGINE.GearBenchmarkText,
         GearMatchedStatsText = GEAR_ENGINE.GearMatchedStatsText,
+        RoleHasModel = GEAR_ENGINE.RoleHasModel,
+        RoleUsesHitModel = GEAR_ENGINE.RoleUsesHitModel,
         BuildStatsAnalysisText = BuildStatsAnalysisText,
         BuildOverviewText = Addon.BuildOverviewText,
         CompactCountList = Addon.CompactCountList,

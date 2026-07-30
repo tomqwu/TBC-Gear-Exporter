@@ -4,6 +4,17 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-30
+
+- Fully localize readable Markdown and plain-text reports for English, simplified Chinese, and traditional Chinese, including headings, metadata, item locations, categories, equipment slots, and stat labels.
+- Separate current equipped stats from bag/bank candidate totals so strategy roles no longer describe inventory-wide totals as current gear.
+- Expand Protection Paladin scoring to cover armor, dodge, parry, block, spell threat, spell hit, intellect, and mana sustain.
+- Normalize the real TBC Anniversary item-stat token variants used for armor, ratings, spell damage/healing, spell power, mana regen, and weapon DPS so role scoring does not silently ignore them.
+- Add per-swap `stat_gains`, `stat_losses`, and high/medium/low evidence to the GUI, JSON, Markdown, and plain-text recommendations.
+- Add a complete current-equipment section and reorganize readable exports around the character summary, recommendations, role judgment, detailed analysis, and candidate inventory.
+- Keep the long engineered prompt in AI Text/JSON only; Markdown and plain text now open directly as concise human-readable reports.
+- Remove irrelevant repeated tank/hit analysis from roles that do not use those models.
+
 ## [0.1.9] - 2026-07-29
 
 - Save a fresh current-equipment snapshot with bag/bank scans, exports, login, and equipment changes.
