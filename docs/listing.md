@@ -2,7 +2,7 @@
 
 ## 256-Character Summary
 
-TBC Gear Exporter saves bags, bank, talents, live stats, groups items, adds Wowhead links, opens an overview GUI, analyzes class/race/talent/raid roles, and exports clean readable AI Text, JSON, Markdown, and item tables for TBC Anniversary character gear.
+TBC Gear Exporter scans equipped gear, bags, bank, talents, and live stats; recommends upgrades by class, role, and stat gaps; shows icon-based advice; adds TBC Wowhead links; and exports AI Text, JSON, Markdown, and text for TBC Anniversary gear planning.
 
 Character count: 256
 
@@ -12,11 +12,11 @@ Character count: 256
 
 **TBC Gear Exporter** is a World of Warcraft TBC Classic / TBC Anniversary addon for saving, reviewing, and exporting your character's bag, bank, current talent build, and live character-sheet stats.
 
-It scans visible bags, bank containers, current talents, and character-sheet stats, stores the results in `TBCGearExporterDB`, groups items by category, records item stats, exports chart-ready aggregate totals, preserves WoW quality colors, adds TBC Wowhead links, builds a role-aware strategy book, and gives you a compact in-game GUI with an overview page, visual item browser, stats analysis page, and copyable AI-friendly exports.
+It scans current equipment, visible bags, bank containers, talents, and character-sheet stats, stores the results in `TBCGearExporterDB`, recommends compatible bag/bank upgrades by role and stat gaps, preserves WoW quality colors, adds TBC Wowhead links, and gives you a compact in-game GUI with Overview, icon-based Gear Advice, item browser, stats analysis, and copyable AI-friendly exports.
 
 ### Key Features
 
-- Saves bag and bank snapshots locally per character.
+- Saves current equipment plus bag and bank snapshots locally per character.
 - Saves current talent tree points, explicit `tree_points`, per-tree `points_spent`, primary tree, total/unspent points, and selected talent `points_spent`/`rank` values.
 - Saves live race, faction, level, raid/party context, attributes, armor, defense, attack power, combat ratings, crit/avoidance chances, spell damage, healing, and mana regen.
 - Scans bags when you open your bags, and scans bank contents when the bank is open.
@@ -25,13 +25,15 @@ It scans visible bags, bank containers, current talents, and character-sheet sta
 - Records item name, count, location, item level, quality, quality color, item type, equip slot, stats, item link, item string, and TBC Wowhead URL.
 - Exports chart-ready totals by source, category, quality, equip slot, item level, and aggregate stat values.
 - Builds a strategy book that maps class, race, current talents, raid/party context, live stats, and gear totals to mitigation, threat, DPS, healing, and mana models.
+- Recommends compatible upgrades from saved bags/bank against current equipment, using role weights and open hit/defense/avoidance/expertise gaps; the GUI clearly labels the score as heuristic when set, socket, enchant, or proc details need manual review.
 - Opens to a localized Overview GUI page with compact inventory, talent, stat, quality, category, and role snapshots.
+- Shows an icon-based Gear Advice page with current-to-candidate comparisons, item tooltips, score gains, priority stats, and benchmark gaps.
 - Shows a localized Stats Analysis GUI page with character stats, role models, benchmark statuses, race/group notes, and gear stat highlights without leaving the game.
 - Filters exports by scope: all saved items, bags only, bank only, or gear only.
 - Filters by quality, including rare-or-better, epic-only, and epic gear-only views.
 - Exports as AI Text, JSON, Markdown, or plain text; Markdown is formatted as a readable report with quick summary, role snapshot, collapsible details, and Wowhead-linked item tables.
 - Shows a visual item browser with saved item icons, colored names, counts, item levels, locations, quality/type labels, and item-link tooltips.
-- Generates a class-aware AI prompt before the data export so external GenAI tools can analyze gear by likely role/spec, using `character_stats`, `current_talents`, `chart_stats`, and `strategy_book`.
+- Generates a class-aware AI prompt before the data export so external GenAI tools can analyze gear by likely role/spec, using `character_stats`, `current_talents`, `chart_stats`, `strategy_book`, and `gear_recommendations`.
 - Supports English, simplified Chinese, and traditional Chinese client UI text.
 
 ### AI-Ready Export

@@ -1,9 +1,9 @@
 ## Interface: 20505
 ## Interface-BCC: 20505
 ## Title: TBC Gear Exporter
-## Notes: Saves bag, bank, talents, stats, and in-game strategy analysis.
+## Notes: Scans current gear, bags, bank, talents, and stats; recommends role-aware upgrades.
 ## Author: Codex
-## Version: 0.1.8
+## Version: 0.1.9
 ## SavedVariables: TBCGearExporterDB
 ## X-Curse-Project-ID: 1567147
 

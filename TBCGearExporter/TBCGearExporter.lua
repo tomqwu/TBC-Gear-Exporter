@@ -13,6 +13,58 @@ local WOWHEAD_TBC_ITEM_URL_PREFIX = "https://www.wowhead.com/tbc/item="
 local ClientLocale
 local PromptLocale
 
+local GEAR_ENGINE = {}
+
+GEAR_ENGINE.EQUIPMENT_SLOTS = {
+    { id = 1, key = "HEAD" },
+    { id = 2, key = "NECK" },
+    { id = 3, key = "SHOULDER" },
+    { id = 4, key = "SHIRT" },
+    { id = 5, key = "CHEST" },
+    { id = 6, key = "WAIST" },
+    { id = 7, key = "LEGS" },
+    { id = 8, key = "FEET" },
+    { id = 9, key = "WRIST" },
+    { id = 10, key = "HANDS" },
+    { id = 11, key = "FINGER" },
+    { id = 12, key = "FINGER" },
+    { id = 13, key = "TRINKET" },
+    { id = 14, key = "TRINKET" },
+    { id = 15, key = "BACK" },
+    { id = 16, key = "MAINHAND" },
+    { id = 17, key = "OFFHAND" },
+    { id = 18, key = "RANGED" },
+    { id = 19, key = "TABARD" },
+}
+
+GEAR_ENGINE.EQUIP_SLOT_KEYS = {
+    INVTYPE_HEAD = "HEAD",
+    INVTYPE_NECK = "NECK",
+    INVTYPE_SHOULDER = "SHOULDER",
+    INVTYPE_BODY = "SHIRT",
+    INVTYPE_CHEST = "CHEST",
+    INVTYPE_ROBE = "CHEST",
+    INVTYPE_WAIST = "WAIST",
+    INVTYPE_LEGS = "LEGS",
+    INVTYPE_FEET = "FEET",
+    INVTYPE_WRIST = "WRIST",
+    INVTYPE_HAND = "HANDS",
+    INVTYPE_FINGER = "FINGER",
+    INVTYPE_TRINKET = "TRINKET",
+    INVTYPE_CLOAK = "BACK",
+    INVTYPE_WEAPON = "MAINHAND",
+    INVTYPE_WEAPONMAINHAND = "MAINHAND",
+    INVTYPE_2HWEAPON = "MAINHAND",
+    INVTYPE_WEAPONOFFHAND = "OFFHAND",
+    INVTYPE_SHIELD = "OFFHAND",
+    INVTYPE_HOLDABLE = "OFFHAND",
+    INVTYPE_RANGED = "RANGED",
+    INVTYPE_RANGEDRIGHT = "RANGED",
+    INVTYPE_THROWN = "RANGED",
+    INVTYPE_RELIC = "RANGED",
+    INVTYPE_TABARD = "TABARD",
+}
+
 local CLASS_CATEGORY = {
     [0] = "Consumables",
     [1] = "Containers",
@@ -300,6 +352,60 @@ local TBC_BENCHMARKS = {
     spell_hit = { label = "Spell hit benchmark", value = 16, unit = "% hit", note = "Common TBC boss-level spell-hit reference before class/talent debuffs." },
     expertise_dodge = { label = "Expertise dodge benchmark", value = 6.5, unit = "% dodge reduction", note = "Common boss dodge reduction reference where expertise exists." },
     avoidance_table = { label = "Shield table coverage benchmark", value = 102.4, unit = "% known avoidance/block table", note = "Useful for warrior/paladin mitigation models; exported value omits unreported miss when the API cannot expose it." },
+}
+
+GEAR_ENGINE.GEAR_SLOT_ORDER = {
+    "HEAD", "NECK", "SHOULDER", "BACK", "CHEST", "WRIST", "HANDS", "WAIST", "LEGS", "FEET",
+    "FINGER", "TRINKET", "MAINHAND", "OFFHAND", "RANGED",
+}
+
+GEAR_ENGINE.EQUIPMENT_SLOT_LABELS = {
+    enUS = {
+        HEAD = "Head", NECK = "Neck", SHOULDER = "Shoulder", SHIRT = "Shirt", CHEST = "Chest",
+        WAIST = "Waist", LEGS = "Legs", FEET = "Feet", WRIST = "Wrist", HANDS = "Hands",
+        FINGER = "Ring", TRINKET = "Trinket", BACK = "Back", MAINHAND = "Main hand",
+        OFFHAND = "Off hand", RANGED = "Ranged / relic", TABARD = "Tabard",
+    },
+    zhCN = {
+        HEAD = "头部", NECK = "颈部", SHOULDER = "肩部", SHIRT = "衬衣", CHEST = "胸部",
+        WAIST = "腰部", LEGS = "腿部", FEET = "脚部", WRIST = "手腕", HANDS = "手部",
+        FINGER = "戒指", TRINKET = "饰品", BACK = "背部", MAINHAND = "主手",
+        OFFHAND = "副手", RANGED = "远程/圣物", TABARD = "战袍",
+    },
+    zhTW = {
+        HEAD = "頭部", NECK = "頸部", SHOULDER = "肩部", SHIRT = "襯衣", CHEST = "胸部",
+        WAIST = "腰部", LEGS = "腿部", FEET = "腳部", WRIST = "手腕", HANDS = "手部",
+        FINGER = "戒指", TRINKET = "飾品", BACK = "背部", MAINHAND = "主手",
+        OFFHAND = "副手", RANGED = "遠程/聖物", TABARD = "戰袍",
+    },
+}
+
+GEAR_ENGINE.CLASS_MAX_ARMOR_SUBCLASS = {
+    WARRIOR = 4, PALADIN = 4, HUNTER = 3, SHAMAN = 3, ROGUE = 2, DRUID = 2,
+    MAGE = 1, PRIEST = 1, WARLOCK = 1,
+}
+
+GEAR_ENGINE.SHIELD_CLASSES = { WARRIOR = true, PALADIN = true, SHAMAN = true }
+
+GEAR_ENGINE.STAT_SCORE_SCALES = {
+    ITEM_MOD_ARMOR = 0.03,
+    ITEM_MOD_BONUS_ARMOR_SHORT = 0.05,
+    ITEM_MOD_ATTACK_POWER_SHORT = 0.25,
+    ITEM_MOD_RANGED_ATTACK_POWER_SHORT = 0.22,
+    ITEM_MOD_FERAL_ATTACK_POWER_SHORT = 0.22,
+    ITEM_MOD_SPELL_POWER_SHORT = 0.30,
+    ITEM_MOD_SPELL_DAMAGE_DONE_SHORT = 0.30,
+    ITEM_MOD_SPELL_HEALING_DONE_SHORT = 0.12,
+    ITEM_MOD_BLOCK_VALUE_SHORT = 0.20,
+}
+
+GEAR_ENGINE.BENCHMARK_STAT_TOKENS = {
+    defense_crit_immunity = { "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT" },
+    melee_special_hit = { "ITEM_MOD_HIT_RATING_SHORT", "ITEM_MOD_HIT_MELEE_RATING_SHORT" },
+    ranged_hit = { "ITEM_MOD_HIT_RATING_SHORT", "ITEM_MOD_HIT_RANGED_RATING_SHORT" },
+    spell_hit = { "ITEM_MOD_HIT_RATING_SHORT", "ITEM_MOD_HIT_SPELL_RATING_SHORT" },
+    expertise_dodge = { "ITEM_MOD_EXPERTISE_RATING_SHORT" },
+    avoidance_table = { "ITEM_MOD_DODGE_RATING_SHORT", "ITEM_MOD_PARRY_RATING_SHORT", "ITEM_MOD_BLOCK_RATING_SHORT" },
 }
 
 local RACE_STRATEGY_NOTES = {
@@ -727,6 +833,7 @@ local UI_STRINGS = {
         source_label = "Source:",
         local_db_label = "Local DB",
         overview_tab = "Overview",
+        gear_advice_tab = "Gear Advice",
         items_tab = "Items",
         stats_analysis_tab = "Stats Analysis",
         text_export_tab = "Text Export",
@@ -747,6 +854,18 @@ local UI_STRINGS = {
         status_visual = "Visual item view updated: %d items. Use Text Export to copy AI-ready data.",
         status_analysis = "Stats analysis updated: %d role models. Use Text Export to copy AI-ready data.",
         status_overview = "Overview updated: %d items, %d role models. Use Text Export to copy AI-ready data.",
+        status_advice = "Gear advice updated: %d upgrades for %s.",
+        advice_title = "Gear Strategy",
+        advice_summary = "%s · %d equipped · %d candidates · %d suggested upgrades",
+        advice_priorities = "Priority stats: %s",
+        advice_benchmarks = "Open gaps: %s",
+        advice_no_gaps = "No tracked benchmark gap",
+        advice_no_upgrades = "No clear upgrade found in the saved bags and bank for this role.",
+        advice_empty_slot = "Fill empty slot",
+        advice_replace = "Estimated +%s score; %s",
+        advice_ilvl = "item level %s → %s",
+        advice_stats = "matched stats: %s",
+        advice_caveat = "Heuristic score uses visible item stats. Confirm set bonuses, sockets, enchants and proc effects in the tooltip.",
         overview_title = "Overview",
         overview_inventory = "Inventory: %d item lines, %d stacks, %d gear, %d equippable",
         overview_talents = "Talents: %s; selected: %s",
@@ -806,6 +925,7 @@ local UI_STRINGS = {
         source_label = "来源：",
         local_db_label = "本地数据库",
         overview_tab = "总览",
+        gear_advice_tab = "装备建议",
         items_tab = "物品",
         stats_analysis_tab = "属性分析",
         text_export_tab = "文本导出",
@@ -826,6 +946,18 @@ local UI_STRINGS = {
         status_visual = "物品图标视图已更新：%d 件。切到文本导出即可复制 AI 数据。",
         status_analysis = "属性分析已更新：%d 个职责模型。切到文本导出即可复制 AI 数据。",
         status_overview = "总览已更新：%d 件物品，%d 个职责模型。切到文本导出即可复制 AI 数据。",
+        status_advice = "装备建议已更新：%d 个升级建议，职责 %s。",
+        advice_title = "装备策略",
+        advice_summary = "%s · 已装备 %d 件 · 候选 %d 件 · 建议升级 %d 件",
+        advice_priorities = "优先属性：%s",
+        advice_benchmarks = "未达标项目：%s",
+        advice_no_gaps = "当前没有已跟踪的基准缺口",
+        advice_no_upgrades = "背包和银行中没有找到适合此职责的明确升级。",
+        advice_empty_slot = "填补空栏位",
+        advice_replace = "预计评分 +%s；%s",
+        advice_ilvl = "物品等级 %s → %s",
+        advice_stats = "匹配属性：%s",
+        advice_caveat = "启发式评分只使用可见物品属性；套装、宝石、附魔和触发效果请结合提示框确认。",
         overview_title = "总览",
         overview_inventory = "库存：%d 条物品，%d 堆叠，%d 件装备，%d 件可装备",
         overview_talents = "天赋：%s；已点：%s",
@@ -885,6 +1017,7 @@ local UI_STRINGS = {
         source_label = "來源：",
         local_db_label = "本地資料庫",
         overview_tab = "總覽",
+        gear_advice_tab = "裝備建議",
         items_tab = "物品",
         stats_analysis_tab = "屬性分析",
         text_export_tab = "文字匯出",
@@ -905,6 +1038,18 @@ local UI_STRINGS = {
         status_visual = "物品圖示檢視已更新：%d 件。切到文字匯出即可複製 AI 資料。",
         status_analysis = "屬性分析已更新：%d 個職責模型。切到文字匯出即可複製 AI 資料。",
         status_overview = "總覽已更新：%d 件物品，%d 個職責模型。切到文字匯出即可複製 AI 資料。",
+        status_advice = "裝備建議已更新：%d 個升級建議，職責 %s。",
+        advice_title = "裝備策略",
+        advice_summary = "%s · 已裝備 %d 件 · 候選 %d 件 · 建議升級 %d 件",
+        advice_priorities = "優先屬性：%s",
+        advice_benchmarks = "未達標項目：%s",
+        advice_no_gaps = "目前沒有已追蹤的基準缺口",
+        advice_no_upgrades = "背包和銀行中沒有找到適合此職責的明確升級。",
+        advice_empty_slot = "填補空欄位",
+        advice_replace = "預估評分 +%s；%s",
+        advice_ilvl = "物品等級 %s → %s",
+        advice_stats = "匹配屬性：%s",
+        advice_caveat = "啟發式評分只使用可見物品屬性；套裝、寶石、附魔和觸發效果請結合提示框確認。",
         overview_title = "總覽",
         overview_inventory = "庫存：%d 條物品，%d 堆疊，%d 件裝備，%d 件可裝備",
         overview_talents = "天賦：%s；已點：%s",
@@ -2754,7 +2899,7 @@ local function BuildAIPrompt(profile, scope, filter, itemCount)
             "当前天赋：" .. talentSummary .. "。",
             "请优先使用 current_talents.tree_points、current_talents.trees[].points_spent 和每个已点天赋的 points_spent/rank 来判断当前天赋点数。",
             "银行内容是最后一次保存的快照。背包/银行来源只代表库存位置，不代表物品已经装备。",
-            "请使用 character_stats、chart_stats、strategy_book、物品属性、物品等级、品质、装备栏位、分类、来源位置和 wowhead_url 字段。不要编造缺失属性，也不要假设隐藏附魔或宝石。",
+            "请使用 character_stats、chart_stats、strategy_book、gear_recommendations、当前装备、物品属性、物品等级、品质、装备栏位、来源位置和 wowhead_url 字段。优先验证建议升级与基准缺口，不要编造隐藏附魔、宝石、套装或触发效果。",
             "请考虑该职业可能的天赋/职责，不要只假设一个专精。",
             "",
             "职业职责分析视角：",
@@ -2769,7 +2914,7 @@ local function BuildAIPrompt(profile, scope, filter, itemCount)
             "目前天賦：" .. talentSummary .. "。",
             "請優先使用 current_talents.tree_points、current_talents.trees[].points_spent 和每個已點天賦的 points_spent/rank 來判斷目前天賦點數。",
             "銀行內容是最後一次儲存的快照。背包/銀行來源只代表庫存位置，不代表物品已經裝備。",
-            "請使用 character_stats、chart_stats、strategy_book、物品屬性、物品等級、品質、裝備欄位、分類、來源位置和 wowhead_url 欄位。不要編造缺失屬性，也不要假設隱藏附魔或寶石。",
+            "請使用 character_stats、chart_stats、strategy_book、gear_recommendations、目前裝備、物品屬性、物品等級、品質、裝備欄位、來源位置和 wowhead_url 欄位。優先驗證建議升級與基準缺口，不要編造隱藏附魔、寶石、套裝或觸發效果。",
             "請考慮該職業可能的天賦/職責，不要只假設一個專精。",
             "",
             "職業職責分析視角：",
@@ -2784,7 +2929,7 @@ local function BuildAIPrompt(profile, scope, filter, itemCount)
             "Current talents: " .. talentSummary .. ".",
             "Use current_talents.tree_points, current_talents.trees[].points_spent, and each selected talent points_spent/rank to anchor the current talent distribution.",
             "Bank contents are the last saved snapshot. Treat bag and bank source labels as inventory location, not proof that an item is equipped.",
-            "Use character_stats, chart_stats, strategy_book, item stats, item level, quality, equip slot, category, source location, and wowhead_url fields. Do not invent missing stats or assume hidden enchants/gems.",
+            "Use character_stats, chart_stats, strategy_book, gear_recommendations, current equipment, item stats, item level, quality, equip slot, source location, and wowhead_url fields. Validate suggested upgrades and benchmark gaps first; do not invent hidden enchants, gems, set bonuses, or proc effects.",
             "Consider plausible class talents/specs instead of assuming one role.",
             "",
             "Class role lenses:",
@@ -3449,6 +3594,7 @@ local function BuildStrategyBook(profile, chartStats)
             primaryTalentMatch = primaryMatch,
             models = role.models or {},
             priorities = role.priorities or {},
+            statTokens = role.statTokens or {},
             observed = observed,
             benchmarks = BuildRoleBenchmarks(role, observed),
             notes = {
@@ -3476,6 +3622,264 @@ local function BuildStrategyBook(profile, chartStats)
         groupNotes = group and group.notes or {},
         benchmarkReferences = TBC_BENCHMARKS,
         roles = roles,
+    }
+end
+
+function GEAR_ENGINE.EquipmentSlotKey(item)
+    if item and item.slotKey then
+        return item.slotKey
+    end
+
+    if item and item.inventorySlot then
+        for index = 1, #GEAR_ENGINE.EQUIPMENT_SLOTS do
+            if GEAR_ENGINE.EQUIPMENT_SLOTS[index].id == item.inventorySlot then
+                return GEAR_ENGINE.EQUIPMENT_SLOTS[index].key
+            end
+        end
+    end
+
+    return item and GEAR_ENGINE.EQUIP_SLOT_KEYS[item.equipSlot] or nil
+end
+
+function GEAR_ENGINE.EquipmentSlotLabel(slotKey, locale)
+    locale = PromptLocale(locale or ClientLocale())
+    local labels = GEAR_ENGINE.EQUIPMENT_SLOT_LABELS[locale] or GEAR_ENGINE.EQUIPMENT_SLOT_LABELS.enUS
+    return labels[slotKey] or tostring(slotKey or "Unknown")
+end
+
+function GEAR_ENGINE.MaximumWeight(weights, tokens)
+    local best
+
+    for index = 1, #tokens do
+        local value = weights[tokens[index]]
+        if type(value) == "number" and (not best or value > best) then
+            best = value
+        end
+    end
+
+    return best
+end
+
+function GEAR_ENGINE.StatWeightForToken(weights, token)
+    if weights[token] then
+        return weights[token]
+    end
+
+    if token == "ITEM_MOD_HIT_RATING_SHORT" then
+        return GEAR_ENGINE.MaximumWeight(weights, { "ITEM_MOD_HIT_MELEE_RATING_SHORT", "ITEM_MOD_HIT_RANGED_RATING_SHORT", "ITEM_MOD_HIT_SPELL_RATING_SHORT" })
+    end
+
+    if token == "ITEM_MOD_CRIT_RATING_SHORT" then
+        return GEAR_ENGINE.MaximumWeight(weights, { "ITEM_MOD_CRIT_MELEE_RATING_SHORT", "ITEM_MOD_CRIT_RANGED_RATING_SHORT", "ITEM_MOD_CRIT_SPELL_RATING_SHORT" })
+    end
+
+    if token == "ITEM_MOD_HASTE_RATING_SHORT" then
+        return GEAR_ENGINE.MaximumWeight(weights, { "ITEM_MOD_HASTE_MELEE_RATING_SHORT", "ITEM_MOD_HASTE_RANGED_RATING_SHORT", "ITEM_MOD_HASTE_SPELL_RATING_SHORT" })
+    end
+
+    if tostring(token or ""):find("EMPTY_SOCKET", 1, true) then
+        return 4
+    end
+
+    return nil
+end
+
+function GEAR_ENGINE.BuildRoleStatWeights(role)
+    local weights = {}
+
+    for index = 1, #(role and role.statTokens or {}) do
+        local token = role.statTokens[index]
+        local priority = math.max(0.65, 1.8 - ((index - 1) * 0.15))
+        weights[token] = priority * (GEAR_ENGINE.STAT_SCORE_SCALES[token] or 1)
+    end
+
+    for index = 1, #(role and role.benchmarks or {}) do
+        local benchmark = role.benchmarks[index]
+        local boost = benchmark.status == "below" and 1.75 or (benchmark.status == "near" and 1.30 or 1)
+        local tokens = GEAR_ENGINE.BENCHMARK_STAT_TOKENS[benchmark.key] or {}
+        for tokenIndex = 1, #tokens do
+            local token = tokens[tokenIndex]
+            local base = weights[token] or (GEAR_ENGINE.STAT_SCORE_SCALES[token] or 1)
+            weights[token] = base * boost
+        end
+    end
+
+    return weights
+end
+
+function GEAR_ENGINE.ItemRoleScore(item, role, weights)
+    weights = weights or GEAR_ENGINE.BuildRoleStatWeights(role)
+    local score = ((tonumber(item and item.itemLevel) or 0) * 0.08) + ((tonumber(item and item.quality) or 0) * 1.5)
+    local matched = {}
+
+    for index = 1, #(item and item.stats or {}) do
+        local stat = item.stats[index]
+        local value = tonumber(stat and stat.value)
+        local weight = GEAR_ENGINE.StatWeightForToken(weights, stat and stat.token)
+        if value and value > 0 and weight then
+            score = score + (value * weight)
+            matched[#matched + 1] = {
+                token = stat.token,
+                label = stat.label or StatLabel(stat.token),
+                value = value,
+                weight = RoundedStatNumber(weight),
+            }
+        end
+    end
+
+    table.sort(matched, function(left, right)
+        local leftValue = (left.value or 0) * (left.weight or 0)
+        local rightValue = (right.value or 0) * (right.weight or 0)
+        if leftValue ~= rightValue then
+            return leftValue > rightValue
+        end
+        return tostring(left.label) < tostring(right.label)
+    end)
+
+    return RoundedStatNumber(score), matched
+end
+
+function GEAR_ENGINE.CandidateCompatibleWithClass(profile, item)
+    if not item or item.category ~= "Gear" or not GEAR_ENGINE.EquipmentSlotKey(item) then
+        return false
+    end
+
+    local classToken = ClassToken(profile and profile.classEnglish or "UNKNOWN")
+    local subClassID = tonumber(item.subClassID)
+    if item.classID == 4 and subClassID and subClassID >= 1 and subClassID <= 4 then
+        local maximum = GEAR_ENGINE.CLASS_MAX_ARMOR_SUBCLASS[classToken]
+        if maximum and subClassID > maximum then
+            return false
+        end
+    end
+
+    if item.classID == 4 and subClassID == 6 and not GEAR_ENGINE.SHIELD_CLASSES[classToken] then
+        return false
+    end
+
+    if type(IsEquippableItem) == "function" and item.link then
+        local ok, canEquip = pcall(IsEquippableItem, item.link)
+        if ok and canEquip == false then
+            return false
+        end
+    end
+
+    return true
+end
+
+function GEAR_ENGINE.PriorityStats(role, weights)
+    local priorities = {}
+    local seen = {}
+
+    for index = 1, #(role and role.statTokens or {}) do
+        local token = role.statTokens[index]
+        if not seen[token] then
+            seen[token] = true
+            priorities[#priorities + 1] = {
+                token = token,
+                label = StatLabel(token),
+                weight = RoundedStatNumber(weights[token] or 0),
+            }
+        end
+    end
+
+    table.sort(priorities, function(left, right)
+        if left.weight ~= right.weight then
+            return left.weight > right.weight
+        end
+        return left.label < right.label
+    end)
+
+    while #priorities > 6 do
+        table.remove(priorities)
+    end
+
+    return priorities
+end
+
+function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyBook)
+    strategyBook = strategyBook or BuildStrategyBook(profile, BuildChartStats(candidateItems or {}))
+    local role = strategyBook.roles and strategyBook.roles[1] or DEFAULT_STRATEGY_ROLES[1]
+    local weights = GEAR_ENGINE.BuildRoleStatWeights(role)
+    local currentBySlot = {}
+    local equippedItems = profile and profile.equipped and profile.equipped.items or {}
+
+    for index = 1, #equippedItems do
+        local item = equippedItems[index]
+        local slotKey = GEAR_ENGINE.EquipmentSlotKey(item)
+        if slotKey and slotKey ~= "SHIRT" and slotKey ~= "TABARD" then
+            local score, matched = GEAR_ENGINE.ItemRoleScore(item, role, weights)
+            local current = { item = item, score = score, matchedStats = matched }
+            if not currentBySlot[slotKey] or score < currentBySlot[slotKey].score then
+                currentBySlot[slotKey] = current
+            end
+        end
+    end
+
+    local bestBySlot = {}
+    local candidateCount = 0
+    for index = 1, #(candidateItems or {}) do
+        local item = candidateItems[index]
+        local slotKey = GEAR_ENGINE.EquipmentSlotKey(item)
+        if slotKey ~= "SHIRT" and slotKey ~= "TABARD" and GEAR_ENGINE.CandidateCompatibleWithClass(profile, item) then
+            candidateCount = candidateCount + 1
+            local score, matched = GEAR_ENGINE.ItemRoleScore(item, role, weights)
+            local current = currentBySlot[slotKey]
+            local gain = score - (current and current.score or 0)
+            if gain >= 2 and #matched > 0 then
+                local recommendation = {
+                    slotKey = slotKey,
+                    current = current and current.item or nil,
+                    candidate = item,
+                    currentScore = current and current.score or 0,
+                    candidateScore = score,
+                    scoreGain = RoundedStatNumber(gain),
+                    matchedStats = matched,
+                }
+                if not bestBySlot[slotKey] or score > bestBySlot[slotKey].candidateScore then
+                    bestBySlot[slotKey] = recommendation
+                end
+            end
+        end
+    end
+
+    local upgrades = {}
+    local slotRank = {}
+    for index = 1, #GEAR_ENGINE.GEAR_SLOT_ORDER do
+        slotRank[GEAR_ENGINE.GEAR_SLOT_ORDER[index]] = index
+        if bestBySlot[GEAR_ENGINE.GEAR_SLOT_ORDER[index]] then
+            upgrades[#upgrades + 1] = bestBySlot[GEAR_ENGINE.GEAR_SLOT_ORDER[index]]
+        end
+    end
+
+    table.sort(upgrades, function(left, right)
+        if left.scoreGain ~= right.scoreGain then
+            return left.scoreGain > right.scoreGain
+        end
+        return (slotRank[left.slotKey] or 99) < (slotRank[right.slotKey] or 99)
+    end)
+
+    local benchmarkGaps = {}
+    for index = 1, #(role and role.benchmarks or {}) do
+        local benchmark = role.benchmarks[index]
+        if benchmark.status == "below" or benchmark.status == "near" then
+            benchmarkGaps[#benchmarkGaps + 1] = benchmark
+        end
+    end
+
+    return {
+        version = 1,
+        generatedAt = Now(),
+        roleKey = role.key,
+        roleLabel = role.label,
+        roleConfidence = role.confidence or 0,
+        equippedCount = #equippedItems,
+        candidateCount = candidateCount,
+        priorityStats = GEAR_ENGINE.PriorityStats(role, weights),
+        benchmarkGaps = benchmarkGaps,
+        upgrades = upgrades,
+        equipped = equippedItems,
+        caveat = LForLocale(profile and profile.locale or ClientLocale(), "advice_caveat"),
     }
 end
 
@@ -3635,6 +4039,88 @@ local function AppendStrategyBookJson(lines, indent, strategyBook, comma)
     AppendIndented(lines, indent, "}" .. (comma and "," or ""))
 end
 
+function GEAR_ENGINE.AppendGearItemJson(lines, indent, key, item, score, comma)
+    if not item then
+        AppendIndented(lines, indent, JsonString(key) .. ": null" .. (comma and "," or ""))
+        return
+    end
+
+    AppendIndented(lines, indent, JsonString(key) .. ": {")
+    AppendIndented(lines, indent + 2, JsonField("name", item.name, true))
+    AppendIndented(lines, indent + 2, JsonField("item_id", item.itemID, true))
+    AppendIndented(lines, indent + 2, JsonField("item_link", item.link, true))
+    AppendIndented(lines, indent + 2, JsonField("wowhead_url", ItemWowheadURL(item), true))
+    AppendIndented(lines, indent + 2, JsonField("item_level", item.itemLevel, true))
+    AppendIndented(lines, indent + 2, JsonField("quality_id", item.quality, true))
+    AppendIndented(lines, indent + 2, JsonField("equip_slot", item.equipSlot, true))
+    AppendIndented(lines, indent + 2, JsonField("slot_key", GEAR_ENGINE.EquipmentSlotKey(item), true))
+    AppendIndented(lines, indent + 2, JsonField("inventory_slot", item.inventorySlot, true))
+    AppendIndented(lines, indent + 2, JsonField("source", item.source, true))
+    AppendIndented(lines, indent + 2, JsonField("location", item.location, true))
+    AppendIndented(lines, indent + 2, JsonField("score", score, true))
+    AppendIndented(lines, indent + 2, JsonField("stats_text", FormatStats(item.stats), true))
+    AppendIndented(lines, indent + 2, "\"stats\": [")
+    for index = 1, #(item.stats or {}) do
+        local stat = item.stats[index]
+        AppendIndented(lines, indent + 4, "{ " .. JsonField("token", stat.token, true) .. " " .. JsonField("label", stat.label, true) .. " " .. JsonField("value", stat.value, false) .. " }" .. (index < #(item.stats or {}) and "," or ""))
+    end
+    AppendIndented(lines, indent + 2, "]")
+    AppendIndented(lines, indent, "}" .. (comma and "," or ""))
+end
+
+function GEAR_ENGINE.AppendGearRecommendationsJson(lines, indent, engine, comma)
+    engine = engine or GEAR_ENGINE.BuildGearRecommendations({}, {}, nil)
+    AppendIndented(lines, indent, "\"gear_recommendations\": {")
+    AppendIndented(lines, indent + 2, JsonField("version", engine.version or 1, true))
+    AppendIndented(lines, indent + 2, JsonField("generated_at", FormatTime(engine.generatedAt), true))
+    AppendIndented(lines, indent + 2, JsonField("role_key", engine.roleKey, true))
+    AppendIndented(lines, indent + 2, JsonField("role_label", engine.roleLabel, true))
+    AppendIndented(lines, indent + 2, JsonField("role_confidence", engine.roleConfidence, true))
+    AppendIndented(lines, indent + 2, JsonField("equipped_count", engine.equippedCount, true))
+    AppendIndented(lines, indent + 2, JsonField("candidate_count", engine.candidateCount, true))
+    AppendIndented(lines, indent + 2, JsonField("caveat", engine.caveat, true))
+    AppendJsonObjectArray(lines, indent + 2, "priority_stats", engine.priorityStats, {
+        { name = "token", value = "token" },
+        { name = "label", value = "label" },
+        { name = "weight", value = "weight" },
+    }, true)
+    AppendJsonObjectArray(lines, indent + 2, "benchmark_gaps", engine.benchmarkGaps, {
+        { name = "key", value = "key" },
+        { name = "label", value = "label" },
+        { name = "observed", value = "observed" },
+        { name = "target", value = "target" },
+        { name = "unit", value = "unit" },
+        { name = "status", value = "status" },
+    }, true)
+    AppendIndented(lines, indent + 2, "\"equipped_gear\": [")
+    for index = 1, #(engine.equipped or {}) do
+        local item = engine.equipped[index]
+        local score = GEAR_ENGINE.ItemRoleScore(item, { statTokens = {} }, {})
+        AppendIndented(lines, indent + 4, "{")
+        GEAR_ENGINE.AppendGearItemJson(lines, indent + 6, "item", item, score, false)
+        AppendIndented(lines, indent + 4, "}" .. (index < #(engine.equipped or {}) and "," or ""))
+    end
+    AppendIndented(lines, indent + 2, "],")
+    AppendIndented(lines, indent + 2, "\"upgrades\": [")
+    for index = 1, #(engine.upgrades or {}) do
+        local upgrade = engine.upgrades[index]
+        AppendIndented(lines, indent + 4, "{")
+        AppendIndented(lines, indent + 6, JsonField("slot_key", upgrade.slotKey, true))
+        AppendIndented(lines, indent + 6, JsonField("score_gain", upgrade.scoreGain, true))
+        GEAR_ENGINE.AppendGearItemJson(lines, indent + 6, "current", upgrade.current, upgrade.currentScore, true)
+        GEAR_ENGINE.AppendGearItemJson(lines, indent + 6, "candidate", upgrade.candidate, upgrade.candidateScore, true)
+        AppendJsonObjectArray(lines, indent + 6, "matched_stats", upgrade.matchedStats, {
+            { name = "token", value = "token" },
+            { name = "label", value = "label" },
+            { name = "value", value = "value" },
+            { name = "weight", value = "weight" },
+        }, false)
+        AppendIndented(lines, indent + 4, "}" .. (index < #(engine.upgrades or {}) and "," or ""))
+    end
+    AppendIndented(lines, indent + 2, "]")
+    AppendIndented(lines, indent, "}" .. (comma and "," or ""))
+end
+
 local function PercentText(value)
     if type(value) ~= "number" then
         return "unknown"
@@ -3749,6 +4235,88 @@ local function AppendStrategyBookText(lines, strategyBook)
 
         lines[#lines + 1] = ""
     end
+end
+
+function GEAR_ENGINE.GearRoleLabel(engine, locale)
+    local localized = ANALYSIS_LOCALIZATION[PromptLocale(locale or ClientLocale())]
+    return localized and localized.roles and localized.roles[engine.roleKey] or engine.roleLabel or engine.roleKey
+end
+
+function GEAR_ENGINE.GearPriorityText(engine, locale)
+    local values = {}
+    local localized = ANALYSIS_LOCALIZATION[PromptLocale(locale or ClientLocale())]
+    for index = 1, #(engine and engine.priorityStats or {}) do
+        local priority = engine.priorityStats[index]
+        values[#values + 1] = localized and localized.stats and localized.stats[priority.token] or priority.label
+    end
+    return #values > 0 and table.concat(values, ", ") or "none"
+end
+
+function GEAR_ENGINE.GearBenchmarkText(engine, locale)
+    local values = {}
+    local localized = ANALYSIS_LOCALIZATION[PromptLocale(locale or ClientLocale())]
+    for index = 1, #(engine and engine.benchmarkGaps or {}) do
+        local gap = engine.benchmarkGaps[index]
+        local label = localized and localized.benchmarks and localized.benchmarks[gap.key] or gap.label or gap.key
+        values[#values + 1] = tostring(label) .. " " .. CompactNumber(gap.observed or 0, 2) .. "/" .. CompactNumber(gap.target or 0, 2)
+    end
+    return #values > 0 and table.concat(values, "; ") or LForLocale(locale or ClientLocale(), "advice_no_gaps")
+end
+
+function GEAR_ENGINE.GearMatchedStatsText(upgrade, locale)
+    local values = {}
+    local localized = ANALYSIS_LOCALIZATION[PromptLocale(locale or ClientLocale())]
+    for index = 1, math.min(3, #(upgrade and upgrade.matchedStats or {})) do
+        local stat = upgrade.matchedStats[index]
+        local label = localized and localized.stats and localized.stats[stat.token] or stat.label
+        values[#values + 1] = "+" .. CompactNumber(stat.value, 2) .. " " .. tostring(label)
+    end
+    return #values > 0 and table.concat(values, ", ") or "item level / quality"
+end
+
+function GEAR_ENGINE.AppendGearRecommendationsMarkdown(lines, engine, locale)
+    lines[#lines + 1] = "## Gear Recommendations"
+    lines[#lines + 1] = ""
+    lines[#lines + 1] = "- Role: " .. tostring(GEAR_ENGINE.GearRoleLabel(engine, locale)) .. " (confidence " .. tostring(engine.roleConfidence or 0) .. ")"
+    lines[#lines + 1] = "- Priority stats: " .. GEAR_ENGINE.GearPriorityText(engine, locale)
+    lines[#lines + 1] = "- Benchmark gaps: " .. GEAR_ENGINE.GearBenchmarkText(engine, locale)
+    lines[#lines + 1] = "- Caveat: " .. tostring(engine.caveat)
+    lines[#lines + 1] = ""
+    lines[#lines + 1] = "| Slot | Current | Suggested | Gain | Why |"
+    lines[#lines + 1] = "|---|---|---|---:|---|"
+    for index = 1, #(engine.upgrades or {}) do
+        local upgrade = engine.upgrades[index]
+        local current = upgrade.current and Addon.MarkdownPlainItemName(upgrade.current) or LForLocale(locale, "advice_empty_slot")
+        local candidate = Addon.MarkdownPlainItemName(upgrade.candidate)
+        lines[#lines + 1] = "| " .. Addon.MarkdownEscape(GEAR_ENGINE.EquipmentSlotLabel(upgrade.slotKey, locale))
+            .. " | " .. current
+            .. " | " .. candidate
+            .. " | +" .. Addon.MarkdownEscape(CompactNumber(upgrade.scoreGain, 2))
+            .. " | " .. Addon.MarkdownEscape(GEAR_ENGINE.GearMatchedStatsText(upgrade, locale)) .. " |"
+    end
+    if #(engine.upgrades or {}) == 0 then
+        lines[#lines + 1] = "| - | - | " .. Addon.MarkdownEscape(LForLocale(locale, "advice_no_upgrades")) .. " | - | - |"
+    end
+    lines[#lines + 1] = ""
+end
+
+function GEAR_ENGINE.AppendGearRecommendationsText(lines, engine, locale)
+    lines[#lines + 1] = "GEAR RECOMMENDATIONS"
+    lines[#lines + 1] = "Role: " .. tostring(GEAR_ENGINE.GearRoleLabel(engine, locale)) .. "; confidence " .. tostring(engine.roleConfidence or 0)
+    lines[#lines + 1] = "Priority stats: " .. GEAR_ENGINE.GearPriorityText(engine, locale)
+    lines[#lines + 1] = "Benchmark gaps: " .. GEAR_ENGINE.GearBenchmarkText(engine, locale)
+    for index = 1, #(engine.upgrades or {}) do
+        local upgrade = engine.upgrades[index]
+        local current = upgrade.current and upgrade.current.name or LForLocale(locale, "advice_empty_slot")
+        lines[#lines + 1] = GEAR_ENGINE.EquipmentSlotLabel(upgrade.slotKey, locale) .. ": " .. tostring(current)
+            .. " -> " .. tostring(upgrade.candidate and upgrade.candidate.name)
+            .. " (score +" .. CompactNumber(upgrade.scoreGain, 2) .. "; " .. GEAR_ENGINE.GearMatchedStatsText(upgrade, locale) .. ")"
+    end
+    if #(engine.upgrades or {}) == 0 then
+        lines[#lines + 1] = LForLocale(locale, "advice_no_upgrades")
+    end
+    lines[#lines + 1] = "Caveat: " .. tostring(engine.caveat)
+    lines[#lines + 1] = ""
 end
 
 local function AnalysisLocale(locale)
@@ -4254,6 +4822,7 @@ function Addon:GetProfile()
         classID = classInfo.id,
         bags = { updatedAt = 0, items = {} },
         bank = { updatedAt = 0, items = {} },
+        equipped = { updatedAt = 0, items = {}, totalSlots = #GEAR_ENGINE.EQUIPMENT_SLOTS, api = "unavailable" },
         talents = { updatedAt = 0, available = false, summary = "", tabs = {} },
         characterStats = { updatedAt = 0, api = "unavailable" },
     }
@@ -4267,17 +4836,19 @@ function Addon:GetProfile()
     profile.classID = classInfo.id
     profile.bags = profile.bags or { updatedAt = 0, items = {} }
     profile.bank = profile.bank or { updatedAt = 0, items = {} }
+    profile.equipped = profile.equipped or { updatedAt = 0, items = {}, totalSlots = #GEAR_ENGINE.EQUIPMENT_SLOTS, api = "unavailable" }
     profile.talents = profile.talents or { updatedAt = 0, available = false, summary = "", tabs = {} }
     profile.characterStats = profile.characterStats or { updatedAt = 0, api = "unavailable" }
     profile.localDB = profile.localDB or {
         name = DB_NAME,
-        version = 1,
+        version = 2,
         savedAt = 0,
         bagItemCount = #(profile.bags.items or {}),
         bankItemCount = #(profile.bank.items or {}),
+        equippedItemCount = #(profile.equipped.items or {}),
     }
     profile.localDB.name = DB_NAME
-    profile.localDB.version = 1
+    profile.localDB.version = 2
 
     return profile
 end
@@ -4312,13 +4883,12 @@ function Addon:GetContainerItemValues(bagID, slotID)
     return nil
 end
 
-function Addon:BuildItem(source, bagID, slotID)
-    local texture, count, containerQuality, link = self:GetContainerItemValues(bagID, slotID)
-
+function Addon:BuildItemFromLink(source, link, values)
     if not link then
         return nil
     end
 
+    values = values or {}
     local itemID = ParseItemID(link)
     local instantItemType, instantItemSubType, instantEquipSlot, instantTexture, classID, subClassID
 
@@ -4357,8 +4927,8 @@ function Addon:BuildItem(source, bagID, slotID)
     equipSlot = equipSlot or instantEquipSlot
     itemType = itemType or instantItemType
     itemSubType = itemSubType or instantItemSubType
-    icon = icon or instantTexture or texture
-    quality = quality or containerQuality
+    icon = icon or instantTexture or values.texture
+    quality = quality or values.quality
 
     local itemLinkForExport = resolvedLink or link
     local itemName = name or ParseItemName(link) or (itemID and ("Item " .. itemID)) or "Unknown Item"
@@ -4366,16 +4936,18 @@ function Addon:BuildItem(source, bagID, slotID)
 
     return {
         source = source,
-        bag = bagID,
-        slot = slotID,
-        location = LocationLabel(source, bagID, slotID),
+        bag = values.bag,
+        slot = values.slot,
+        inventorySlot = values.inventorySlot,
+        slotKey = values.slotKey,
+        location = values.location or LocationLabel(source, values.bag, values.slot),
         itemID = itemID,
         itemString = ParseItemString(link),
         link = itemLinkForExport,
         wowheadUrl = WowheadItemURL(itemID),
         name = itemName,
         nameColored = ColorizeItemName(itemName, qualityColor),
-        count = count or 1,
+        count = values.count or 1,
         quality = quality,
         qualityName = QualityName(quality),
         qualityColor = qualityColor,
@@ -4395,6 +4967,17 @@ function Addon:BuildItem(source, bagID, slotID)
     }
 end
 
+function Addon:BuildItem(source, bagID, slotID)
+    local texture, count, containerQuality, link = self:GetContainerItemValues(bagID, slotID)
+    return self:BuildItemFromLink(source, link, {
+        bag = bagID,
+        slot = slotID,
+        texture = texture,
+        count = count,
+        quality = containerQuality,
+    })
+end
+
 function Addon:ScanContainers(source, containers)
     local snapshot = {
         updatedAt = Now(),
@@ -4410,6 +4993,43 @@ function Addon:ScanContainers(source, containers)
 
         for slotID = 1, slots do
             local item = self:BuildItem(source, bagID, slotID)
+            if item then
+                snapshot.items[#snapshot.items + 1] = item
+            end
+        end
+    end
+
+    return snapshot
+end
+
+function Addon:ScanEquipped()
+    local snapshot = {
+        updatedAt = Now(),
+        items = {},
+        totalSlots = #GEAR_ENGINE.EQUIPMENT_SLOTS,
+        api = type(GetInventoryItemLink) == "function" and "inventory" or "unavailable",
+    }
+
+    if type(GetInventoryItemLink) ~= "function" then
+        return snapshot
+    end
+
+    for index = 1, #GEAR_ENGINE.EQUIPMENT_SLOTS do
+        local slot = GEAR_ENGINE.EQUIPMENT_SLOTS[index]
+        local ok, link = pcall(GetInventoryItemLink, "player", slot.id)
+        if ok and link then
+            local texture
+            if type(GetInventoryItemTexture) == "function" then
+                local textureOK, value = pcall(GetInventoryItemTexture, "player", slot.id)
+                texture = textureOK and value or nil
+            end
+            local item = self:BuildItemFromLink("equipped", link, {
+                slot = slot.id,
+                inventorySlot = slot.id,
+                slotKey = slot.key,
+                texture = texture,
+                location = GEAR_ENGINE.EquipmentSlotLabel(slot.key, ClientLocale()),
+            })
             if item then
                 snapshot.items[#snapshot.items + 1] = item
             end
@@ -4441,9 +5061,9 @@ end
 
 function Addon:SaveSnapshot(source, snapshot)
     local profile = self:GetProfile()
-    profile.localDB = profile.localDB or { name = DB_NAME, version = 1 }
+    profile.localDB = profile.localDB or { name = DB_NAME, version = 2 }
     profile.localDB.name = DB_NAME
-    profile.localDB.version = 1
+    profile.localDB.version = 2
     profile.localDB.savedAt = Now()
 
     if source == "bags" then
@@ -4454,6 +5074,10 @@ function Addon:SaveSnapshot(source, snapshot)
         profile.bank = snapshot
         profile.localDB.bankSavedAt = snapshot.updatedAt
         profile.localDB.bankItemCount = #(snapshot.items or {})
+    elseif source == "equipped" then
+        profile.equipped = snapshot
+        profile.localDB.equippedSavedAt = snapshot.updatedAt
+        profile.localDB.equippedItemCount = #(snapshot.items or {})
     end
 
     return snapshot
@@ -4471,9 +5095,9 @@ function Addon:SaveTalentSnapshot()
     end
 
     profile.talents = snapshot
-    profile.localDB = profile.localDB or { name = DB_NAME, version = 1 }
+    profile.localDB = profile.localDB or { name = DB_NAME, version = 2 }
     profile.localDB.name = DB_NAME
-    profile.localDB.version = 1
+    profile.localDB.version = 2
     profile.localDB.savedAt = Now()
     profile.localDB.talentSavedAt = snapshot.updatedAt
     profile.localDB.talentSummary = snapshot.summary
@@ -4488,9 +5112,9 @@ function Addon:SaveCharacterStatsSnapshot()
     local profile = self:GetProfile()
     local snapshot = BuildCharacterStatsSnapshot()
     profile.characterStats = snapshot
-    profile.localDB = profile.localDB or { name = DB_NAME, version = 1 }
+    profile.localDB = profile.localDB or { name = DB_NAME, version = 2 }
     profile.localDB.name = DB_NAME
-    profile.localDB.version = 1
+    profile.localDB.version = 2
     profile.localDB.savedAt = Now()
     profile.localDB.characterStatsSavedAt = snapshot.updatedAt
     profile.localDB.race = snapshot.race and snapshot.race.localized or nil
@@ -4499,9 +5123,14 @@ function Addon:SaveCharacterStatsSnapshot()
     return snapshot
 end
 
+function Addon:SaveEquippedSnapshot()
+    return self:SaveSnapshot("equipped", self:ScanEquipped())
+end
+
 function Addon:ScanBags()
     self:SaveTalentSnapshot()
     self:SaveCharacterStatsSnapshot()
+    self:SaveEquippedSnapshot()
     local snapshot = self:ScanContainers("bags", self:GetBagContainers())
     return self:SaveSnapshot("bags", snapshot)
 end
@@ -4509,6 +5138,7 @@ end
 function Addon:ScanBank()
     self:SaveTalentSnapshot()
     self:SaveCharacterStatsSnapshot()
+    self:SaveEquippedSnapshot()
     local snapshot = self:ScanContainers("bank", self:GetBankContainers())
     return self:SaveSnapshot("bank", snapshot)
 end
@@ -4633,7 +5263,7 @@ function Addon:CollectExportItems(scope, filter)
     return items
 end
 
-function Addon:BuildMarkdownExport(scope, profile, items, categories, buckets, filter, prompt, chartStats, characterStats, strategyBook)
+function Addon:BuildMarkdownExport(scope, profile, items, categories, buckets, filter, prompt, chartStats, characterStats, strategyBook, gearEngine)
     local lines = {
         "# TBC Gear Exporter",
         "",
@@ -4643,8 +5273,10 @@ function Addon:BuildMarkdownExport(scope, profile, items, categories, buckets, f
 
     chartStats = chartStats or BuildChartStats(items or {})
     strategyBook = strategyBook or BuildStrategyBook(profile, chartStats)
+    gearEngine = gearEngine or GEAR_ENGINE.BuildGearRecommendations(profile, items or {}, strategyBook)
     Addon.AppendMarkdownQuickSummary(lines, profile, scope, filter, items or {}, chartStats, strategyBook)
     Addon.AppendMarkdownRoleSnapshot(lines, strategyBook)
+    GEAR_ENGINE.AppendGearRecommendationsMarkdown(lines, gearEngine, profile.locale)
 
     lines[#lines + 1] = "## AI Prompt"
     lines[#lines + 1] = ""
@@ -4670,6 +5302,7 @@ function Addon:BuildMarkdownExport(scope, profile, items, categories, buckets, f
     lines[#lines + 1] = "- Items: " .. #(items or {})
     lines[#lines + 1] = "- Bag scan: " .. FormatTime(profile.bags and profile.bags.updatedAt)
     lines[#lines + 1] = "- Bank scan: " .. FormatTime(profile.bank and profile.bank.updatedAt)
+    lines[#lines + 1] = "- Equipped scan: " .. FormatTime(profile.equipped and profile.equipped.updatedAt)
     lines[#lines + 1] = ""
 
     AppendCharacterStatsMarkdown(lines, characterStats)
@@ -4694,7 +5327,7 @@ function Addon:BuildMarkdownExport(scope, profile, items, categories, buckets, f
 
     return table.concat(lines, "\n")
 end
-function Addon:BuildTextExport(scope, profile, items, categories, buckets, filter, prompt, chartStats, characterStats, strategyBook)
+function Addon:BuildTextExport(scope, profile, items, categories, buckets, filter, prompt, chartStats, characterStats, strategyBook, gearEngine)
     local lines = {
         "TBC Gear Exporter",
         "",
@@ -4714,9 +5347,12 @@ function Addon:BuildTextExport(scope, profile, items, categories, buckets, filte
         "Items: " .. #items,
         "Bag scan: " .. FormatTime(profile.bags and profile.bags.updatedAt),
         "Bank scan: " .. FormatTime(profile.bank and profile.bank.updatedAt),
+        "Equipped scan: " .. FormatTime(profile.equipped and profile.equipped.updatedAt),
         "",
     }
 
+    gearEngine = gearEngine or GEAR_ENGINE.BuildGearRecommendations(profile, items or {}, strategyBook)
+    GEAR_ENGINE.AppendGearRecommendationsText(lines, gearEngine, profile.locale)
     AppendCharacterStatsText(lines, characterStats)
     AppendStrategyBookText(lines, strategyBook)
     AppendChartStatsText(lines, chartStats)
@@ -4764,6 +5400,7 @@ function Addon:BuildExport(scope, format, filter)
     local profile = self:GetProfile()
     profile.talents = self:SaveTalentSnapshot()
     profile.characterStats = self:SaveCharacterStatsSnapshot()
+    profile.equipped = self:SaveEquippedSnapshot()
     local items = self:CollectExportItems(scope, filter)
     local prompt = BuildAIPrompt(profile, scope, filter, #items)
     local buckets = {}
@@ -4839,10 +5476,11 @@ function Addon:BuildExport(scope, format, filter)
 
     local chartStats = BuildChartStats(items)
     local strategyBook = BuildStrategyBook(profile, chartStats)
+    local gearEngine = GEAR_ENGINE.BuildGearRecommendations(profile, items, strategyBook)
 
     local lines = {
         "AI_READY_WOW_TBC_INVENTORY_EXPORT v1",
-        "Paste this entire selected text into an AI chat. It contains a prompt plus structured JSON for TBC bag and bank gear analysis.",
+        "Paste this entire selected text into an AI chat. It contains a prompt plus structured JSON for current equipment, bag, and bank gear analysis.",
         "AI_PROMPT:",
         prompt.text,
         "",
@@ -4877,6 +5515,8 @@ function Addon:BuildExport(scope, format, filter)
     AppendIndented(lines, 4, JsonField("saved_at", FormatTime(profile.localDB and profile.localDB.savedAt), true))
     AppendIndented(lines, 4, JsonField("bag_item_count", profile.localDB and profile.localDB.bagItemCount, true))
     AppendIndented(lines, 4, JsonField("bank_item_count", profile.localDB and profile.localDB.bankItemCount, true))
+    AppendIndented(lines, 4, JsonField("equipped_item_count", profile.localDB and profile.localDB.equippedItemCount, true))
+    AppendIndented(lines, 4, JsonField("equipped_saved_at", FormatTime(profile.localDB and profile.localDB.equippedSavedAt), true))
     AppendIndented(lines, 4, JsonField("talent_saved_at", FormatTime(profile.localDB and profile.localDB.talentSavedAt), true))
     AppendIndented(lines, 4, JsonField("talent_summary", profile.localDB and profile.localDB.talentSummary, true))
     AppendIndented(lines, 4, JsonField("talent_primary_tree", profile.localDB and profile.localDB.talentPrimaryTab, true))
@@ -4922,6 +5562,7 @@ function Addon:BuildExport(scope, format, filter)
     AppendIndented(lines, 2, "],")
     AppendChartStatsJson(lines, 2, chartStats, true)
     AppendStrategyBookJson(lines, 2, strategyBook, true)
+    GEAR_ENGINE.AppendGearRecommendationsJson(lines, 2, gearEngine, true)
     AppendIndented(lines, 2, "\"items\": [")
 
     local itemPosition = 0
@@ -4984,11 +5625,11 @@ function Addon:BuildExport(scope, format, filter)
     end
 
     if format == "markdown" then
-        return self:BuildMarkdownExport(scope, profile, items, categories, buckets, filter, prompt, chartStats, profile.characterStats, strategyBook)
+        return self:BuildMarkdownExport(scope, profile, items, categories, buckets, filter, prompt, chartStats, profile.characterStats, strategyBook, gearEngine)
     end
 
     if format == "text" then
-        return self:BuildTextExport(scope, profile, items, categories, buckets, filter, prompt, chartStats, profile.characterStats, strategyBook)
+        return self:BuildTextExport(scope, profile, items, categories, buckets, filter, prompt, chartStats, profile.characterStats, strategyBook, gearEngine)
     end
 
     return aiText
@@ -5006,6 +5647,8 @@ function Addon:SetExportView(view)
         self.exportView = "text"
     elseif view == "analysis" then
         self.exportView = "analysis"
+    elseif view == "advice" then
+        self.exportView = "advice"
     elseif view == "items" then
         self.exportView = "items"
     else
@@ -5021,6 +5664,14 @@ function Addon:SetExportView(view)
             self.exportFrame.overviewScroll:Show()
         else
             self.exportFrame.overviewScroll:Hide()
+        end
+    end
+
+    if self.exportFrame.adviceScroll then
+        if self.exportView == "advice" then
+            self.exportFrame.adviceScroll:Show()
+        else
+            self.exportFrame.adviceScroll:Hide()
         end
     end
 
@@ -5107,6 +5758,152 @@ function Addon:CreateVisualItemRow(parent, index)
     end)
 
     return row
+end
+
+function GEAR_ENGINE.ShowRecommendationTooltip(owner, item)
+    if not item or not GameTooltip then
+        return
+    end
+
+    GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
+    if item.link and GameTooltip.SetHyperlink then
+        GameTooltip:SetHyperlink(item.link)
+    else
+        GameTooltip:SetText(item.name or "Unknown Item")
+    end
+    if GameTooltip.AddLine then
+        GameTooltip:AddLine(tostring(item.location or item.source or ""))
+        GameTooltip:AddLine(FormatStats(item.stats))
+    end
+    GameTooltip:Show()
+end
+
+function GEAR_ENGINE.LocalizedMatchedStats(upgrade, locale)
+    local values = {}
+    for index = 1, math.min(3, #(upgrade and upgrade.matchedStats or {})) do
+        local stat = upgrade.matchedStats[index]
+        values[#values + 1] = "+" .. CompactNumber(stat.value, 2) .. " " .. AnalysisStatLabel(stat, locale)
+    end
+    return #values > 0 and table.concat(values, ", ") or LForLocale(locale, "analysis_unknown")
+end
+
+function Addon:CreateGearAdviceRow(parent, index)
+    local row = CreateFrame("Frame", nil, parent)
+    SetFrameSize(row, 490, 58)
+    row:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, -((index - 1) * 60))
+
+    local slot = row:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    slot:SetPoint("LEFT", 4, 0)
+    slot:SetWidth(72)
+    slot:SetJustifyH("LEFT")
+
+    local currentButton = CreateFrame("Button", nil, row)
+    SetFrameSize(currentButton, 34, 34)
+    currentButton:SetPoint("LEFT", 78, 0)
+    local currentIcon = currentButton:CreateTexture(nil, "ARTWORK")
+    currentIcon:SetPoint("TOPLEFT", 0, 0)
+    currentIcon:SetPoint("BOTTOMRIGHT", 0, 0)
+
+    local arrow = row:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    arrow:SetPoint("LEFT", currentButton, "RIGHT", 5, 0)
+    arrow:SetText(">")
+
+    local candidateButton = CreateFrame("Button", nil, row)
+    SetFrameSize(candidateButton, 34, 34)
+    candidateButton:SetPoint("LEFT", currentButton, "RIGHT", 22, 0)
+    local candidateIcon = candidateButton:CreateTexture(nil, "ARTWORK")
+    candidateIcon:SetPoint("TOPLEFT", 0, 0)
+    candidateIcon:SetPoint("BOTTOMRIGHT", 0, 0)
+
+    local name = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    name:SetPoint("TOPLEFT", candidateButton, "TOPRIGHT", 8, -1)
+    name:SetPoint("RIGHT", row, "RIGHT", -70, 0)
+    name:SetJustifyH("LEFT")
+
+    local reason = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    reason:SetPoint("TOPLEFT", candidateButton, "TOPRIGHT", 8, -20)
+    reason:SetPoint("RIGHT", row, "RIGHT", -8, 0)
+    reason:SetJustifyH("LEFT")
+
+    local gain = row:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    gain:SetPoint("TOPRIGHT", row, "TOPRIGHT", -8, -2)
+    gain:SetJustifyH("RIGHT")
+
+    currentButton:SetScript("OnEnter", function(self)
+        GEAR_ENGINE.ShowRecommendationTooltip(self, self.item)
+    end)
+    candidateButton:SetScript("OnEnter", function(self)
+        GEAR_ENGINE.ShowRecommendationTooltip(self, self.item)
+    end)
+    currentButton:SetScript("OnLeave", function()
+        if GameTooltip then GameTooltip:Hide() end
+    end)
+    candidateButton:SetScript("OnLeave", function()
+        if GameTooltip then GameTooltip:Hide() end
+    end)
+
+    row.slot = slot
+    row.currentButton = currentButton
+    row.currentIcon = currentIcon
+    row.candidateButton = candidateButton
+    row.candidateIcon = candidateIcon
+    row.name = name
+    row.reason = reason
+    row.gain = gain
+    return row
+end
+
+function Addon:RefreshGearAdvice(profile, engine)
+    if not self.exportFrame or not self.exportFrame.adviceContent then
+        return 0
+    end
+
+    local locale = profile and profile.locale or ClientLocale()
+    local roleLabel = GEAR_ENGINE.GearRoleLabel(engine, locale)
+    self.exportFrame.adviceSummary:SetText(LForLocale(locale, "advice_summary", roleLabel, engine.equippedCount or 0, engine.candidateCount or 0, #(engine.upgrades or {}))
+        .. "\n" .. LForLocale(locale, "advice_priorities", GEAR_ENGINE.GearPriorityText(engine, locale))
+        .. "\n" .. LForLocale(locale, "advice_benchmarks", GEAR_ENGINE.GearBenchmarkText(engine, locale)))
+    self.exportFrame.adviceCaveat:SetText(engine.caveat or LForLocale(locale, "advice_caveat"))
+
+    local rows = self.exportFrame.adviceRows or {}
+    self.exportFrame.adviceRows = rows
+    for index = 1, #rows do
+        rows[index]:Hide()
+    end
+
+    local upgrades = engine.upgrades or {}
+    if #upgrades == 0 then
+        self.exportFrame.adviceEmpty:SetText(LForLocale(locale, "advice_no_upgrades"))
+        self.exportFrame.adviceEmpty:Show()
+    else
+        self.exportFrame.adviceEmpty:Hide()
+    end
+
+    for index = 1, #upgrades do
+        local upgrade = upgrades[index]
+        local row = rows[index] or self:CreateGearAdviceRow(self.exportFrame.adviceRowsContent, index)
+        rows[index] = row
+        row.currentButton.item = upgrade.current
+        row.candidateButton.item = upgrade.candidate
+        row.currentIcon:SetTexture(upgrade.current and upgrade.current.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
+        row.candidateIcon:SetTexture(upgrade.candidate and upgrade.candidate.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
+        row.slot:SetText(GEAR_ENGINE.EquipmentSlotLabel(upgrade.slotKey, locale))
+        row.name:SetText(ItemColoredName(upgrade.candidate))
+        row.gain:SetText("|cff33ff99+" .. CompactNumber(upgrade.scoreGain, 2) .. "|r")
+        local detail = upgrade.current
+            and LForLocale(locale, "advice_ilvl", ItemLevelDisplay(upgrade.current), ItemLevelDisplay(upgrade.candidate))
+            or LForLocale(locale, "advice_empty_slot")
+        row.reason:SetText(detail .. "; " .. LForLocale(locale, "advice_stats", GEAR_ENGINE.LocalizedMatchedStats(upgrade, locale)))
+        row:Show()
+    end
+
+    if self.exportFrame.adviceRowsContent.SetHeight then
+        self.exportFrame.adviceRowsContent:SetHeight(math.max(220, (#upgrades * 60) + 8))
+    end
+    if self.exportFrame.adviceContent.SetHeight then
+        self.exportFrame.adviceContent:SetHeight(math.max(320, (#upgrades * 60) + 112))
+    end
+    return #upgrades
 end
 
 function Addon:RefreshVisualItems(items)
@@ -5220,11 +6017,14 @@ function Addon:RefreshExport(scope, format, filter)
     local profile = self:GetProfile()
     local chartStats = BuildChartStats(items)
     local strategyBook = BuildStrategyBook(profile, chartStats)
+    local gearEngine = GEAR_ENGINE.BuildGearRecommendations(profile, items, strategyBook)
     local overviewRoleCount = 0
     local analysisRoleCount = 0
+    local adviceCount = 0
     self.exportFrame.editBox:SetText(text)
     self:RefreshVisualItems(items)
     overviewRoleCount = self:RefreshOverview(profile, chartStats, strategyBook, items)
+    adviceCount = self:RefreshGearAdvice(profile, gearEngine)
     analysisRoleCount = self:RefreshStatsAnalysis(profile, chartStats, strategyBook)
     self:SetExportView(self.exportView or "overview")
 
@@ -5242,6 +6042,8 @@ function Addon:RefreshExport(scope, format, filter)
         self.exportFrame.status:SetText(L("status_generated", LocalizedExportFormatTitle(self.exportFormat, ClientLocale()), LocalizedExportFilterTitle(self.exportFilter, ClientLocale())))
     elseif self.exportView == "analysis" then
         self.exportFrame.status:SetText(L("status_analysis", analysisRoleCount))
+    elseif self.exportView == "advice" then
+        self.exportFrame.status:SetText(L("status_advice", adviceCount, GEAR_ENGINE.GearRoleLabel(gearEngine, profile.locale)))
     elseif self.exportView == "items" then
         self.exportFrame.status:SetText(L("status_visual", #items))
     else
@@ -5449,7 +6251,7 @@ function Addon:CreateExportFrame()
     end)
 
     local overviewTab = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
-    SetFrameSize(overviewTab, 78, 24)
+    SetFrameSize(overviewTab, 64, 24)
     overviewTab:SetPoint("TOPLEFT", 282, -64)
     overviewTab:SetText(L("overview_tab"))
     overviewTab:SetScript("OnClick", function()
@@ -5457,9 +6259,18 @@ function Addon:CreateExportFrame()
         Addon:RefreshExport()
     end)
 
+    local adviceTab = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
+    SetFrameSize(adviceTab, 86, 24)
+    adviceTab:SetPoint("LEFT", overviewTab, "RIGHT", 6, 0)
+    adviceTab:SetText(L("gear_advice_tab"))
+    adviceTab:SetScript("OnClick", function()
+        Addon:SetExportView("advice")
+        Addon:RefreshExport()
+    end)
+
     local itemsTab = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
-    SetFrameSize(itemsTab, 70, 24)
-    itemsTab:SetPoint("LEFT", overviewTab, "RIGHT", 8, 0)
+    SetFrameSize(itemsTab, 54, 24)
+    itemsTab:SetPoint("LEFT", adviceTab, "RIGHT", 6, 0)
     itemsTab:SetText(L("items_tab"))
     itemsTab:SetScript("OnClick", function()
         Addon:SetExportView("items")
@@ -5467,8 +6278,8 @@ function Addon:CreateExportFrame()
     end)
 
     local analysisTab = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
-    SetFrameSize(analysisTab, 112, 24)
-    analysisTab:SetPoint("LEFT", itemsTab, "RIGHT", 8, 0)
+    SetFrameSize(analysisTab, 90, 24)
+    analysisTab:SetPoint("LEFT", itemsTab, "RIGHT", 6, 0)
     analysisTab:SetText(L("stats_analysis_tab"))
     analysisTab:SetScript("OnClick", function()
         Addon:SetExportView("analysis")
@@ -5476,8 +6287,8 @@ function Addon:CreateExportFrame()
     end)
 
     local textTab = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
-    SetFrameSize(textTab, 104, 24)
-    textTab:SetPoint("LEFT", analysisTab, "RIGHT", 8, 0)
+    SetFrameSize(textTab, 82, 24)
+    textTab:SetPoint("LEFT", analysisTab, "RIGHT", 6, 0)
     textTab:SetText(L("text_export_tab"))
     textTab:SetScript("OnClick", function()
         Addon:SelectExportText()
@@ -5496,6 +6307,36 @@ function Addon:CreateExportFrame()
     overviewText:SetPoint("RIGHT", overviewContent, "RIGHT", -8, 0)
     overviewText:SetJustifyH("LEFT")
     overviewText:SetText(L("overview_title"))
+
+    local adviceScroll = CreateFrame("ScrollFrame", "TBCGearExporterAdviceScrollFrame", exportFrame, "UIPanelScrollFrameTemplate")
+    adviceScroll:SetPoint("TOPLEFT", 282, -96)
+    adviceScroll:SetPoint("BOTTOMRIGHT", -38, 48)
+
+    local adviceContent = CreateFrame("Frame", nil, adviceScroll)
+    SetFrameSize(adviceContent, 490, 300)
+    adviceScroll:SetScrollChild(adviceContent)
+
+    local adviceSummary = adviceContent:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    adviceSummary:SetPoint("TOPLEFT", 4, -4)
+    adviceSummary:SetPoint("RIGHT", adviceContent, "RIGHT", -8, 0)
+    adviceSummary:SetJustifyH("LEFT")
+    adviceSummary:SetText(L("advice_title"))
+
+    local adviceCaveat = adviceContent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    adviceCaveat:SetPoint("TOPLEFT", 4, -58)
+    adviceCaveat:SetPoint("RIGHT", adviceContent, "RIGHT", -8, 0)
+    adviceCaveat:SetJustifyH("LEFT")
+    adviceCaveat:SetText(L("advice_caveat"))
+
+    local adviceRowsContent = CreateFrame("Frame", nil, adviceContent)
+    SetFrameSize(adviceRowsContent, 490, 220)
+    adviceRowsContent:SetPoint("TOPLEFT", adviceContent, "TOPLEFT", 0, -96)
+
+    local adviceEmpty = adviceRowsContent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    adviceEmpty:SetPoint("TOPLEFT", 4, -4)
+    adviceEmpty:SetPoint("RIGHT", adviceRowsContent, "RIGHT", -8, 0)
+    adviceEmpty:SetJustifyH("LEFT")
+    adviceEmpty:SetText(L("advice_no_upgrades"))
 
     local visualScroll = CreateFrame("ScrollFrame", "TBCGearExporterVisualScrollFrame", exportFrame, "UIPanelScrollFrameTemplate")
     visualScroll:SetPoint("TOPLEFT", 282, -96)
@@ -5559,15 +6400,23 @@ function Addon:CreateExportFrame()
     exportFrame.sourceLabel = sourceLabel
     exportFrame.dbLabel = dbLabel
     exportFrame.overviewTab = overviewTab
+    exportFrame.adviceTab = adviceTab
     exportFrame.itemsTab = itemsTab
     exportFrame.analysisTab = analysisTab
     exportFrame.textTab = textTab
     exportFrame.overviewScroll = overviewScroll
+    exportFrame.adviceScroll = adviceScroll
     exportFrame.visualScroll = visualScroll
     exportFrame.analysisScroll = analysisScroll
     exportFrame.textScroll = textScroll
     exportFrame.overviewContent = overviewContent
     exportFrame.overviewText = overviewText
+    exportFrame.adviceContent = adviceContent
+    exportFrame.adviceSummary = adviceSummary
+    exportFrame.adviceCaveat = adviceCaveat
+    exportFrame.adviceRowsContent = adviceRowsContent
+    exportFrame.adviceEmpty = adviceEmpty
+    exportFrame.adviceRows = {}
     exportFrame.itemListContent = itemListContent
     exportFrame.analysisContent = analysisContent
     exportFrame.analysisText = analysisText
@@ -5673,7 +6522,7 @@ function Addon:ClearProfile()
     profile.talents = { updatedAt = 0, available = false, summary = "", tabs = {} }
     profile.localDB = {
         name = DB_NAME,
-        version = 1,
+        version = 2,
         savedAt = 0,
         bagSavedAt = 0,
         bankSavedAt = 0,
@@ -5776,6 +6625,7 @@ function Addon:OnAddonLoaded(loadedName)
     SafeRegister("PLAYER_LOGIN")
     SafeRegister("PLAYER_TALENT_UPDATE")
     SafeRegister("CHARACTER_POINTS_CHANGED")
+    SafeRegister("PLAYER_EQUIPMENT_CHANGED")
     SafeRegister("BAG_OPEN")
     SafeRegister("BAG_UPDATE")
     SafeRegister("BAG_UPDATE_DELAYED")
@@ -5806,6 +6656,15 @@ function Addon:OnEvent(eventName, ...)
 
     if eventName == "PLAYER_TALENT_UPDATE" or eventName == "CHARACTER_POINTS_CHANGED" then
         self:SaveTalentSnapshot()
+        return
+    end
+
+    if eventName == "PLAYER_EQUIPMENT_CHANGED" then
+        self:SaveCharacterStatsSnapshot()
+        self:SaveEquippedSnapshot()
+        if self.exportFrame and self.exportFrame:IsShown() then
+            self:RefreshExport()
+        end
         return
     end
 
@@ -5954,6 +6813,17 @@ if _G.TBCGearExporterTestMode then
         BuildRoleBenchmarks = BuildRoleBenchmarks,
         StrategyClassRoles = StrategyClassRoles,
         BuildStrategyBook = BuildStrategyBook,
+        EquipmentSlotKey = GEAR_ENGINE.EquipmentSlotKey,
+        EquipmentSlotLabel = GEAR_ENGINE.EquipmentSlotLabel,
+        BuildRoleStatWeights = GEAR_ENGINE.BuildRoleStatWeights,
+        ItemRoleScore = GEAR_ENGINE.ItemRoleScore,
+        CandidateCompatibleWithClass = GEAR_ENGINE.CandidateCompatibleWithClass,
+        PriorityStats = GEAR_ENGINE.PriorityStats,
+        BuildGearRecommendations = GEAR_ENGINE.BuildGearRecommendations,
+        GearRoleLabel = GEAR_ENGINE.GearRoleLabel,
+        GearPriorityText = GEAR_ENGINE.GearPriorityText,
+        GearBenchmarkText = GEAR_ENGINE.GearBenchmarkText,
+        GearMatchedStatsText = GEAR_ENGINE.GearMatchedStatsText,
         BuildStatsAnalysisText = BuildStatsAnalysisText,
         BuildOverviewText = Addon.BuildOverviewText,
         CompactCountList = Addon.CompactCountList,
