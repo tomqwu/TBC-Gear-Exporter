@@ -1,4 +1,5 @@
 local ADDON_PATH = "TBCGearExporter/TBCGearExporter.lua"
+local PHASE2_DB_PATH = "TBCGearExporter/Phase2StrategyDB.lua"
 local COVERAGE_MINIMUM = 99.0
 
 local tests = {}
@@ -127,6 +128,9 @@ local function itemLink(itemID, name, qualityColor)
 end
 
 local function parseItemID(link)
+    if type(link) == "number" then
+        return link
+    end
     local itemID = tostring(link or ""):match("item:(%d+)")
     return itemID and tonumber(itemID) or nil
 end
@@ -856,6 +860,7 @@ local function resetRuntimeState(Addon)
     Addon.exportFilter = nil
     Addon.exportView = nil
     Addon.selectedAdviceRoleKey = nil
+    Addon.selectedStrategyModeKey = nil
     Addon.selectedAdviceIndex = nil
     Addon.currentAdviceProfile = nil
     Addon.currentGearEngine = nil
@@ -1096,6 +1101,7 @@ mock.tableInfo["99:1"] = true
 
 loadExecutableLines()
 debug.sethook(coverageHook, "l")
+assert(loadfile(PHASE2_DB_PATH))()
 local chunk = assert(loadfile(ADDON_PATH))
 chunk("TBCGearExporter")
 local Addon = assert(_G.TBCGearExporter, "test mode did not expose addon")
@@ -1117,6 +1123,162 @@ end
 
 test("addon registers ADDON_LOADED on load", function()
     assertTrue(addonRootFrame().events.ADDON_LOADED, "root addon frame should register ADDON_LOADED")
+end)
+
+test("Phase 2 database covers every TBC class and PvE specialization", function()
+    local db = assert(_G.TBCGearExporterP2DB)
+    assertEquals(db.version, 1)
+    assertEquals(db.phase, 2)
+    assertEquals(db.patch, "2.5.6")
+    assertEquals(#db.sources, 2)
+    assertEquals(db.sources[1].commit, "3fc6a414979d62186f75d51ab6f6dd5d44f35b9c")
+
+    local classCount, roleCount, presetCount, targetCount = 0, 0, 0, 0
+    for classToken, class in pairs(db.classes) do
+        classCount = classCount + 1
+        assertTrue(#class.roles >= 3, classToken .. " should expose at least three roles")
+        local roleKeys = {}
+        for index = 1, #class.roles do
+            local role = class.roles[index]
+            roleCount = roleCount + 1
+            assertFalse(roleKeys[role.key], classToken .. " duplicate role " .. role.key)
+            roleKeys[role.key] = true
+            assertEquals(role.phase, 2)
+            assertEquals(#role.modes, 3)
+            assertTrue(#role.statTokens >= 5)
+            assertTrue(#role.priorities >= 5)
+            assertTrue(type(role.guideUrl) == "string" and role.guideUrl:find("https://", 1, true) == 1)
+            assertTrue(type(role.labels.enUS) == "string" and type(role.labels.zhCN) == "string")
+            assertTrue(type(role.setGoalLabels.enUS) == "string" and type(role.setGoalLabels.zhCN) == "string")
+            for modeIndex = 1, #role.modes do
+                assertTrue(type(role.modes[modeIndex].labels.zhCN) == "string")
+            end
+            for capIndex = 1, #role.caps do
+                assertTrue(type(role.caps[capIndex].labels.enUS) == "string")
+                assertTrue(type(role.caps[capIndex].labels.zhCN) == "string")
+            end
+        end
+    end
+    for _, preset in pairs(db.presets) do
+        presetCount = presetCount + 1
+        assertEquals(#preset.itemIDs, 17)
+        assertTrue(db.GetPreset(preset.key) == preset)
+        for index = 1, #preset.itemIDs do
+            if preset.itemIDs[index] > 0 then targetCount = targetCount + 1 end
+        end
+    end
+
+    assertEquals(classCount, 9)
+    assertEquals(roleCount, 28)
+    assertEquals(presetCount, 29)
+    assertEquals(targetCount, 475)
+    assertEquals(#db.GetClassRoles("DRUID"), 4)
+    assertEquals(db.GetRole("PALADIN", "protection_tank").archetype, "tank")
+    assertEquals(db.GetRole("MAGE", "missing"), nil)
+    assertEquals(db.GetClassRoles("MONK"), nil)
+end)
+
+test("Phase 2 models expose distinct tank healer and damage strategies", function()
+    resetRuntimeState(Addon)
+    local profile = Addon:GetProfile()
+    profile.talents = private.BuildTalentSnapshot()
+    profile.characterStats = private.BuildCharacterStatsSnapshot()
+    profile.equipped = { items = {} }
+    local druidBook = private.BuildStrategyBook(profile, private.BuildChartStats({}))
+    local bear = private.FindStrategyRole(druidBook, "bear_tank")
+    local healer = private.FindStrategyRole(druidBook, "restoration_healer")
+    local cat = private.FindStrategyRole(druidBook, "cat_dps")
+
+    local bearMitigation = private.BuildRoleStatWeights(bear, "mitigation")
+    local bearThreat = private.BuildRoleStatWeights(bear, "threat")
+    assertTrue(bearMitigation.ITEM_MOD_STAMINA_SHORT > bearThreat.ITEM_MOD_STAMINA_SHORT)
+    assertTrue(bearThreat.ITEM_MOD_FERAL_ATTACK_POWER_SHORT > bearMitigation.ITEM_MOD_FERAL_ATTACK_POWER_SHORT)
+
+    local healerThroughput = private.BuildRoleStatWeights(healer, "throughput")
+    local healerLongevity = private.BuildRoleStatWeights(healer, "longevity")
+    assertTrue(healerThroughput.ITEM_MOD_SPELL_HEALING_DONE_SHORT > healerLongevity.ITEM_MOD_SPELL_HEALING_DONE_SHORT)
+    assertTrue(healerLongevity.ITEM_MOD_MANA_REGENERATION_SHORT > healerThroughput.ITEM_MOD_MANA_REGENERATION_SHORT)
+
+    local catCap = private.BuildRoleStatWeights(cat, "cap")
+    local catOutput = private.BuildRoleStatWeights(cat, "output")
+    assertTrue(catCap.ITEM_MOD_HIT_RATING_SHORT > catOutput.ITEM_MOD_HIT_RATING_SHORT)
+    assertTrue(catOutput.ITEM_MOD_AGILITY_SHORT > catCap.ITEM_MOD_AGILITY_SHORT)
+    assertEquals(private.FindStrategyMode(cat, "missing").key, "balanced")
+    assertEquals(#private.AvailableStrategyModes({}), 1)
+end)
+
+test("Phase 2 caps report below near met context and unknown states", function()
+    local role = {
+        observed = { hit = { melee = 8.2 }, tank = { defense = 490, knownAvoidanceBlock = 88 } },
+        caps = {
+            { key = "melee_special_hit", target = 9, unit = "%", kind = "cap", labels = { enUS = "Hit", zhCN = "命中" } },
+            { key = "defense_crit_immunity", target = 490, unit = "defense", kind = "hard_gate", labels = { enUS = "Defense", zhCN = "防御" } },
+            { key = "avoidance_table", target = 102.4, unit = "%", kind = "context", labels = { enUS = "Table", zhCN = "战斗表" } },
+            { key = "not_observed", target = 10, unit = "%", kind = "cap", labels = { enUS = "Unknown", zhCN = "未知" } },
+        },
+    }
+    local caps = private.BuildPhase2CapStatuses(role)
+    assertEquals(caps[1].status, "near")
+    assertEquals(caps[2].status, "meets_or_exceeds")
+    assertEquals(caps[3].status, "context_required")
+    assertEquals(caps[4].status, "unknown")
+    role.observed.hit.melee = 3
+    assertEquals(private.BuildPhase2CapStatuses(role)[1].status, "below")
+end)
+
+test("Phase 2 target progress reads saved bags and bank independently of filters", function()
+    addItem({ id = 30228, name = "Nordrassil Headdress", color = "ffa335ee", quality = 4, itemLevel = 133, requiredLevel = 70, itemType = "Armor", itemSubType = "Leather", equipSlot = "INVTYPE_HEAD", maxStack = 1, icon = "p2-head-icon", sellPrice = 1 })
+    addItem({ id = 30017, name = "Telonicus Pendant", color = "ffa335ee", quality = 4, itemLevel = 128, requiredLevel = 70, itemType = "Armor", itemSubType = "Misc", equipSlot = "INVTYPE_NECK", maxStack = 1, icon = "p2-neck-icon", sellPrice = 1 })
+    local role = _G.TBCGearExporterP2DB.GetRole("DRUID", "bear_tank")
+    local profile = {
+        equipped = { items = {} },
+        bags = { items = { { itemID = 30228 } } },
+        bank = { items = { { itemID = 30017 } } },
+    }
+    local progress = private.BuildPhase2PresetProgress(profile, { { itemID = 99999 } }, role, "balanced")
+    assertTrue(progress.available)
+    assertEquals(progress.key, "bear_balanced")
+    assertEquals(progress.total, 16)
+    assertEquals(progress.owned, 2)
+    assertEquals(progress.items[1].name, "Nordrassil Headdress")
+    assertEquals(progress.items[1].icon, "p2-head-icon")
+    assertContains(progress.items[1].wowheadUrl, "30228")
+    assertEquals(#progress.missing, 14)
+
+    local noPreset = private.BuildPhase2PresetProgress(profile, {}, { presets = {} }, "balanced")
+    assertFalse(noPreset.available)
+    local name, link, quality, itemLevel, icon = private.Phase2ItemInfo(30228)
+    assertEquals(name, "Nordrassil Headdress")
+    assertEquals(link, mock.itemLinks[30228])
+    assertEquals(quality, 4)
+    assertEquals(itemLevel, 133)
+    assertEquals(icon, "p2-head-icon")
+    local oldInfo = _G.GetItemInfo
+    _G.GetItemInfo = nil
+    assertEquals(private.Phase2ItemInfo(30228), nil)
+    _G.GetItemInfo = oldInfo
+
+    local oldInstant = _G.GetItemInfoInstant
+    local oldCItem = _G.C_Item
+    local requestedID
+    _G.GetItemInfo = function() return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil end
+    _G.GetItemInfoInstant = function(itemID) return itemID, "Armor", "Leather", "INVTYPE_HEAD", "instant-p2-icon" end
+    _G.C_Item = { RequestLoadItemDataByID = function(itemID) requestedID = itemID end }
+    local coldName, _, _, _, coldIcon = private.Phase2ItemInfo(39999)
+    assertEquals(coldName, nil)
+    assertEquals(coldIcon, "instant-p2-icon")
+    assertEquals(requestedID, 39999)
+    _G.GetItemInfo = oldInfo
+    _G.GetItemInfoInstant = oldInstant
+    _G.C_Item = oldCItem
+
+    local guideEngine = { modeKey = "balanced", phase2 = { evidence = "guide", modeLabels = { enUS = "Balanced", zhCN = "均衡" }, presetProgress = { available = false }, setGoalLabels = { enUS = "Goal", zhCN = "目标" } } }
+    assertEquals(private.Phase2EvidenceLabel(guideEngine, "enUS"), "guide-backed")
+    assertEquals(private.Phase2EvidenceLabel(guideEngine, "zhCN"), "职业攻略")
+    assertEquals(private.Phase2EvidenceLabel(guideEngine, "zhTW"), "職業攻略")
+    assertEquals(private.Phase2ModeLabel(guideEngine, "zhCN"), "均衡")
+    assertEquals(private.Phase2PresetText(guideEngine, "zhCN"), "该专精暂无成熟模拟器预设；使用职业攻略与当前属性模型。")
+    assertEquals(private.Phase2Goal(guideEngine, "zhCN"), "目标")
 end)
 
 test("toc targets current TBC Anniversary interface", function()
@@ -1431,7 +1593,7 @@ test("class-aware AI prompt covers Druid role lenses and fallback context", func
     local englishPrompt = private.BuildAIPrompt({ player = "Tester", realm = "Test Realm", classLocalized = "Druid", classEnglish = "DRUID", locale = "enUS" }, "gear", { qualityID = 4 }, 1)
     assertContains(englishPrompt.text, "World of Warcraft: The Burning Crusade Classic")
     assertContains(englishPrompt.text, "Bear Feral tank")
-    assertContains(englishPrompt.text, "switch to the matching role weights")
+    assertContains(englishPrompt.text, "switch role and mitigation/threat/longevity weights")
     assertEquals(englishPrompt.promptLocale, "enUS")
 
     local traditionalPrompt = private.BuildAIPrompt({ player = "Tester", realm = "Test Realm", classLocalized = "德魯伊", classEnglish = "DRUID", locale = "zhTW" }, "gear", { qualityID = 4 }, 1)
@@ -1855,7 +2017,7 @@ test("strategy book ranks role models from talents gear race and raid context", 
     assertContains(strategyBook.raceNotes[1], "Stamina")
     assertContains(strategyBook.groupNotes[1], "Raid context")
     assertEquals(firstRole.key, "bear_tank")
-    assertEquals(firstRole.label, "Bear Feral Tank")
+    assertEquals(firstRole.label, "Feral Bear Tank")
     assertEquals(firstRole.confidence, 100)
     assertEquals(firstRole.talentPoints, 46)
     assertTrue(firstRole.primaryTalentMatch)
@@ -1907,7 +2069,7 @@ test("strategy book ranks role models from talents gear race and raid context", 
     assertContains(analysisText, "防御/免伤")
     assertContains(analysisText, "天赋点：Balance 0, Feral Combat 46, Restoration 15")
     assertContains(analysisText, "已点天赋：Ferocity 5/5")
-    assertContains(analysisText, "熊形态野性坦克")
+    assertContains(analysisText, "野性熊坦")
     assertContains(analysisText, "坦克免伤")
     assertContains(analysisText, "达标")
     assertContains(analysisText, "防御免暴基准")
@@ -1915,7 +2077,7 @@ test("strategy book ranks role models from talents gear race and raid context", 
     assertContains(analysisText, "当前装备属性亮点")
     assertContains(analysisText, "+10 耐力")
     assertFalse(analysisText:find("+27 耐力", 1, true), "candidate inventory totals must not be presented as current gear")
-    assertFalse(analysisText:find("Bear Feral Tank", 1, true), "Chinese analysis should not show English role labels")
+    assertFalse(analysisText:find("Feral Bear Tank", 1, true), "Chinese analysis should not show English role labels")
     assertFalse(analysisText:find("tank_mitigation", 1, true), "Chinese analysis should not show internal model tokens")
     assertFalse(analysisText:find("meets_or_exceeds", 1, true), "Chinese analysis should not show internal status tokens")
     local _, tankLensCount = analysisText:gsub("坦克视角", "")
@@ -1930,7 +2092,7 @@ test("strategy book ranks role models from talents gear race and raid context", 
     assertContains(englishAnalysis, "Stats Analysis")
     assertContains(englishAnalysis, "Talent points: Balance 0, Feral Combat 46, Restoration 15")
     assertContains(englishAnalysis, "selected talents: Ferocity 5/5")
-    assertContains(englishAnalysis, "Bear Feral Tank")
+    assertContains(englishAnalysis, "Feral Bear Tank")
     assertContains(englishAnalysis, "Tank mitigation")
     assertContains(englishAnalysis, "Current gear highlights: +10 Stamina")
     assertContains(englishAnalysis, "Meets / exceeds")
@@ -1988,7 +2150,7 @@ test("talent strategy maps every selected talent and applies ranked key effects"
     local retribution = private.FindStrategyRole(strategy, "retribution_dps")
     local map = protection.talentMap
 
-    assertEquals(strategy.version, 2)
+    assertEquals(strategy.version, 3)
     assertEquals(strategy.roles[1].key, "protection_tank")
     assertEquals(map.selectedCount, 9)
     assertEquals(map.selectedPoints, 27)
@@ -2188,7 +2350,7 @@ test("item comparison switches role weights and rejects mismatched slots", funct
     assertEquals(private.FindStrategyRole(nil, "missing").key, "general_inventory")
 
     local damageEngine = private.BuildGearRecommendations(profile, { candidate }, strategy, "retribution_dps")
-    assertEquals(damageEngine.version, 4)
+    assertEquals(damageEngine.version, 5)
     assertEquals(damageEngine.roleKey, "retribution_dps")
     assertEquals(#damageEngine.availableRoles, 3)
     assertEquals(damageEngine.talentMap.effects[1].key, "crusade")
@@ -2232,6 +2394,13 @@ test("gear strategy engine compares current slots with compatible saved candidat
     assertTrue(#engine.benchmarkGaps >= 2)
     assertEquals(#engine.upgrades, 2)
     assertContains(engine.caveat, "启发式评分")
+    assertEquals(engine.phase2.phase, 2)
+    assertEquals(engine.phase2.modeKey, "balanced")
+    assertEquals(#engine.phase2.availableModes, 3)
+    assertEquals(engine.phase2.presetProgress.key, "bear_balanced")
+    assertContains(private.Phase2CapText(engine, "zhCN"), "近战技能命中")
+    assertContains(private.Phase2PresetText(engine, "zhCN", 2), "Feral Bear P2 Balanced")
+    assertContains(private.Phase2Goal(engine, "zhCN"), "海度斯")
 
     local bySlot = {}
     for index = 1, #engine.upgrades do
@@ -2299,7 +2468,7 @@ test("gear strategy engine compares current slots with compatible saved candidat
     assertContains(private.GearPriorityText(engine, "zhCN"), "耐力")
     assertContains(private.GearBenchmarkText(engine, "zhCN"), "/")
     assertContains(private.GearBenchmarkText({ benchmarkGaps = {} }, "zhCN"), "没有")
-    assertEquals(private.GearRoleLabel(engine, "zhCN"), "熊形态野性坦克")
+    assertEquals(private.GearRoleLabel(engine, "zhCN"), "野性熊坦")
 
     local emptyEngine = private.BuildGearRecommendations({ locale = "enUS", equipped = { items = {} } }, {}, nil)
     assertEquals(emptyEngine.roleKey, "general_inventory")
@@ -2374,7 +2543,7 @@ test("protection paladin strategy compares visible gains and losses without inve
     assertEquals(role.observed.gearStatHighlights[1].value, 20)
     assertFalse(role.observed.gearStatHighlights[1].value == 30, "candidate stamina must not leak into current gear highlights")
 
-    assertEquals(engine.version, 4)
+    assertEquals(engine.version, 5)
     assertEquals(#engine.upgrades, 1)
     assertEquals(engine.upgrades[1].evidence, "high")
     assertEquals(engine.upgrades[1].verdict, "upgrade")
@@ -2837,7 +3006,7 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(allExport, "AI_PROMPT:")
     assertContains(allExport, "职业职责分析视角：")
     assertContains(allExport, "character_stats、chart_stats、strategy_book、gear_recommendations")
-    assertContains(allExport, "熊形态野性坦克")
+    assertContains(allExport, "野性熊坦")
     assertContains(allExport, "当前天赋：0/46/15; 主天赋=Feral Combat; 已用点数=61")
     assertTrue(allExport:find("AI_PROMPT:", 1, true) < allExport:find("DATA_JSON:", 1, true))
     assertContains(allExport, "DATA_JSON:")
@@ -2907,11 +3076,21 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(allExport, "\"slot\": \"INVTYPE_HEAD\"")
     assertContains(allExport, "\"stat_totals\": [")
     assertContains(allExport, "\"strategy_book\": {")
+    assertContains(allExport, "\"phase_database\": {")
     assertContains(allExport, "\"gear_recommendations\": {")
+    assertContains(allExport, "\"phase2_strategy\": {")
+    assertContains(allExport, "\"database_version\": 1")
+    assertContains(allExport, "\"phase\": 2")
+    assertContains(allExport, "\"mode_key\": \"balanced\"")
+    assertContains(allExport, "\"mode_label_zh_cn\": \"均衡\"")
+    assertContains(allExport, "\"target_preset\": {")
+    assertContains(allExport, "\"guide_url\": \"https://www.wowhead.com/tbc/guide/classes/druid/feral/tank-bis-gear-pve-phase-2\"")
+    assertContains(allExport, "\"sources\": [")
+    assertContains(allExport, "3fc6a414979d62186f75d51ab6f6dd5d44f35b9c")
     assertContains(allExport, "\"equipped_gear\": [")
     assertContains(allExport, "Worn Leather Cap")
     assertContains(allExport, "\"caveat\": \"启发式评分")
-    assertContains(allExport, "\"label\": \"Bear Feral Tank\"")
+    assertContains(allExport, "\"label\": \"Feral Bear Tank\"")
     assertContains(allExport, "\"confidence\": 100")
     assertContains(allExport, "\"tank_mitigation\"")
     assertContains(allExport, "\"known_avoidance_block\": 35")
@@ -2963,10 +3142,14 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(markdownExport, "| 项目 | 当前结果 |")
     assertContains(markdownExport, "## 职责判断")
     assertContains(markdownExport, "## 换装建议")
+    assertContains(markdownExport, "策略模式: 均衡")
+    assertContains(markdownExport, "套装 / 路线目标: 按首领选择生存、均衡、仇恨")
+    assertContains(markdownExport, "参考目标套装: Feral Bear P2 Balanced")
+    assertContains(markdownExport, "模拟器预设 + 职业攻略")
     assertContains(markdownExport, "优先属性:")
     assertContains(markdownExport, "背包和银行中没有值得")
     assertFalse(markdownExport:find("职业职责分析视角", 1, true), "human-readable Markdown should not duplicate the AI prompt")
-    assertContains(markdownExport, "熊形态野性坦克")
+    assertContains(markdownExport, "野性熊坦")
     assertContains(markdownExport, "<summary>角色、策略与候选库存详细数据</summary>")
     assertContains(markdownExport, "## 导出信息")
     assertContains(markdownExport, "天赋: 0/46/15; 主天赋=Feral Combat; 已用点数=61")
@@ -2991,11 +3174,14 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(textExport, "TBC 装备导出器")
     assertFalse(textExport:find("AI 分析指令", 1, true), "plain text should be a readable report; AI Text keeps the prompt")
     assertContains(textExport, "导出信息")
-    assertContains(textExport, "熊形态野性坦克")
+    assertContains(textExport, "野性熊坦")
     assertContains(textExport, "天赋: 0/46/15; 主天赋=Feral Combat; 已用点数=61")
     assertContains(textExport, "客户端语言: zhCN")
     assertContains(textExport, "属性分析")
     assertContains(textExport, "换装建议")
+    assertContains(textExport, "策略模式: 均衡")
+    assertContains(textExport, "属性阈值与硬门槛:")
+    assertContains(textExport, "参考目标套装: Feral Bear P2 Balanced")
     assertContains(textExport, "当前装备扫描:")
     assertContains(textExport, "实测命中/暴击：近战命中 8.5%")
     assertContains(textExport, "基准：防御免暴基准 = 达标")
@@ -3126,6 +3312,10 @@ test("RefreshExport no-ops without frame and updates edit box with frame", funct
     resetRuntimeState(Addon)
     Addon:RefreshExport("all")
     assertEquals(Addon.exportScope, "all")
+    assertEquals(Addon:RefreshPhase2Strategy({}, {}), 0)
+    Addon:SetExportView("phase2")
+    assertEquals(Addon.exportView, "phase2")
+    Addon:SetExportView("overview")
 
     Addon:ScanBags()
     local profile = Addon:GetProfile()
@@ -3139,11 +3329,12 @@ test("RefreshExport no-ops without frame and updates edit box with frame", funct
     assertFalse(Addon.exportFrame.adviceScroll:IsShown())
     assertFalse(Addon.exportFrame.visualScroll:IsShown())
     assertFalse(Addon.exportFrame.analysisScroll:IsShown())
+    assertFalse(Addon.exportFrame.phase2Scroll:IsShown())
     assertFalse(Addon.exportFrame.textScroll:IsShown())
     assertTrue(#Addon.exportFrame.itemRows >= 1)
     assertContains(Addon.exportFrame.analysisText.text, "属性分析")
-    assertContains(Addon.exportFrame.analysisText.text, "熊形态野性坦克")
-    assertFalse(Addon.exportFrame.analysisText.text:find("Bear Feral Tank", 1, true), "GUI analysis should localize role labels")
+    assertContains(Addon.exportFrame.analysisText.text, "野性熊坦")
+    assertFalse(Addon.exportFrame.analysisText.text:find("Feral Bear Tank", 1, true), "GUI analysis should localize role labels")
     local sawVisualIcon = false
     for index = 1, #Addon.exportFrame.itemRows do
         local texture = Addon.exportFrame.itemRows[index].icon.texture
@@ -3154,13 +3345,20 @@ test("RefreshExport no-ops without frame and updates edit box with frame", funct
     assertTrue(sawVisualIcon)
     assertContains(Addon.exportFrame.overviewText.text, "总览")
     assertContains(Addon.exportFrame.overviewText.text, "库存：")
-    assertContains(Addon.exportFrame.overviewText.text, "熊形态野性坦克")
+    assertContains(Addon.exportFrame.overviewText.text, "野性熊坦")
     assertContains(Addon.exportFrame.status.text, "总览已更新")
-    assertContains(Addon.exportFrame.adviceSummary.text, "熊形态野性坦克")
+    assertContains(Addon.exportFrame.adviceSummary.text, "野性熊坦")
     assertContains(Addon.exportFrame.adviceSummary.text, "配装结论 2 条")
     assertContains(Addon.exportFrame.adviceSummary.text, "天赋映射")
     assertEquals(#Addon.exportFrame.adviceRoleButtons, 4)
-    assertContains(Addon.exportFrame.adviceRoleButtons[1].text, "> 熊形态野性坦克")
+    assertContains(Addon.exportFrame.adviceRoleButtons[1].text, "> 野性熊坦")
+    assertContains(Addon.exportFrame.phase2Summary.text, "野性熊坦")
+    assertContains(Addon.exportFrame.phase2Summary.text, "均衡")
+    assertContains(Addon.exportFrame.phase2Details.text, "套装 / 路线目标")
+    assertContains(Addon.exportFrame.phase2Details.text, "属性阈值与硬门槛")
+    assertEquals(#Addon.exportFrame.phase2ModeButtons, 3)
+    assertContains(Addon.exportFrame.phase2ModeButtons[1].text, "> 均衡")
+    assertTrue(#Addon.exportFrame.phase2TargetRows >= 1)
     assertEquals(Addon.exportFrame.compareCurrentIcon.texture, "worn-cap-icon")
     assertEquals(Addon.exportFrame.compareCandidateIcon.texture, "guardian-crown-icon")
     assertContains(Addon.exportFrame.compareNames.text, "Guardian Leather Crown")
@@ -3193,7 +3391,7 @@ test("RefreshExport no-ops without frame and updates edit box with frame", funct
 
     Addon.exportFrame.adviceRoleButtons[2].scripts.OnClick(Addon.exportFrame.adviceRoleButtons[2])
     assertEquals(Addon.currentGearEngine.roleKey, "cat_dps")
-    assertContains(Addon.exportFrame.adviceRoleButtons[2].text, "> 猎豹野性输出")
+    assertContains(Addon.exportFrame.adviceRoleButtons[2].text, "> 野性猎豹输出")
 
     Addon:RefreshGearComparison(profile, { upgrades = {} }, nil)
     assertEquals(Addon.exportFrame.compareCurrentIcon.texture, "Interface\\Icons\\INV_Misc_QuestionMark")
@@ -3210,6 +3408,39 @@ test("RefreshExport no-ops without frame and updates edit box with frame", funct
     assertContains(Addon.exportFrame.analysisText.text, "达标")
     assertFalse(Addon.exportFrame.analysisText.text:find("meets_or_exceeds", 1, true), "GUI analysis should localize benchmark status")
     assertContains(Addon.exportFrame.summary.text, "背包：")
+
+    Addon.exportFrame.adviceRoleButtons[1].scripts.OnClick(Addon.exportFrame.adviceRoleButtons[1])
+    Addon:SetExportView("phase2")
+    Addon:RefreshExport("bags")
+    assertTrue(Addon.exportFrame.phase2Scroll:IsShown())
+    assertFalse(Addon.exportFrame.analysisScroll:IsShown())
+    assertContains(Addon.exportFrame.status.text, "P2 攻略已更新")
+    local targetRow = Addon.exportFrame.phase2TargetRows[1]
+    targetRow.scripts.OnEnter(targetRow)
+    assertTrue(_G.GameTooltip.shown)
+    assertContains(_G.GameTooltip.hyperlink, "item:")
+    targetRow.scripts.OnLeave()
+    assertFalse(_G.GameTooltip.shown)
+    local oldTooltip = _G.GameTooltip
+    _G.GameTooltip = nil
+    targetRow.scripts.OnEnter(targetRow)
+    targetRow.scripts.OnLeave(targetRow)
+    _G.GameTooltip = oldTooltip
+
+    Addon.exportFrame.phase2ModeButtons[2].scripts.OnClick(Addon.exportFrame.phase2ModeButtons[2])
+    assertEquals(Addon.selectedStrategyModeKey, "mitigation")
+    assertEquals(Addon.currentGearEngine.modeKey, "mitigation")
+    assertContains(Addon.exportFrame.phase2ModeButtons[2].text, "> 减伤 / 开荒")
+    Addon:RefreshPhase2ModeButtons({ availableModes = {} }, "zhCN")
+    assertFalse(Addon.exportFrame.phase2ModeButtons[1]:IsShown())
+
+    local emptyPhase = {
+        roleKey = "bear_tank", roleLabel = "Bear", roleLabels = { zhCN = "熊坦" }, modeKey = "balanced",
+        phase2 = { databaseVersion = 1, patch = "2.5.6", modeLabels = { zhCN = "均衡" }, caps = {}, presetProgress = { available = true, missing = {}, owned = 16, total = 16, percent = 100 } },
+        availableModes = {},
+    }
+    assertEquals(Addon:RefreshPhase2Strategy(profile, emptyPhase), 0)
+    assertTrue(Addon.exportFrame.phase2TargetsEmpty:IsShown())
 end)
 
 test("CreateExportFrame wires UI controls and scripts", function()
@@ -3231,6 +3462,7 @@ test("CreateExportFrame wires UI controls and scripts", function()
     assertTrue(exportFrame.adviceScroll ~= nil)
     assertTrue(exportFrame.visualScroll ~= nil)
     assertTrue(exportFrame.analysisScroll ~= nil)
+    assertTrue(exportFrame.phase2Scroll ~= nil)
     assertTrue(exportFrame.textScroll ~= nil)
     assertTrue(exportFrame.overviewContent ~= nil)
     assertTrue(exportFrame.overviewText ~= nil)
@@ -3250,10 +3482,14 @@ test("CreateExportFrame wires UI controls and scripts", function()
     assertTrue(exportFrame.itemListContent ~= nil)
     assertTrue(exportFrame.analysisContent ~= nil)
     assertTrue(exportFrame.analysisText ~= nil)
+    assertTrue(exportFrame.phase2Content ~= nil)
+    assertTrue(exportFrame.phase2Summary ~= nil)
+    assertEquals(#exportFrame.phase2ModeButtons, 3)
     assertTrue(exportFrame.overviewScroll:IsShown())
     assertFalse(exportFrame.adviceScroll:IsShown())
     assertFalse(exportFrame.visualScroll:IsShown())
     assertFalse(exportFrame.analysisScroll:IsShown())
+    assertFalse(exportFrame.phase2Scroll:IsShown())
     assertFalse(exportFrame.textScroll:IsShown())
 
     exportFrame.scripts.OnDragStart(exportFrame)
@@ -3288,11 +3524,23 @@ test("CreateExportFrame wires UI controls and scripts", function()
     assertFalse(exportFrame.visualScroll:IsShown())
     assertTrue(exportFrame.analysisScroll:IsShown())
     assertFalse(exportFrame.textScroll:IsShown())
+    Addon:SetExportView("phase2")
+    assertFalse(exportFrame.overviewScroll:IsShown())
+    assertFalse(exportFrame.adviceScroll:IsShown())
+    assertFalse(exportFrame.visualScroll:IsShown())
+    assertFalse(exportFrame.analysisScroll:IsShown())
+    assertTrue(exportFrame.phase2Scroll:IsShown())
+    assertFalse(exportFrame.textScroll:IsShown())
+    exportFrame.adviceTab.scripts.OnClick(exportFrame.adviceTab)
+    assertEquals(Addon.exportView, "advice")
+    exportFrame.phase2Tab.scripts.OnClick(exportFrame.phase2Tab)
+    assertEquals(Addon.exportView, "phase2")
     Addon:SetExportView("bogus")
     assertTrue(exportFrame.overviewScroll:IsShown())
     assertFalse(exportFrame.adviceScroll:IsShown())
     assertFalse(exportFrame.visualScroll:IsShown())
     assertFalse(exportFrame.analysisScroll:IsShown())
+    assertFalse(exportFrame.phase2Scroll:IsShown())
     assertFalse(exportFrame.textScroll:IsShown())
 end)
 
@@ -3420,7 +3668,7 @@ test("export frame buttons scan and change scopes", function()
     assertFalse(Addon.exportFrame.visualScroll:IsShown())
     assertFalse(Addon.exportFrame.textScroll:IsShown())
     assertContains(Addon.exportFrame.status.text, "属性分析已更新")
-    assertContains(Addon.exportFrame.analysisText.text, "熊形态野性坦克")
+    assertContains(Addon.exportFrame.analysisText.text, "野性熊坦")
     assertContains(Addon.exportFrame.analysisText.text, "坦克免伤")
     assertFalse(Addon.exportFrame.analysisText.text:find("tank_mitigation", 1, true), "GUI analysis should localize model names")
     findButtonByText(ui("text_export_tab")).scripts.OnClick()
