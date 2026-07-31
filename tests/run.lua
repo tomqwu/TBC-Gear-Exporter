@@ -855,6 +855,10 @@ local function resetRuntimeState(Addon)
     Addon.exportFormat = nil
     Addon.exportFilter = nil
     Addon.exportView = nil
+    Addon.selectedAdviceRoleKey = nil
+    Addon.selectedAdviceIndex = nil
+    Addon.currentAdviceProfile = nil
+    Addon.currentGearEngine = nil
     Addon.minimapButton = nil
     if _G.GameTooltip then
         _G.GameTooltip.lines = {}
@@ -1412,6 +1416,8 @@ test("class-aware AI prompt covers Druid role lenses and fallback context", func
     assertContains(prompt.text, "客户端语言：zhCN")
     assertContains(prompt.text, "导出范围：仅装备")
     assertContains(prompt.text, "过滤器：仅史诗")
+    assertContains(prompt.text, "strategy_book.roles[].talent_mapping")
+    assertContains(prompt.text, "gear_recommendations.available_roles")
     assertContains(prompt.text, "熊形态野性坦克")
     assertContains(prompt.text, "猎豹野性输出")
     assertContains(prompt.text, "恢复治疗")
@@ -1425,6 +1431,7 @@ test("class-aware AI prompt covers Druid role lenses and fallback context", func
     local englishPrompt = private.BuildAIPrompt({ player = "Tester", realm = "Test Realm", classLocalized = "Druid", classEnglish = "DRUID", locale = "enUS" }, "gear", { qualityID = 4 }, 1)
     assertContains(englishPrompt.text, "World of Warcraft: The Burning Crusade Classic")
     assertContains(englishPrompt.text, "Bear Feral tank")
+    assertContains(englishPrompt.text, "switch to the matching role weights")
     assertEquals(englishPrompt.promptLocale, "enUS")
 
     local traditionalPrompt = private.BuildAIPrompt({ player = "Tester", realm = "Test Realm", classLocalized = "德魯伊", classEnglish = "DRUID", locale = "zhTW" }, "gear", { qualityID = 4 }, 1)
@@ -1432,6 +1439,7 @@ test("class-aware AI prompt covers Druid role lenses and fallback context", func
     assertContains(traditionalPrompt.text, "客戶端語言：zhTW")
     assertContains(traditionalPrompt.text, "匯出範圍：僅裝備")
     assertContains(traditionalPrompt.text, "職業職責分析視角")
+    assertContains(traditionalPrompt.text, "talent_mapping")
     assertContains(traditionalPrompt.text, "熊形態野性坦克")
     assertEquals(traditionalPrompt.promptLocale, "zhTW")
 
@@ -1942,6 +1950,251 @@ test("strategy book ranks role models from talents gear race and raid context", 
     assertEquals(private.TalentSelectedPointsText(emptyTalents, "enUS"), "none")
 end)
 
+test("talent strategy maps every selected talent and applies ranked key effects", function()
+    local talents = {
+        available = true,
+        primaryTabIndex = 2,
+        primaryTab = "防护",
+        totalPoints = 61,
+        pointsSpent = 61,
+        summary = "0/43/18",
+        tabs = {
+            { index = 1, name = "神圣", points = 0, talents = {} },
+            { index = 2, name = "防护", points = 43, talents = {
+                { index = 1, name = "盾牌壁垒", icon = "shield-specialization", currentRank = 5, maxRank = 5 },
+                { index = 8, name = "神圣之盾", icon = "holy-shield", currentRank = 1, maxRank = 1 },
+                { index = 11, name = "强化正义之怒", currentRank = 3, maxRank = 3 },
+                { index = 20, name = "战斗精准", currentRank = 5, maxRank = 5 },
+                { index = 21, name = "复仇者之盾", currentRank = 1, maxRank = 1 },
+                { index = 22, name = "强化神圣之盾", currentRank = 2, maxRank = 2 },
+                { index = 3, name = "坚韧", currentRank = 5, maxRank = 5 },
+            } },
+            { index = 3, name = "惩戒", points = 18, talents = {
+                { index = 8, name = "定罪", currentRank = 2, maxRank = 5 },
+                { index = 16, name = "征伐", currentRank = 3, maxRank = 3 },
+            } },
+        },
+    }
+    local profile = {
+        classEnglish = "PALADIN",
+        classLocalized = "圣骑士",
+        locale = "zhCN",
+        talents = talents,
+        characterStats = private.BuildCharacterStatsSnapshot(),
+        equipped = { items = {} },
+    }
+    local strategy = private.BuildStrategyBook(profile, private.BuildChartStats({}))
+    local protection = private.FindStrategyRole(strategy, "protection_tank")
+    local retribution = private.FindStrategyRole(strategy, "retribution_dps")
+    local map = protection.talentMap
+
+    assertEquals(strategy.version, 2)
+    assertEquals(strategy.roles[1].key, "protection_tank")
+    assertEquals(map.selectedCount, 9)
+    assertEquals(map.selectedPoints, 27)
+    assertEquals(map.mappedCount, 9)
+    assertEquals(map.alignedCount, 7)
+    assertEquals(map.alignedPoints, 22)
+    assertEquals(map.coverage, 1)
+    assertEquals(#map.effects, 6)
+    assertEquals(map.selected[1].effectKey, "shield_specialization")
+    assertEquals(map.selected[7].effectKey, nil)
+    assertEquals(retribution.talentMap.alignedCount, 2)
+    assertEquals(retribution.talentMap.alignedPoints, 5)
+    assertEquals(#retribution.talentMap.effects, 2)
+
+    local blockMultiplier
+    for index = 1, #map.weightModifiers do
+        if map.weightModifiers[index].token == "ITEM_MOD_BLOCK_RATING_SHORT" then
+            blockMultiplier = map.weightModifiers[index].multiplier
+        end
+    end
+    assertEquals(blockMultiplier, 1.42)
+    local weighted = private.BuildRoleStatWeights(protection)
+    local baseline = private.BuildRoleStatWeights({ statTokens = protection.statTokens, benchmarks = protection.benchmarks })
+    assertTrue(weighted.ITEM_MOD_BLOCK_RATING_SHORT > baseline.ITEM_MOD_BLOCK_RATING_SHORT)
+    assertTrue(weighted.ITEM_MOD_SPELL_POWER_SHORT > baseline.ITEM_MOD_SPELL_POWER_SHORT)
+
+    assertTrue(private.TalentTabMatches(2, { 1, 2 }))
+    assertFalse(private.TalentTabMatches(3, { 1, 2 }))
+    assertTrue(private.TalentTabMatches(3, {}))
+    assertEquals(private.NormalizeTalentName("Avenger's Shield"), "avengersshield")
+    assertEquals(private.TalentRuleFor("PALADIN", "retribution_dps", 3, { index = 99, name = "征伐" }).key, "crusade")
+    assertEquals(private.TalentRuleFor("PALADIN", "retribution_dps", 3, { index = 99, name = "未知天赋" }), nil)
+    assertTrue(private.TalentRuleMatches({ tab = 2, index = 8 }, 2, { index = 8 }))
+    assertFalse(private.TalentRuleMatches({ names = { "Known" } }, 2, { name = "Unknown" }))
+    assertEquals(private.TalentEffectLabel(map.effects[1], "zhCN"), "盾牌壁垒")
+    assertContains(private.TalentMapSummary(map, "zhCN", 2), "已映射 9/9")
+    assertContains(private.TalentMapSummary(map, "zhCN", 2), "另 4 项")
+    assertContains(private.TalentMapSummary(nil, "enUS", 2), "key effects: none")
+end)
+
+test("empty talent mapping remains exportable for characters without talent data", function()
+    local map = private.BuildTalentRoleMap("MAGE", nil, { key = "caster_dps", talentTabs = { 1 } })
+    assertEquals(map.selectedCount, 0)
+    assertEquals(map.selectedPoints, 0)
+    assertEquals(map.coverage, 0)
+    assertEquals(#map.effects, 0)
+    assertContains(private.TalentMapSummary(map, "zhTW", 4), "關鍵效果：無")
+end)
+
+test("partial talent ranks scale their stat modifiers", function()
+    local map = private.BuildTalentRoleMap("PALADIN", {
+        tabs = { { index = 3, talents = { { index = 8, name = "Conviction", rank = 2, maxRank = 5 } } } },
+    }, { key = "retribution_dps", talentTabs = { 3 } })
+    assertEquals(#map.weightModifiers, 1)
+    assertEquals(map.weightModifiers[1].token, "ITEM_MOD_CRIT_RATING_SHORT")
+    assertEquals(map.weightModifiers[1].multiplier, 1.05)
+end)
+
+test("curated talent rules cover every TBC class", function()
+    local cases = {
+        { "DRUID", "bear_tank", "Thick Hide", "thick_hide" },
+        { "WARRIOR", "protection_tank", "Vitality", "vitality" },
+        { "PALADIN", "holy_healer", "Illumination", "illumination" },
+        { "PRIEST", "shadow_dps", "Shadowform", "shadowform" },
+        { "SHAMAN", "enhancement_dps", "Dual Wield Specialization", "dual_wield_specialization" },
+        { "HUNTER", "ranged_dps", "Careful Aim", "careful_aim" },
+        { "ROGUE", "melee_dps", "Precision", "precision" },
+        { "MAGE", "caster_dps", "Arcane Focus", "arcane_focus" },
+        { "WARLOCK", "caster_dps", "Suppression", "suppression" },
+    }
+    for index = 1, #cases do
+        local entry = cases[index]
+        local rule = private.TalentRuleFor(entry[1], entry[2], 99, { index = 99, name = entry[3] })
+        assertEquals(rule and rule.key, entry[4], entry[1] .. " key talent rule")
+    end
+end)
+
+test("strategy roles use deterministic labels when confidence and affinity tie", function()
+    local strategy = private.BuildStrategyBook({
+        classEnglish = "DRUID", locale = "enUS", characterStats = {}, equipped = { items = {} },
+    }, private.BuildChartStats({}))
+    assertEquals(strategy.roles[1].key, "balance_caster")
+    assertEquals(strategy.roles[4].key, "restoration_healer")
+end)
+
+test("generic hit rating uses the strongest role-specific hit weight", function()
+    local weights = {
+        ITEM_MOD_HIT_MELEE_RATING_SHORT = 1.2,
+        ITEM_MOD_HIT_RANGED_RATING_SHORT = 1.4,
+        ITEM_MOD_HIT_SPELL_RATING_SHORT = 1.1,
+    }
+    assertEquals(private.MaximumWeight(weights, { "ITEM_MOD_HIT_MELEE_RATING_SHORT", "ITEM_MOD_HIT_RANGED_RATING_SHORT" }), 1.4)
+    assertEquals(private.StatWeightForToken(weights, "ITEM_MOD_HIT_RATING_SHORT"), 1.4)
+end)
+
+test("equal item contributions sort by stat label for stable comparisons", function()
+    local _, matched = private.ItemRoleScore({ stats = {
+        { token = "ITEM_MOD_STAMINA_SHORT", value = 10 },
+        { token = "ITEM_MOD_AGILITY_SHORT", value = 10 },
+    } }, nil, {
+        ITEM_MOD_STAMINA_SHORT = 1,
+        ITEM_MOD_AGILITY_SHORT = 1,
+    })
+    assertEquals(matched[1].label, "Agility")
+    assertEquals(matched[2].label, "Stamina")
+end)
+
+test("stat deltas retain stats that only exist on the candidate", function()
+    local gains, losses = private.BuildStatDeltas(
+        { stats = { { token = "ITEM_MOD_STAMINA_SHORT", value = 10 } } },
+        { stats = {
+            { token = "ITEM_MOD_STAMINA_SHORT", value = 10 },
+            { token = "ITEM_MOD_AGILITY_SHORT", value = 8 },
+        } },
+        { ITEM_MOD_STAMINA_SHORT = 1, ITEM_MOD_AGILITY_SHORT = 1 })
+    assertEquals(#gains, 1)
+    assertEquals(gains[1].token, "ITEM_MOD_AGILITY_SHORT")
+    assertEquals(#losses, 0)
+end)
+
+test("stats analysis explains an empty strategy book", function()
+    local text, count = private.BuildStatsAnalysisText({ locale = "enUS", characterStats = {}, talents = {} }, private.BuildChartStats({}), { roles = {} })
+    assertEquals(count, 0)
+    assertContains(text, "No role models available yet")
+end)
+
+test("GUI refresh helpers safely ignore missing frames", function()
+    resetRuntimeState(Addon)
+    assertEquals(Addon:RefreshGearComparison({}, {}, 1), nil)
+    assertEquals(Addon:RefreshGearAdvice({}, {}), 0)
+    Addon:RefreshVisualItems({})
+end)
+
+test("role selector hides unused buttons", function()
+    resetRuntimeState(Addon)
+    Addon:CreateExportFrame()
+    Addon:RefreshAdviceRoleButtons({
+        roleKey = "caster_dps",
+        availableRoles = { { key = "caster_dps", label = "Caster DPS" } },
+    }, "enUS")
+    assertTrue(Addon.exportFrame.adviceRoleButtons[1]:IsShown())
+    assertFalse(Addon.exportFrame.adviceRoleButtons[2]:IsShown())
+    assertEquals(Addon.exportFrame.adviceRoleButtons[2].roleKey, nil)
+end)
+
+test("item comparison switches role weights and rejects mismatched slots", function()
+    local current = {
+        itemID = 7101, name = "Tank Neck", category = "Gear", equipSlot = "INVTYPE_NECK", itemLevel = 120, quality = 4,
+        stats = {
+            { token = "ITEM_MOD_STAMINA_SHORT", label = "Stamina", value = 32 },
+            { token = "ITEM_MOD_ARMOR", label = "Armor", value = 500 },
+            { token = "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT", label = "Defense", value = 20 },
+        },
+    }
+    local candidate = {
+        itemID = 7102, name = "DPS Neck", category = "Gear", equipSlot = "INVTYPE_NECK", itemLevel = 125, quality = 4,
+        stats = {
+            { token = "ITEM_MOD_STRENGTH_SHORT", label = "Strength", value = 30 },
+            { token = "ITEM_MOD_ATTACK_POWER_SHORT", label = "Attack Power", value = 60 },
+            { token = "ITEM_MOD_CRIT_RATING_SHORT", label = "Crit", value = 24 },
+        },
+    }
+    local profile = {
+        classEnglish = "PALADIN", locale = "enUS",
+        talents = {
+            available = true, primaryTabIndex = 2, tabs = {
+                { index = 1, points = 0, talents = {} },
+                { index = 2, points = 43, talents = { { index = 8, name = "Holy Shield", rank = 1, maxRank = 1 } } },
+                { index = 3, points = 18, talents = { { index = 16, name = "Crusade", rank = 3, maxRank = 3 } } },
+            },
+        },
+        characterStats = private.BuildCharacterStatsSnapshot(),
+        equipped = { items = { current } },
+    }
+    local strategy = private.BuildStrategyBook(profile, private.BuildChartStats({ candidate }))
+    local tank = private.CompareItems(profile, current, candidate, strategy, "protection_tank")
+    local damage = private.CompareItems(profile, current, candidate, strategy, "retribution_dps")
+    local incompatible = private.CompareItems(profile, current, {
+        itemID = 7103, name = "DPS Helm", equipSlot = "INVTYPE_HEAD", itemLevel = 130, quality = 4, stats = candidate.stats,
+    }, strategy, "retribution_dps")
+
+    assertTrue(tank.slotCompatible)
+    assertTrue(damage.slotCompatible)
+    assertEquals(tank.roleKey, "protection_tank")
+    assertEquals(damage.roleKey, "retribution_dps")
+    assertTrue(damage.candidateScore > tank.candidateScore)
+    assertTrue(damage.scoreGain > tank.scoreGain)
+    assertFalse(incompatible.slotCompatible)
+    assertEquals(incompatible.verdict, "incompatible")
+    assertEquals(private.RecommendationVerdictLabel(incompatible.verdict, "zhCN"), "栏位不同")
+
+    local roles = private.AvailableStrategyRoles(strategy)
+    assertEquals(#roles, 3)
+    assertEquals(roles[1].key, "protection_tank")
+    assertEquals(roles[1].keyEffectCount, 1)
+    assertEquals(private.FindStrategyRole(strategy, "missing").key, "protection_tank")
+    assertEquals(private.FindStrategyRole(nil, "missing").key, "general_inventory")
+
+    local damageEngine = private.BuildGearRecommendations(profile, { candidate }, strategy, "retribution_dps")
+    assertEquals(damageEngine.version, 4)
+    assertEquals(damageEngine.roleKey, "retribution_dps")
+    assertEquals(#damageEngine.availableRoles, 3)
+    assertEquals(damageEngine.talentMap.effects[1].key, "crusade")
+    assertEquals(#damageEngine.upgrades, 1)
+end)
+
 test("gear strategy engine compares current slots with compatible saved candidates", function()
     resetRuntimeState(Addon)
     local equipped = Addon:ScanEquipped()
@@ -2121,7 +2374,7 @@ test("protection paladin strategy compares visible gains and losses without inve
     assertEquals(role.observed.gearStatHighlights[1].value, 20)
     assertFalse(role.observed.gearStatHighlights[1].value == 30, "candidate stamina must not leak into current gear highlights")
 
-    assertEquals(engine.version, 3)
+    assertEquals(engine.version, 4)
     assertEquals(#engine.upgrades, 1)
     assertEquals(engine.upgrades[1].evidence, "high")
     assertEquals(engine.upgrades[1].verdict, "upgrade")
@@ -2780,6 +3033,11 @@ test("recommendation exports include current gear and concrete upgrades", functi
 
     local json = Addon:BuildExport("all", "json")
     assertContains(json, "\"gear_recommendations\": {")
+    assertContains(json, "\"available_roles\": [")
+    assertContains(json, "\"talent_mapping\": {")
+    assertContains(json, "\"selected_talents\": [")
+    assertContains(json, "\"key_effects\": [")
+    assertContains(json, "\"weight_modifiers\": [")
     assertContains(json, "\"role_key\": \"bear_tank\"")
     assertContains(json, "\"equipped_count\": 1")
     assertContains(json, "\"candidate_count\": 2")
@@ -2801,6 +3059,8 @@ test("recommendation exports include current gear and concrete upgrades", functi
 
     local markdown = Addon:BuildExport("all", "markdown")
     assertContains(markdown, "## 换装建议")
+    assertContains(markdown, "天赋映射")
+    assertContains(markdown, "厚皮护甲")
     assertContains(markdown, "### 1. 头部")
     assertContains(markdown, "[Worn Leather Cap](https://www.wowhead.com/tbc/item=6001)")
     assertContains(markdown, "[Guardian Leather Crown](https://www.wowhead.com/tbc/item=6002)")
@@ -2816,6 +3076,7 @@ test("recommendation exports include current gear and concrete upgrades", functi
 
     local textExport = Addon:BuildExport("all", "text")
     assertContains(textExport, "1. 头部 ·")
+    assertContains(textExport, "天赋映射")
     assertContains(textExport, "当前装备: Worn Leather Cap")
     assertContains(textExport, "候选装备: Guardian Leather Crown")
     assertContains(textExport, "2. 手部 ·")
@@ -2897,6 +3158,14 @@ test("RefreshExport no-ops without frame and updates edit box with frame", funct
     assertContains(Addon.exportFrame.status.text, "总览已更新")
     assertContains(Addon.exportFrame.adviceSummary.text, "熊形态野性坦克")
     assertContains(Addon.exportFrame.adviceSummary.text, "配装结论 2 条")
+    assertContains(Addon.exportFrame.adviceSummary.text, "天赋映射")
+    assertEquals(#Addon.exportFrame.adviceRoleButtons, 4)
+    assertContains(Addon.exportFrame.adviceRoleButtons[1].text, "> 熊形态野性坦克")
+    assertEquals(Addon.exportFrame.compareCurrentIcon.texture, "worn-cap-icon")
+    assertEquals(Addon.exportFrame.compareCandidateIcon.texture, "guardian-crown-icon")
+    assertContains(Addon.exportFrame.compareNames.text, "Guardian Leather Crown")
+    assertContains(Addon.exportFrame.compareVerdict.text, "证据")
+    assertTrue(Addon.exportFrame.adviceContent.height >= 540)
     assertEquals(#Addon.exportFrame.adviceRows, 2)
     Addon:SetExportView("advice")
     Addon:RefreshExport("bags")
@@ -2916,8 +3185,19 @@ test("RefreshExport no-ops without frame and updates edit box with frame", funct
     assertTrue(_G.GameTooltip.shown)
     adviceWithCurrent.candidateButton.scripts.OnLeave()
     assertFalse(_G.GameTooltip.shown)
+    adviceWithCurrent.candidateButton.scripts.OnClick(adviceWithCurrent.candidateButton)
+    assertEquals(Addon.selectedAdviceIndex, adviceWithCurrent.candidateButton.upgradeIndex)
+    assertEquals(Addon.exportFrame.compareCandidateButton.item.itemID, adviceWithCurrent.candidateButton.item.itemID)
     adviceWithoutCurrent.currentButton.scripts.OnEnter(adviceWithoutCurrent.currentButton)
     adviceWithoutCurrent.currentButton.scripts.OnLeave()
+
+    Addon.exportFrame.adviceRoleButtons[2].scripts.OnClick(Addon.exportFrame.adviceRoleButtons[2])
+    assertEquals(Addon.currentGearEngine.roleKey, "cat_dps")
+    assertContains(Addon.exportFrame.adviceRoleButtons[2].text, "> 猎豹野性输出")
+
+    Addon:RefreshGearComparison(profile, { upgrades = {} }, nil)
+    assertEquals(Addon.exportFrame.compareCurrentIcon.texture, "Interface\\Icons\\INV_Misc_QuestionMark")
+    assertContains(Addon.exportFrame.compareNames.text, "点击")
 
     Addon:SetExportView("analysis")
     Addon:RefreshExport("bags")
@@ -2955,8 +3235,17 @@ test("CreateExportFrame wires UI controls and scripts", function()
     assertTrue(exportFrame.overviewContent ~= nil)
     assertTrue(exportFrame.overviewText ~= nil)
     assertTrue(exportFrame.adviceContent ~= nil)
+    assertTrue(exportFrame.adviceRoleLabel ~= nil)
+    assertEquals(#exportFrame.adviceRoleButtons, 4)
     assertTrue(exportFrame.adviceSummary ~= nil)
     assertTrue(exportFrame.adviceCaveat ~= nil)
+    assertTrue(exportFrame.comparePanel ~= nil)
+    assertTrue(exportFrame.comparePanel.backdrop ~= nil)
+    assertTrue(exportFrame.compareCurrentButton ~= nil)
+    assertTrue(exportFrame.compareCandidateButton ~= nil)
+    assertTrue(exportFrame.compareNames ~= nil)
+    assertTrue(exportFrame.compareVerdict ~= nil)
+    assertTrue(exportFrame.compareDetails ~= nil)
     assertTrue(exportFrame.adviceRowsContent ~= nil)
     assertTrue(exportFrame.itemListContent ~= nil)
     assertTrue(exportFrame.analysisContent ~= nil)
