@@ -4,6 +4,16 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-07-31
+
+- Add a versioned Phase 2 strategy database covering all 9 TBC classes and 28 PvE specializations with localized role names, stat priorities, hard/soft caps, set goals, talent strings, guide links, and three switchable strategy modes per role.
+- Import 29 WoWSims P2/T5 reference gear presets pinned to commit `3fc6a414979d62186f75d51ab6f6dd5d44f35b9c`, representing 475 non-empty target slots, with source attribution and the upstream MIT notice included in release packages.
+- Add distinct tank mitigation/threat, healer throughput/longevity, and DPS cap-recovery/output models that recalculate item comparisons and recommendations immediately.
+- Add a localized P2 Guide GUI with mode controls, cap status, route goal, target-set collection progress, real item icons, localized links, item levels, and in-game tooltips.
+- Export the full P2 strategy context, modes, caps, evidence level, guide source, target preset, owned/missing target items, Wowhead links, and research sources in AI Text/JSON, Markdown, and plain text.
+- Update the AI prompt to resolve hard gates before throughput, respect the selected strategy mode, and distinguish simulation-backed presets from guide-only healer or niche-spec evidence.
+- Expand the suite to 66 tests with 99.25% executable-line coverage, including database completeness, model separation, cap states, target progress, localization, JSON, and GUI interaction tests.
+
 ## [0.3.0] - 2026-07-31
 
 - Map every selected talent into each class role model, including role-aligned points, selected talent icons/ranks, mapping coverage, and localized summaries.

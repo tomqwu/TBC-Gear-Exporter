@@ -14,6 +14,7 @@ local ClientLocale
 local PromptLocale
 
 local GEAR_ENGINE = {}
+local P2_STRATEGY_DB = _G.TBCGearExporterP2DB or { classes = {}, presets = {}, sources = {}, slotOrder = {} }
 
 GEAR_ENGINE.EQUIPMENT_SLOTS = {
     { id = 1, key = "HEAD" },
@@ -224,6 +225,7 @@ local AI_OUTPUT_REQUESTS = {
     "Use current_talents when available to anchor the main-spec recommendation, while still calling out useful offspec items.",
     "Use chart_stats for high-level totals by source, category, quality, equip slot, item level, and stat totals before drilling into individual items.",
     "For each plausible role, rank strong keepers, weak slots, and upgrade priorities. Validate every proposed swap with gear_recommendations.upgrades[].stat_gains, stat_losses, evidence, and both item links.",
+    "Use gear_recommendations.phase2_strategy to select the requested strategy mode, resolve caps before throughput, compare the saved target-set progress, and separate simulation presets from guide-only evidence.",
     "Separate mitigation, threat, DPS, healing, caster, and utility value when relevant.",
     "Flag duplicates, offspec pieces, consumables, materials, or items that are probably safe to vendor, bank, disenchant, or keep.",
     "Use wowhead_url fields when naming specific items so the user can inspect them quickly.",
@@ -279,6 +281,7 @@ local AI_OUTPUT_REQUESTS_ZHCN = {
     "如果 current_talents 可用，请用当前天赋锚定主天赋建议，同时指出有价值的副天赋物品。",
     "在逐件分析前，请先使用 character_stats、chart_stats 和 strategy_book 按当前天赋、职业、种族、队伍/团队环境、命中、暴击、防御、免伤、仇恨、治疗、续航和输出价值做整体对比。",
     "针对每个可能职责，列出值得保留的强力装备、薄弱部位和升级优先级；每条换装建议必须核对 gear_recommendations.upgrades[] 中的 stat_gains、stat_losses、evidence 和新旧物品链接。",
+    "使用 gear_recommendations.phase2_strategy 选择当前策略模式，先处理属性硬门槛，再比较目标套装收集进度，并明确区分模拟器预设与仅攻略证据。",
     "在相关时分别分析减伤、仇恨、输出、治疗、法系和功能性价值。",
     "标记重复物品、副天赋装备、消耗品、材料，或可能适合出售、存银行、分解、保留的物品。",
     "提到具体物品时使用 wowhead_url 字段，方便用户快速查看。",
@@ -304,6 +307,7 @@ local AI_OUTPUT_REQUESTS_ZHTW = {
     "如果 current_talents 可用，請用目前天賦錨定主天賦建議，同時指出有價值的副天賦物品。",
     "在逐件分析前，請先使用 character_stats、chart_stats 和 strategy_book 按目前天賦、職業、種族、隊伍/團隊環境、命中、致命、防禦、減傷、仇恨、治療、續航和輸出價值做整體比較。",
     "針對每個可能職責，列出值得保留的強力裝備、薄弱部位和升級優先順序；每條換裝建議必須核對 gear_recommendations.upgrades[] 中的 stat_gains、stat_losses、evidence 和新舊物品連結。",
+    "使用 gear_recommendations.phase2_strategy 選擇目前策略模式，先處理屬性硬門檻，再比較目標套裝收集進度，並明確區分模擬器預設與僅攻略證據。",
     "在相關時分別分析減傷、仇恨、輸出、治療、法系和功能性價值。",
     "標記重複物品、副天賦裝備、消耗品、材料，或可能適合出售、存銀行、分解、保留的物品。",
     "提到具體物品時使用 wowhead_url 欄位，方便使用者快速查看。",
@@ -999,6 +1003,7 @@ local UI_STRINGS = {
         gear_advice_tab = "Gear Advice",
         items_tab = "Items",
         stats_analysis_tab = "Stats Analysis",
+        phase2_tab = "P2 Guide",
         text_export_tab = "Text Export",
         generate_button = "Generate",
         format_label = "Format:",
@@ -1016,6 +1021,7 @@ local UI_STRINGS = {
         status_generated = "%s export generated from saved local DB with filter: %s. Press Ctrl+C to copy.",
         status_visual = "Visual item view updated: %d items. Use Text Export to copy AI-ready data.",
         status_analysis = "Stats analysis updated: %d role models. Use Text Export to copy AI-ready data.",
+        status_phase2 = "Phase 2 strategy updated for %s in %s mode.",
         status_overview = "Overview updated: %d items, %d role models. Use Text Export to copy AI-ready data.",
         status_advice = "Gear advice updated: %d decisions for %s.",
         advice_title = "Gear Strategy",
@@ -1043,6 +1049,16 @@ local UI_STRINGS = {
         advice_evidence_medium = "Medium",
         advice_evidence_low = "Low",
         advice_caveat = "Heuristic score uses visible item stats. Confirm set bonuses, sockets, enchants and proc effects in the tooltip.",
+        phase2_title = "Phase 2 Strategy Engine",
+        phase2_summary = "%s · %s · database v%s · patch %s",
+        phase2_mode_hint = "Choose analysis mode",
+        phase2_set_goal = "Set / route goal: %s",
+        phase2_caps = "Caps and gates: %s",
+        phase2_preset = "Reference set: %s",
+        phase2_targets = "Next target items",
+        phase2_evidence = "Evidence: %s",
+        phase2_talent = "Reference talent string: %s",
+        phase2_no_targets = "No missing simulator target items for this role and mode.",
         overview_title = "Overview",
         overview_inventory = "Inventory: %d item lines, %d stacks, %d gear, %d equippable",
         overview_talents = "Talents: %s; selected: %s",
@@ -1105,6 +1121,7 @@ local UI_STRINGS = {
         gear_advice_tab = "装备建议",
         items_tab = "物品",
         stats_analysis_tab = "属性分析",
+        phase2_tab = "P2 攻略",
         text_export_tab = "文本导出",
         generate_button = "生成",
         format_label = "格式：",
@@ -1122,6 +1139,7 @@ local UI_STRINGS = {
         status_generated = "%s 已从本地数据库生成，过滤：%s。按 Ctrl+C 复制。",
         status_visual = "物品图标视图已更新：%d 件。切到文本导出即可复制 AI 数据。",
         status_analysis = "属性分析已更新：%d 个职责模型。切到文本导出即可复制 AI 数据。",
+        status_phase2 = "P2 攻略已更新：%s，%s模式。",
         status_overview = "总览已更新：%d 件物品，%d 个职责模型。切到文本导出即可复制 AI 数据。",
         status_advice = "装备建议已更新：%d 条配装结论，职责 %s。",
         advice_title = "装备策略",
@@ -1149,6 +1167,16 @@ local UI_STRINGS = {
         advice_evidence_medium = "中",
         advice_evidence_low = "低",
         advice_caveat = "启发式评分只使用可见物品属性；套装、宝石、附魔和触发效果请结合提示框确认。",
+        phase2_title = "P2 配装策略引擎",
+        phase2_summary = "%s · %s · 数据库 v%s · 客户端 %s",
+        phase2_mode_hint = "选择分析模式",
+        phase2_set_goal = "套装 / 路线目标：%s",
+        phase2_caps = "属性阈值与硬门槛：%s",
+        phase2_preset = "参考目标套装：%s",
+        phase2_targets = "下一批目标物品",
+        phase2_evidence = "研究证据：%s",
+        phase2_talent = "参考天赋字符串：%s",
+        phase2_no_targets = "此职责与模式没有缺失的模拟器目标物品。",
         overview_title = "总览",
         overview_inventory = "库存：%d 条物品，%d 堆叠，%d 件装备，%d 件可装备",
         overview_talents = "天赋：%s；已点：%s",
@@ -1211,6 +1239,7 @@ local UI_STRINGS = {
         gear_advice_tab = "裝備建議",
         items_tab = "物品",
         stats_analysis_tab = "屬性分析",
+        phase2_tab = "P2 攻略",
         text_export_tab = "文字匯出",
         generate_button = "產生",
         format_label = "格式：",
@@ -1228,6 +1257,7 @@ local UI_STRINGS = {
         status_generated = "%s 已從本地資料庫產生，篩選：%s。按 Ctrl+C 複製。",
         status_visual = "物品圖示檢視已更新：%d 件。切到文字匯出即可複製 AI 資料。",
         status_analysis = "屬性分析已更新：%d 個職責模型。切到文字匯出即可複製 AI 資料。",
+        status_phase2 = "P2 攻略已更新：%s，%s模式。",
         status_overview = "總覽已更新：%d 件物品，%d 個職責模型。切到文字匯出即可複製 AI 資料。",
         status_advice = "裝備建議已更新：%d 條配裝結論，職責 %s。",
         advice_title = "裝備策略",
@@ -1255,6 +1285,16 @@ local UI_STRINGS = {
         advice_evidence_medium = "中",
         advice_evidence_low = "低",
         advice_caveat = "啟發式評分只使用可見物品屬性；套裝、寶石、附魔和觸發效果請結合提示框確認。",
+        phase2_title = "P2 配裝策略引擎",
+        phase2_summary = "%s · %s · 資料庫 v%s · 客戶端 %s",
+        phase2_mode_hint = "選擇分析模式",
+        phase2_set_goal = "套裝 / 路線目標：%s",
+        phase2_caps = "屬性門檻與硬條件：%s",
+        phase2_preset = "參考目標套裝：%s",
+        phase2_targets = "下一批目標物品",
+        phase2_evidence = "研究證據：%s",
+        phase2_talent = "參考天賦字串：%s",
+        phase2_no_targets = "此職責與模式沒有缺少的模擬器目標物品。",
         overview_title = "總覽",
         overview_inventory = "庫存：%d 條物品，%d 堆疊，%d 件裝備，%d 件可裝備",
         overview_talents = "天賦：%s；已點：%s",
@@ -1310,6 +1350,9 @@ GEAR_ENGINE.REPORT_TERMS = {
         top_role = "Primary role", core_stats = "Live core stats", categories = "Categories", top_stats = "Candidate stat totals",
         role_snapshot = "Role Snapshot", role = "Role", confidence = "Confidence", talent_points = "Talent points",
         models = "Models", current_highlights = "Current gear highlights", gear_recommendations = "Gear Recommendations",
+        phase2_strategy = "Phase 2 Strategy", mode = "Strategy mode", set_goal = "Set / route goal", target_preset = "Reference gear set",
+        target_progress = "Saved progress", missing_targets = "Next target items", caps = "Caps and gates", research_evidence = "Research evidence",
+        sources = "Sources", no_preset = "No simulator preset; use the class guide and the current stat model.",
         priority_stats = "Priority stats", benchmark_gaps = "Key benchmark checks", caveat = "Limit",
         slot = "Slot", current = "Current", suggested = "Candidate", score = "Score", evidence = "Evidence", verdict = "Decision",
         gains = "Gains", losses = "Gives up", high = "High", medium = "Medium", low = "Low",
@@ -1342,6 +1385,9 @@ GEAR_ENGINE.REPORT_TERMS = {
         top_role = "主要职责", core_stats = "实时核心属性", categories = "物品分类", top_stats = "候选库存属性合计",
         role_snapshot = "职责判断", role = "职责", confidence = "置信度", talent_points = "天赋点",
         models = "分析模型", current_highlights = "当前装备属性重点", gear_recommendations = "换装建议",
+        phase2_strategy = "P2 配装攻略", mode = "策略模式", set_goal = "套装 / 路线目标", target_preset = "参考目标套装",
+        target_progress = "本地收集进度", missing_targets = "下一批目标物品", caps = "属性阈值与硬门槛", research_evidence = "研究证据",
+        sources = "资料来源", no_preset = "该专精暂无成熟模拟器预设；使用职业攻略与当前属性模型。",
         priority_stats = "优先属性", benchmark_gaps = "关键基准检查", caveat = "分析限制",
         slot = "栏位", current = "当前装备", suggested = "候选装备", score = "评分变化", evidence = "证据", verdict = "结论",
         gains = "获得", losses = "失去", high = "高", medium = "中", low = "低",
@@ -1374,6 +1420,9 @@ GEAR_ENGINE.REPORT_TERMS = {
         top_role = "主要職責", core_stats = "即時核心屬性", categories = "物品分類", top_stats = "候選庫存屬性合計",
         role_snapshot = "職責判斷", role = "職責", confidence = "信心", talent_points = "天賦點",
         models = "分析模型", current_highlights = "目前裝備屬性重點", gear_recommendations = "換裝建議",
+        phase2_strategy = "P2 配裝攻略", mode = "策略模式", set_goal = "套裝 / 路線目標", target_preset = "參考目標套裝",
+        target_progress = "本地收集進度", missing_targets = "下一批目標物品", caps = "屬性門檻與硬條件", research_evidence = "研究證據",
+        sources = "資料來源", no_preset = "該專精暫無成熟模擬器預設；使用職業攻略與目前屬性模型。",
         priority_stats = "優先屬性", benchmark_gaps = "關鍵基準檢查", caveat = "分析限制",
         slot = "欄位", current = "目前裝備", suggested = "候選裝備", score = "評分變化", evidence = "證據", verdict = "結論",
         gains = "獲得", losses = "失去", high = "高", medium = "中", low = "低",
@@ -3358,7 +3407,7 @@ local function BuildAIPrompt(profile, scope, filter, itemCount)
             "当前天赋：" .. talentSummary .. "。",
             "请优先使用 current_talents.tree_points、current_talents.trees[].points_spent 和每个已点天赋的 points_spent/rank 来判断当前天赋点数。",
             "银行内容是最后一次保存的快照。背包/银行来源只代表库存位置，不代表物品已经装备。",
-            "请使用 character_stats、chart_stats、strategy_book、gear_recommendations、当前装备、物品属性、物品等级、品质、装备栏位、来源位置和 wowhead_url 字段。重点读取 strategy_book.roles[].talent_mapping、gear_recommendations.available_roles、verdict、benchmark_impacts 和关键基准；比较不同职责时必须切换对应角色权重。不要编造隐藏附魔、宝石、套装或触发效果。",
+            "请使用 character_stats、chart_stats、strategy_book、gear_recommendations、当前装备、物品属性、物品等级、品质、装备栏位、来源位置和 wowhead_url 字段。重点读取 strategy_book.roles[].talent_mapping、gear_recommendations.phase2_strategy、gear_recommendations.available_roles、verdict、benchmark_impacts 和关键基准；比较不同职责或减伤/仇恨/续航模式时必须切换对应权重。不要编造隐藏附魔、宝石、套装或触发效果。",
             "请考虑该职业可能的天赋/职责，不要只假设一个专精。",
             "",
             "职业职责分析视角：",
@@ -3373,7 +3422,7 @@ local function BuildAIPrompt(profile, scope, filter, itemCount)
             "目前天賦：" .. talentSummary .. "。",
             "請優先使用 current_talents.tree_points、current_talents.trees[].points_spent 和每個已點天賦的 points_spent/rank 來判斷目前天賦點數。",
             "銀行內容是最後一次儲存的快照。背包/銀行來源只代表庫存位置，不代表物品已經裝備。",
-            "請使用 character_stats、chart_stats、strategy_book、gear_recommendations、目前裝備、物品屬性、物品等級、品質、裝備欄位、來源位置和 wowhead_url 欄位。重點讀取 strategy_book.roles[].talent_mapping、gear_recommendations.available_roles、verdict、benchmark_impacts 和關鍵基準；比較不同職責時必須切換對應角色權重。不要編造隱藏附魔、寶石、套裝或觸發效果。",
+            "請使用 character_stats、chart_stats、strategy_book、gear_recommendations、目前裝備、物品屬性、物品等級、品質、裝備欄位、來源位置和 wowhead_url 欄位。重點讀取 strategy_book.roles[].talent_mapping、gear_recommendations.phase2_strategy、gear_recommendations.available_roles、verdict、benchmark_impacts 和關鍵基準；比較不同職責或減傷/仇恨/續航模式時必須切換對應權重。不要編造隱藏附魔、寶石、套裝或觸發效果。",
             "請考慮該職業可能的天賦/職責，不要只假設一個專精。",
             "",
             "職業職責分析視角：",
@@ -3388,7 +3437,7 @@ local function BuildAIPrompt(profile, scope, filter, itemCount)
             "Current talents: " .. talentSummary .. ".",
             "Use current_talents.tree_points, current_talents.trees[].points_spent, and each selected talent points_spent/rank to anchor the current talent distribution.",
             "Bank contents are the last saved snapshot. Treat bag and bank source labels as inventory location, not proof that an item is equipped.",
-            "Use character_stats, chart_stats, strategy_book, gear_recommendations, current equipment, item stats, item level, quality, equip slot, source location, and wowhead_url fields. Read strategy_book.roles[].talent_mapping and gear_recommendations.available_roles; switch to the matching role weights when comparing roles. Check verdict, benchmark_impacts, and key benchmarks first; do not invent hidden enchants, gems, set bonuses, or proc effects.",
+            "Use character_stats, chart_stats, strategy_book, gear_recommendations, current equipment, item stats, item level, quality, equip slot, source location, and wowhead_url fields. Read strategy_book.roles[].talent_mapping, gear_recommendations.phase2_strategy, and gear_recommendations.available_roles; switch role and mitigation/threat/longevity weights when comparing models. Check caps, verdict, benchmark_impacts, and evidence first; do not invent hidden enchants, gems, set bonuses, or proc effects.",
             "Consider plausible class talents/specs instead of assuming one role.",
             "",
             "Class role lenses:",
@@ -3992,7 +4041,7 @@ local function BuildTalentRoleMap(classToken, talents, role)
             local rank = tonumber(talent and (talent.currentRank or talent.pointsSpent or talent.points or talent.rank)) or 0
             if rank > 0 then
                 local aligned = TalentTabMatches(tab and tab.index or tabIndex, role and role.talentTabs)
-                local rule = TalentRuleFor(classToken, role and role.key, tab and tab.index or tabIndex, talent)
+                local rule = TalentRuleFor(classToken, role and (role.talentRuleKey or role.key), tab and tab.index or tabIndex, talent)
                 local entry = {
                     treeIndex = tab and tab.index or tabIndex,
                     treeName = tab and tab.name,
@@ -4156,6 +4205,10 @@ local function BuildRoleBenchmarks(role, observed)
 end
 
 local function StrategyClassRoles(classToken)
+    local phaseRoles = P2_STRATEGY_DB.GetClassRoles and P2_STRATEGY_DB.GetClassRoles(ClassToken(classToken))
+    if phaseRoles and #phaseRoles > 0 then
+        return phaseRoles
+    end
     local classBook = CLASS_STRATEGY_BOOK[ClassToken(classToken)]
     return (classBook and classBook.roles) or DEFAULT_STRATEGY_ROLES
 end
@@ -4178,12 +4231,24 @@ local function BuildStrategyBook(profile, chartStats)
         roles[#roles + 1] = {
             key = role.key,
             label = role.label,
+            labels = role.labels,
+            talentRuleKey = role.talentRuleKey,
+            archetype = role.archetype,
+            phase = role.phase,
             confidence = RoleConfidence(role, profile and profile.talents),
             talentPoints = talentPoints,
             primaryTalentMatch = primaryMatch,
             models = role.models or {},
             priorities = role.priorities or {},
             statTokens = role.statTokens or {},
+            caps = role.caps or {},
+            modes = role.modes or {},
+            setGoal = role.setGoal,
+            setGoalLabels = role.setGoalLabels,
+            talentString = role.talentString,
+            presets = role.presets or {},
+            guideUrl = role.guideUrl,
+            researchEvidence = role.evidence or "sim_and_guide",
             talentMap = talentMap,
             observed = observed,
             benchmarks = BuildRoleBenchmarks(role, observed),
@@ -4209,7 +4274,7 @@ local function BuildStrategyBook(profile, chartStats)
     end)
 
     return {
-        version = 2,
+        version = 3,
         generatedAt = Now(),
         classToken = classToken,
         raceToken = race and race.english or "UNKNOWN",
@@ -4217,6 +4282,14 @@ local function BuildStrategyBook(profile, chartStats)
         raceNotes = race and race.notes or {},
         groupNotes = group and group.notes or {},
         benchmarkReferences = TBC_BENCHMARKS,
+        phaseDatabase = {
+            version = P2_STRATEGY_DB.version,
+            phase = P2_STRATEGY_DB.phase,
+            phaseLabel = P2_STRATEGY_DB.phaseLabel,
+            patch = P2_STRATEGY_DB.patch,
+            updatedAt = P2_STRATEGY_DB.updatedAt,
+            sources = P2_STRATEGY_DB.sources,
+        },
         roles = roles,
     }
 end
@@ -4281,7 +4354,29 @@ function GEAR_ENGINE.StatWeightForToken(weights, token)
     return nil
 end
 
-function GEAR_ENGINE.BuildRoleStatWeights(role)
+function GEAR_ENGINE.FindStrategyMode(role, modeKey)
+    for index = 1, #(role and role.modes or {}) do
+        local mode = role.modes[index]
+        if not modeKey or mode.key == modeKey then
+            return mode
+        end
+    end
+    return role and role.modes and role.modes[1] or { key = "balanced", labels = { enUS = "Balanced", zhCN = "均衡", zhTW = "均衡" }, multipliers = {} }
+end
+
+function GEAR_ENGINE.AvailableStrategyModes(role)
+    local modes = {}
+    for index = 1, #(role and role.modes or {}) do
+        local mode = role.modes[index]
+        modes[#modes + 1] = { key = mode.key, labels = mode.labels, focus = mode.focus or {} }
+    end
+    if #modes == 0 then
+        modes[1] = { key = "balanced", labels = { enUS = "Balanced", zhCN = "均衡", zhTW = "均衡" }, focus = {} }
+    end
+    return modes
+end
+
+function GEAR_ENGINE.BuildRoleStatWeights(role, modeKey)
     local weights = {}
 
     for index = 1, #(role and role.statTokens or {}) do
@@ -4308,6 +4403,13 @@ function GEAR_ENGINE.BuildRoleStatWeights(role)
         local multiplier = tonumber(modifier and modifier.multiplier) or 1
         local base = weights[token] or (GEAR_ENGINE.STAT_SCORE_SCALES[token] or 1)
         weights[token] = base * multiplier
+    end
+
+    local mode = GEAR_ENGINE.FindStrategyMode(role, modeKey)
+    for token, multiplier in pairs(mode and mode.multipliers or {}) do
+        token = GEAR_ENGINE.NormalizeStatToken(token)
+        local base = weights[token] or (GEAR_ENGINE.STAT_SCORE_SCALES[token] or 1)
+        weights[token] = base * (tonumber(multiplier) or 1)
     end
 
     local spellOffenseWeight = GEAR_ENGINE.MaximumWeight(weights, {
@@ -4564,6 +4666,175 @@ function GEAR_ENGINE.PriorityStats(role, weights)
     return priorities
 end
 
+function GEAR_ENGINE.LocalizedDataLabel(labels, locale, fallback)
+    local promptLocale = PromptLocale(locale or ClientLocale())
+    return labels and (labels[promptLocale] or labels.enUS) or fallback
+end
+
+function GEAR_ENGINE.BuildPhase2CapStatuses(role)
+    local statuses = {}
+    for index = 1, #(role and role.caps or {}) do
+        local cap = role.caps[index]
+        local observed = BenchmarkObservedValue(cap.key, role and role.observed or {})
+        local status = "unknown"
+        if cap.kind == "context" then
+            status = "context_required"
+        elseif type(observed) == "number" and type(cap.target) == "number" then
+            if observed >= cap.target then
+                status = "meets_or_exceeds"
+            elseif observed >= cap.target * 0.9 then
+                status = "near"
+            else
+                status = "below"
+            end
+        end
+        statuses[#statuses + 1] = {
+            key = cap.key,
+            labels = cap.labels,
+            observed = observed,
+            target = cap.target,
+            unit = cap.unit,
+            kind = cap.kind,
+            status = status,
+            note = cap.note,
+        }
+    end
+    return statuses
+end
+
+function GEAR_ENGINE.FindPhase2Preset(role, modeKey)
+    local fallback
+    for index = 1, #(role and role.presets or {}) do
+        local preset = P2_STRATEGY_DB.GetPreset and P2_STRATEGY_DB.GetPreset(role.presets[index]) or P2_STRATEGY_DB.presets[role.presets[index]]
+        if preset then
+            fallback = fallback or preset
+            if preset.modeKey == modeKey then
+                return preset
+            end
+        end
+    end
+    return fallback
+end
+
+function GEAR_ENGINE.Phase2ItemInfo(itemID)
+    if type(GetItemInfo) ~= "function" then
+        return nil, nil, nil, nil, nil
+    end
+    local ok, name, link, quality, itemLevel, _, _, _, _, _, icon = pcall(GetItemInfo, itemID)
+    if not ok then
+        return nil, nil, nil, nil, nil
+    end
+    if not icon and type(GetItemInfoInstant) == "function" then
+        local instantOK, _, _, _, _, instantIcon = pcall(GetItemInfoInstant, itemID)
+        if instantOK then
+            icon = instantIcon
+        end
+    end
+    if not name and C_Item and type(C_Item.RequestLoadItemDataByID) == "function" then
+        pcall(C_Item.RequestLoadItemDataByID, itemID)
+    end
+    return name, link, quality, itemLevel, icon
+end
+
+function GEAR_ENGINE.BuildPhase2PresetProgress(profile, candidateItems, role, modeKey)
+    local preset = GEAR_ENGINE.FindPhase2Preset(role, modeKey)
+    if not preset then
+        return { available = false, owned = 0, total = 0, missing = {}, items = {} }
+    end
+
+    local ownedCounts = {}
+    local allItems = {}
+    for index = 1, #(profile and profile.equipped and profile.equipped.items or {}) do
+        allItems[#allItems + 1] = profile.equipped.items[index]
+    end
+
+    local hasSavedSnapshot = false
+    for _, source in ipairs({ "bags", "bank" }) do
+        for index = 1, #(profile and profile[source] and profile[source].items or {}) do
+            allItems[#allItems + 1] = profile[source].items[index]
+            hasSavedSnapshot = true
+        end
+    end
+    if not hasSavedSnapshot then
+        for index = 1, #(candidateItems or {}) do
+            allItems[#allItems + 1] = candidateItems[index]
+        end
+    end
+    for index = 1, #allItems do
+        local itemID = tonumber(allItems[index] and (allItems[index].itemID or allItems[index].item_id))
+        if itemID then
+            ownedCounts[itemID] = (ownedCounts[itemID] or 0) + 1
+        end
+    end
+
+    local progress = {
+        available = true,
+        key = preset.key,
+        label = preset.label,
+        source = preset.source,
+        sourcePath = preset.sourcePath,
+        notes = preset.notes,
+        owned = 0,
+        total = 0,
+        missing = {},
+        items = {},
+    }
+    for index = 1, #(preset.itemIDs or {}) do
+        local itemID = tonumber(preset.itemIDs[index]) or 0
+        if itemID > 0 then
+            local isOwned = (ownedCounts[itemID] or 0) > 0
+            if isOwned then
+                ownedCounts[itemID] = ownedCounts[itemID] - 1
+                progress.owned = progress.owned + 1
+            end
+            progress.total = progress.total + 1
+            local itemName, itemLink, itemQuality, itemLevel, itemIcon = GEAR_ENGINE.Phase2ItemInfo(itemID)
+            local entry = {
+                itemID = itemID,
+                slotKey = P2_STRATEGY_DB.slotOrder and P2_STRATEGY_DB.slotOrder[index],
+                name = itemName,
+                link = itemLink,
+                quality = itemQuality,
+                itemLevel = itemLevel,
+                icon = itemIcon,
+                owned = isOwned,
+                wowheadUrl = WOWHEAD_TBC_ITEM_URL_PREFIX .. tostring(itemID),
+            }
+            progress.items[#progress.items + 1] = entry
+            if not isOwned then
+                progress.missing[#progress.missing + 1] = entry
+            end
+        end
+    end
+    progress.percent = progress.total > 0 and RoundedStatNumber(progress.owned / progress.total * 100) or 0
+    return progress
+end
+
+function GEAR_ENGINE.BuildPhase2Strategy(profile, candidateItems, role, modeKey)
+    local mode = GEAR_ENGINE.FindStrategyMode(role, modeKey)
+    return {
+        databaseVersion = P2_STRATEGY_DB.version,
+        phase = P2_STRATEGY_DB.phase,
+        phaseLabel = P2_STRATEGY_DB.phaseLabel,
+        patch = P2_STRATEGY_DB.patch,
+        updatedAt = P2_STRATEGY_DB.updatedAt,
+        roleKey = role and role.key,
+        archetype = role and role.archetype,
+        modeKey = mode and mode.key or "balanced",
+        modeLabels = mode and mode.labels,
+        modeFocus = mode and mode.focus or {},
+        availableModes = GEAR_ENGINE.AvailableStrategyModes(role),
+        caps = GEAR_ENGINE.BuildPhase2CapStatuses(role),
+        setGoal = role and role.setGoal,
+        setGoalLabels = role and role.setGoalLabels,
+        talentString = role and role.talentString,
+        guideUrl = role and role.guideUrl,
+        evidence = role and role.researchEvidence,
+        presetProgress = GEAR_ENGINE.BuildPhase2PresetProgress(profile, candidateItems, role, mode and mode.key),
+        sources = P2_STRATEGY_DB.sources,
+    }
+end
+
 function GEAR_ENGINE.FindStrategyRole(strategyBook, roleKey)
     for index = 1, #(strategyBook and strategyBook.roles or {}) do
         local role = strategyBook.roles[index]
@@ -4581,6 +4852,7 @@ function GEAR_ENGINE.AvailableStrategyRoles(strategyBook)
         roles[#roles + 1] = {
             key = role.key,
             label = role.label,
+            labels = role.labels,
             confidence = role.confidence or 0,
             talentPoints = role.talentPoints or 0,
             talentAffinity = role.talentMap and role.talentMap.affinityScore or 0,
@@ -4590,10 +4862,11 @@ function GEAR_ENGINE.AvailableStrategyRoles(strategyBook)
     return roles
 end
 
-function GEAR_ENGINE.CompareItems(profile, currentItem, candidateItem, strategyBook, roleKey, weights)
+function GEAR_ENGINE.CompareItems(profile, currentItem, candidateItem, strategyBook, roleKey, weights, modeKey)
     strategyBook = strategyBook or BuildStrategyBook(profile, BuildChartStats({ candidateItem }))
     local role = GEAR_ENGINE.FindStrategyRole(strategyBook, roleKey)
-    weights = weights or GEAR_ENGINE.BuildRoleStatWeights(role)
+    local mode = GEAR_ENGINE.FindStrategyMode(role, modeKey)
+    weights = weights or GEAR_ENGINE.BuildRoleStatWeights(role, mode and mode.key)
     local currentScore = currentItem and GEAR_ENGINE.ItemRoleScore(currentItem, role, weights) or 0
     local candidateScore, matchedStats = GEAR_ENGINE.ItemRoleScore(candidateItem, role, weights)
     local scoreGain = candidateScore - currentScore
@@ -4619,14 +4892,18 @@ function GEAR_ENGINE.CompareItems(profile, currentItem, candidateItem, strategyB
         verdict = slotCompatible and GEAR_ENGINE.RecommendationVerdict(evidence, scoreGain, benchmarkImpacts) or "incompatible",
         roleKey = role.key,
         roleLabel = role.label,
+        roleLabels = role.labels,
+        modeKey = mode and mode.key or "balanced",
+        modeLabels = mode and mode.labels,
         talentMap = role.talentMap,
     }
 end
 
-function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyBook, roleKey)
+function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyBook, roleKey, modeKey)
     strategyBook = strategyBook or BuildStrategyBook(profile, BuildChartStats(candidateItems or {}))
     local role = GEAR_ENGINE.FindStrategyRole(strategyBook, roleKey)
-    local weights = GEAR_ENGINE.BuildRoleStatWeights(role)
+    local mode = GEAR_ENGINE.FindStrategyMode(role, modeKey)
+    local weights = GEAR_ENGINE.BuildRoleStatWeights(role, mode and mode.key)
     local currentBySlot = {}
     local equippedItems = profile and profile.equipped and profile.equipped.items or {}
 
@@ -4650,7 +4927,7 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
         if slotKey ~= "SHIRT" and slotKey ~= "TABARD" and GEAR_ENGINE.CandidateCompatibleWithClass(profile, item) then
             candidateCount = candidateCount + 1
             local current = currentBySlot[slotKey]
-            local recommendation = GEAR_ENGINE.CompareItems(profile, current and current.item or nil, item, strategyBook, role.key, weights)
+            local recommendation = GEAR_ENGINE.CompareItems(profile, current and current.item or nil, item, strategyBook, role.key, weights, mode and mode.key)
             if recommendation.scoreGain >= 2 and #recommendation.matchedStats > 0 then
                 if not bestBySlot[slotKey] or recommendation.candidateScore > bestBySlot[slotKey].candidateScore then
                     bestBySlot[slotKey] = recommendation
@@ -4684,11 +4961,15 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
     end
 
     return {
-        version = 4,
+        version = 5,
         generatedAt = Now(),
         roleKey = role.key,
         roleLabel = role.label,
+        roleLabels = role.labels,
         roleConfidence = role.confidence or 0,
+        modeKey = mode and mode.key or "balanced",
+        modeLabels = mode and mode.labels,
+        availableModes = GEAR_ENGINE.AvailableStrategyModes(role),
         roleWeights = weights,
         talentMap = role.talentMap,
         availableRoles = GEAR_ENGINE.AvailableStrategyRoles(strategyBook),
@@ -4699,6 +4980,7 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
         upgrades = upgrades,
         verdictCounts = GEAR_ENGINE.VerdictCounts(upgrades),
         equipped = equippedItems,
+        phase2 = GEAR_ENGINE.BuildPhase2Strategy(profile, candidateItems, role, mode and mode.key),
         caveat = LForLocale(profile and profile.locale or ClientLocale(), "advice_caveat"),
     }
 end
@@ -4864,6 +5146,13 @@ local function AppendStrategyBookJson(lines, indent, strategyBook, comma)
     AppendIndented(lines, indent + 2, JsonField("group_type", strategyBook.groupType, true))
     AppendJsonStringArray(lines, indent + 2, "race_notes", strategyBook.raceNotes, true)
     AppendJsonStringArray(lines, indent + 2, "group_notes", strategyBook.groupNotes, true)
+    AppendIndented(lines, indent + 2, "\"phase_database\": {")
+    AppendIndented(lines, indent + 4, JsonField("version", strategyBook.phaseDatabase and strategyBook.phaseDatabase.version, true))
+    AppendIndented(lines, indent + 4, JsonField("phase", strategyBook.phaseDatabase and strategyBook.phaseDatabase.phase, true))
+    AppendIndented(lines, indent + 4, JsonField("phase_label", strategyBook.phaseDatabase and strategyBook.phaseDatabase.phaseLabel, true))
+    AppendIndented(lines, indent + 4, JsonField("patch", strategyBook.phaseDatabase and strategyBook.phaseDatabase.patch, true))
+    AppendIndented(lines, indent + 4, JsonField("updated_at", strategyBook.phaseDatabase and strategyBook.phaseDatabase.updatedAt, false))
+    AppendIndented(lines, indent + 2, "},")
     AppendIndented(lines, indent + 2, "\"roles\": [")
 
     for roleIndex = 1, #(strategyBook.roles or {}) do
@@ -4871,11 +5160,40 @@ local function AppendStrategyBookJson(lines, indent, strategyBook, comma)
         AppendIndented(lines, indent + 4, "{")
         AppendIndented(lines, indent + 6, JsonField("key", role.key, true))
         AppendIndented(lines, indent + 6, JsonField("label", role.label, true))
+        AppendIndented(lines, indent + 6, JsonField("label_zh_cn", role.labels and role.labels.zhCN, true))
+        AppendIndented(lines, indent + 6, JsonField("archetype", role.archetype, true))
+        AppendIndented(lines, indent + 6, JsonField("phase", role.phase, true))
         AppendIndented(lines, indent + 6, JsonField("confidence", role.confidence, true))
         AppendIndented(lines, indent + 6, JsonField("talent_points", role.talentPoints, true))
         AppendIndented(lines, indent + 6, JsonField("primary_talent_match", role.primaryTalentMatch and true or false, true))
         AppendJsonStringArray(lines, indent + 6, "models", role.models, true)
         AppendJsonStringArray(lines, indent + 6, "priorities", role.priorities, true)
+        AppendIndented(lines, indent + 6, JsonField("set_goal", role.setGoal, true))
+        AppendIndented(lines, indent + 6, JsonField("set_goal_zh_cn", role.setGoalLabels and role.setGoalLabels.zhCN, true))
+        AppendIndented(lines, indent + 6, JsonField("talent_string", role.talentString, true))
+        AppendIndented(lines, indent + 6, JsonField("guide_url", role.guideUrl, true))
+        AppendIndented(lines, indent + 6, JsonField("research_evidence", role.researchEvidence, true))
+        AppendIndented(lines, indent + 6, "\"modes\": [")
+        for modeIndex = 1, #(role.modes or {}) do
+            local mode = role.modes[modeIndex]
+            AppendIndented(lines, indent + 8, "{ " .. JsonField("key", mode.key, true)
+                .. " " .. JsonField("label_en", mode.labels and mode.labels.enUS, true)
+                .. " " .. JsonField("label_zh_cn", mode.labels and mode.labels.zhCN, false)
+                .. " }" .. (modeIndex < #(role.modes or {}) and "," or ""))
+        end
+        AppendIndented(lines, indent + 6, "],")
+        AppendIndented(lines, indent + 6, "\"caps\": [")
+        for capIndex = 1, #(role.caps or {}) do
+            local cap = role.caps[capIndex]
+            AppendIndented(lines, indent + 8, "{ " .. JsonField("key", cap.key, true)
+                .. " " .. JsonField("label_en", cap.labels and cap.labels.enUS, true)
+                .. " " .. JsonField("label_zh_cn", cap.labels and cap.labels.zhCN, true)
+                .. " " .. JsonField("target", cap.target, true)
+                .. " " .. JsonField("unit", cap.unit, true)
+                .. " " .. JsonField("kind", cap.kind, false)
+                .. " }" .. (capIndex < #(role.caps or {}) and "," or ""))
+        end
+        AppendIndented(lines, indent + 6, "],")
         AppendTalentRoleMapJson(lines, indent + 6, role.talentMap, true)
         AppendObservedStatsJson(lines, indent + 6, role.observed)
         AppendIndented(lines, indent + 6, ",")
@@ -4925,6 +5243,88 @@ function GEAR_ENGINE.AppendGearItemJson(lines, indent, key, item, score, comma)
     AppendIndented(lines, indent, "}" .. (comma and "," or ""))
 end
 
+function GEAR_ENGINE.AppendPhase2StrategyJson(lines, indent, phase2, comma)
+    phase2 = phase2 or {}
+    local progress = phase2.presetProgress or { available = false, items = {}, missing = {} }
+    AppendIndented(lines, indent, "\"phase2_strategy\": {")
+    AppendIndented(lines, indent + 2, JsonField("database_version", phase2.databaseVersion, true))
+    AppendIndented(lines, indent + 2, JsonField("phase", phase2.phase, true))
+    AppendIndented(lines, indent + 2, JsonField("phase_label", phase2.phaseLabel, true))
+    AppendIndented(lines, indent + 2, JsonField("patch", phase2.patch, true))
+    AppendIndented(lines, indent + 2, JsonField("updated_at", phase2.updatedAt, true))
+    AppendIndented(lines, indent + 2, JsonField("role_key", phase2.roleKey, true))
+    AppendIndented(lines, indent + 2, JsonField("archetype", phase2.archetype, true))
+    AppendIndented(lines, indent + 2, JsonField("mode_key", phase2.modeKey, true))
+    AppendIndented(lines, indent + 2, JsonField("mode_label_en", phase2.modeLabels and phase2.modeLabels.enUS, true))
+    AppendIndented(lines, indent + 2, JsonField("mode_label_zh_cn", phase2.modeLabels and phase2.modeLabels.zhCN, true))
+    AppendIndented(lines, indent + 2, JsonField("set_goal", phase2.setGoal, true))
+    AppendIndented(lines, indent + 2, JsonField("set_goal_zh_cn", phase2.setGoalLabels and phase2.setGoalLabels.zhCN, true))
+    AppendIndented(lines, indent + 2, JsonField("talent_string", phase2.talentString, true))
+    AppendIndented(lines, indent + 2, JsonField("evidence", phase2.evidence, true))
+    AppendIndented(lines, indent + 2, JsonField("guide_url", phase2.guideUrl, true))
+    AppendJsonStringArray(lines, indent + 2, "mode_focus", phase2.modeFocus, true)
+    AppendIndented(lines, indent + 2, "\"available_modes\": [")
+    for index = 1, #(phase2.availableModes or {}) do
+        local mode = phase2.availableModes[index]
+        AppendIndented(lines, indent + 4, "{ " .. JsonField("key", mode.key, true)
+            .. " " .. JsonField("label_en", mode.labels and mode.labels.enUS, true)
+            .. " " .. JsonField("label_zh_cn", mode.labels and mode.labels.zhCN, false)
+            .. " }" .. (index < #(phase2.availableModes or {}) and "," or ""))
+    end
+    AppendIndented(lines, indent + 2, "],")
+    AppendIndented(lines, indent + 2, "\"caps\": [")
+    for index = 1, #(phase2.caps or {}) do
+        local cap = phase2.caps[index]
+        AppendIndented(lines, indent + 4, "{ " .. JsonField("key", cap.key, true)
+            .. " " .. JsonField("label_en", cap.labels and cap.labels.enUS, true)
+            .. " " .. JsonField("label_zh_cn", cap.labels and cap.labels.zhCN, true)
+            .. " " .. JsonField("observed", cap.observed, true)
+            .. " " .. JsonField("target", cap.target, true)
+            .. " " .. JsonField("unit", cap.unit, true)
+            .. " " .. JsonField("kind", cap.kind, true)
+            .. " " .. JsonField("status", cap.status, true)
+            .. " " .. JsonField("note", cap.note, false)
+            .. " }" .. (index < #(phase2.caps or {}) and "," or ""))
+    end
+    AppendIndented(lines, indent + 2, "],")
+    AppendIndented(lines, indent + 2, "\"target_preset\": {")
+    AppendIndented(lines, indent + 4, JsonField("available", progress.available and true or false, true))
+    AppendIndented(lines, indent + 4, JsonField("key", progress.key, true))
+    AppendIndented(lines, indent + 4, JsonField("label", progress.label, true))
+    AppendIndented(lines, indent + 4, JsonField("source", progress.source, true))
+    AppendIndented(lines, indent + 4, JsonField("source_path", progress.sourcePath, true))
+    AppendIndented(lines, indent + 4, JsonField("owned", progress.owned or 0, true))
+    AppendIndented(lines, indent + 4, JsonField("total", progress.total or 0, true))
+    AppendIndented(lines, indent + 4, JsonField("percent", progress.percent or 0, true))
+    AppendIndented(lines, indent + 4, "\"items\": [")
+    for index = 1, #(progress.items or {}) do
+        local item = progress.items[index]
+        AppendIndented(lines, indent + 6, "{ " .. JsonField("item_id", item.itemID, true)
+            .. " " .. JsonField("name", item.name, true)
+            .. " " .. JsonField("item_link", item.link, true)
+            .. " " .. JsonField("quality_id", item.quality, true)
+            .. " " .. JsonField("item_level", item.itemLevel, true)
+            .. " " .. JsonField("slot_key", item.slotKey, true)
+            .. " " .. JsonField("owned", item.owned and true or false, true)
+            .. " " .. JsonField("wowhead_url", item.wowheadUrl, false)
+            .. " }" .. (index < #(progress.items or {}) and "," or ""))
+    end
+    AppendIndented(lines, indent + 4, "]")
+    AppendIndented(lines, indent + 2, "},")
+    AppendIndented(lines, indent + 2, "\"sources\": [")
+    for index = 1, #(phase2.sources or {}) do
+        local source = phase2.sources[index]
+        AppendIndented(lines, indent + 4, "{ " .. JsonField("key", source.key, true)
+            .. " " .. JsonField("label", source.label, true)
+            .. " " .. JsonField("url", source.url, true)
+            .. " " .. JsonField("commit", source.commit, true)
+            .. " " .. JsonField("use", source.use, false)
+            .. " }" .. (index < #(phase2.sources or {}) and "," or ""))
+    end
+    AppendIndented(lines, indent + 2, "]")
+    AppendIndented(lines, indent, "}" .. (comma and "," or ""))
+end
+
 function GEAR_ENGINE.AppendGearRecommendationsJson(lines, indent, engine, comma)
     engine = engine or GEAR_ENGINE.BuildGearRecommendations({}, {}, nil)
     AppendIndented(lines, indent, "\"gear_recommendations\": {")
@@ -4933,6 +5333,9 @@ function GEAR_ENGINE.AppendGearRecommendationsJson(lines, indent, engine, comma)
     AppendIndented(lines, indent + 2, JsonField("role_key", engine.roleKey, true))
     AppendIndented(lines, indent + 2, JsonField("role_label", engine.roleLabel, true))
     AppendIndented(lines, indent + 2, JsonField("role_confidence", engine.roleConfidence, true))
+    AppendIndented(lines, indent + 2, JsonField("mode_key", engine.modeKey, true))
+    AppendIndented(lines, indent + 2, JsonField("mode_label_en", engine.modeLabels and engine.modeLabels.enUS, true))
+    AppendIndented(lines, indent + 2, JsonField("mode_label_zh_cn", engine.modeLabels and engine.modeLabels.zhCN, true))
     AppendIndented(lines, indent + 2, JsonField("equipped_count", engine.equippedCount, true))
     AppendIndented(lines, indent + 2, JsonField("candidate_count", engine.candidateCount, true))
     AppendIndented(lines, indent + 2, JsonField("caveat", engine.caveat, true))
@@ -4945,6 +5348,7 @@ function GEAR_ENGINE.AppendGearRecommendationsJson(lines, indent, engine, comma)
         { name = "key_effect_count", value = "keyEffectCount" },
     }, true)
     AppendTalentRoleMapJson(lines, indent + 2, engine.talentMap, true)
+    GEAR_ENGINE.AppendPhase2StrategyJson(lines, indent + 2, engine.phase2, true)
     local verdictCounts = engine.verdictCounts or GEAR_ENGINE.VerdictCounts(engine.upgrades)
     AppendIndented(lines, indent + 2, "\"verdict_counts\": { "
         .. JsonField("upgrade", verdictCounts.upgrade or 0, true) .. " "
@@ -5016,7 +5420,59 @@ end
 
 function GEAR_ENGINE.GearRoleLabel(engine, locale)
     local localized = ANALYSIS_LOCALIZATION[PromptLocale(locale or ClientLocale())]
-    return localized and localized.roles and localized.roles[engine.roleKey] or engine.roleLabel or engine.roleKey
+    local fallback = localized and localized.roles and localized.roles[engine.roleKey] or engine.roleLabel or engine.roleKey
+    return GEAR_ENGINE.LocalizedDataLabel(engine and engine.roleLabels, locale, fallback)
+end
+
+function GEAR_ENGINE.Phase2ModeLabel(engine, locale)
+    return GEAR_ENGINE.LocalizedDataLabel(engine and engine.phase2 and engine.phase2.modeLabels, locale, engine and engine.modeKey or "balanced")
+end
+
+function GEAR_ENGINE.Phase2EvidenceLabel(engine, locale)
+    local evidence = engine and engine.phase2 and engine.phase2.evidence or "sim_and_guide"
+    local promptLocale = PromptLocale(locale or ClientLocale())
+    if promptLocale == "enUS" then
+        return evidence == "guide" and "guide-backed" or "simulation preset + class guide"
+    end
+    if promptLocale == "zhTW" then
+        return evidence == "guide" and "職業攻略" or "模擬器預設 + 職業攻略"
+    end
+    return evidence == "guide" and "职业攻略" or "模拟器预设 + 职业攻略"
+end
+
+function GEAR_ENGINE.Phase2CapText(engine, locale)
+    local values = {}
+    local localized = ANALYSIS_LOCALIZATION[PromptLocale(locale or ClientLocale())]
+    for index = 1, #(engine and engine.phase2 and engine.phase2.caps or {}) do
+        local cap = engine.phase2.caps[index]
+        local label = GEAR_ENGINE.LocalizedDataLabel(cap.labels, locale, cap.key)
+        local status = localized and localized.statuses and localized.statuses[cap.status] or cap.status
+        local observed = type(cap.observed) == "number" and CompactNumber(cap.observed, 2) or "?"
+        local target = type(cap.target) == "number" and CompactNumber(cap.target, 2) or "?"
+        values[#values + 1] = tostring(label) .. " " .. observed .. "/" .. target .. tostring(cap.unit or "") .. " (" .. tostring(status or "unknown") .. ")"
+    end
+    return #values > 0 and table.concat(values, "; ") or GEAR_ENGINE.ReportTerms(locale).none
+end
+
+function GEAR_ENGINE.Phase2PresetText(engine, locale, maxMissing)
+    local progress = engine and engine.phase2 and engine.phase2.presetProgress
+    if not progress or not progress.available then
+        return GEAR_ENGINE.ReportTerms(locale).no_preset
+    end
+
+    local missing = {}
+    for index = 1, math.min(#(progress.missing or {}), maxMissing or 6) do
+        local item = progress.missing[index]
+        missing[#missing + 1] = tostring(item.name or ("Item #" .. tostring(item.itemID)))
+    end
+    return tostring(progress.label) .. " · " .. tostring(progress.owned or 0) .. "/" .. tostring(progress.total or 0)
+        .. " (" .. tostring(progress.percent or 0) .. "%)"
+        .. (#missing > 0 and " · " .. table.concat(missing, ", ") or "")
+end
+
+function GEAR_ENGINE.Phase2Goal(engine, locale)
+    local phase2 = engine and engine.phase2 or {}
+    return GEAR_ENGINE.LocalizedDataLabel(phase2.setGoalLabels, locale, phase2.setGoal or GEAR_ENGINE.ReportTerms(locale).none)
 end
 
 function GEAR_ENGINE.GearPriorityText(engine, locale)
@@ -5051,6 +5507,12 @@ function GEAR_ENGINE.AppendGearRecommendationsMarkdown(lines, engine, locale)
     lines[#lines + 1] = "## " .. terms.gear_recommendations
     lines[#lines + 1] = ""
     lines[#lines + 1] = "- " .. terms.role .. ": " .. tostring(GEAR_ENGINE.GearRoleLabel(engine, locale)) .. " (" .. terms.confidence .. " " .. tostring(engine.roleConfidence or 0) .. ")"
+    lines[#lines + 1] = "- " .. terms.mode .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.Phase2ModeLabel(engine, locale))
+    lines[#lines + 1] = "- " .. terms.caps .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.Phase2CapText(engine, locale))
+    lines[#lines + 1] = "- " .. terms.set_goal .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.Phase2Goal(engine, locale))
+    lines[#lines + 1] = "- " .. terms.target_preset .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.Phase2PresetText(engine, locale, 6))
+    lines[#lines + 1] = "- " .. terms.research_evidence .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.Phase2EvidenceLabel(engine, locale))
+        .. (engine.phase2 and engine.phase2.guideUrl and " ([Wowhead](" .. engine.phase2.guideUrl .. "))" or "")
     lines[#lines + 1] = "- " .. terms.verdict .. ": " .. GEAR_ENGINE.VerdictSummary(engine, locale)
     lines[#lines + 1] = "- " .. terms.talent_map .. ": " .. GEAR_ENGINE.TalentMapSummary(engine.talentMap, locale, 5)
     lines[#lines + 1] = "- " .. terms.priority_stats .. ": " .. GEAR_ENGINE.GearPriorityText(engine, locale)
@@ -5082,6 +5544,12 @@ function GEAR_ENGINE.AppendGearRecommendationsText(lines, engine, locale)
     local terms = GEAR_ENGINE.ReportTerms(locale)
     lines[#lines + 1] = terms.gear_recommendations
     lines[#lines + 1] = terms.role .. ": " .. tostring(GEAR_ENGINE.GearRoleLabel(engine, locale)) .. "; " .. terms.confidence .. " " .. tostring(engine.roleConfidence or 0)
+    lines[#lines + 1] = terms.mode .. ": " .. GEAR_ENGINE.Phase2ModeLabel(engine, locale)
+    lines[#lines + 1] = terms.caps .. ": " .. GEAR_ENGINE.Phase2CapText(engine, locale)
+    lines[#lines + 1] = terms.set_goal .. ": " .. GEAR_ENGINE.Phase2Goal(engine, locale)
+    lines[#lines + 1] = terms.target_preset .. ": " .. GEAR_ENGINE.Phase2PresetText(engine, locale, 6)
+    lines[#lines + 1] = terms.research_evidence .. ": " .. GEAR_ENGINE.Phase2EvidenceLabel(engine, locale)
+        .. (engine.phase2 and engine.phase2.guideUrl and " | " .. engine.phase2.guideUrl or "")
     lines[#lines + 1] = terms.verdict .. ": " .. GEAR_ENGINE.VerdictSummary(engine, locale)
     lines[#lines + 1] = terms.talent_map .. ": " .. GEAR_ENGINE.TalentMapSummary(engine.talentMap, locale, 5)
     lines[#lines + 1] = terms.priority_stats .. ": " .. GEAR_ENGINE.GearPriorityText(engine, locale)
@@ -5147,7 +5615,8 @@ local function AnalysisGroupType(groupType, locale)
 end
 
 local function AnalysisRoleLabel(role, locale)
-    return AnalysisLookup(locale, "roles", role and role.key, role and (role.label or role.key) or "Role")
+    local fallback = role and (role.label or role.key) or "Role"
+    return GEAR_ENGINE.LocalizedDataLabel(role and role.labels, locale, AnalysisLookup(locale, "roles", role and role.key, fallback))
 end
 
 local function AnalysisModelLabels(models, locale)
@@ -6295,7 +6764,7 @@ function Addon:BuildExport(scope, format, filter)
 
     local chartStats = BuildChartStats(items)
     local strategyBook = BuildStrategyBook(profile, chartStats)
-    local gearEngine = GEAR_ENGINE.BuildGearRecommendations(profile, items, strategyBook, self.selectedAdviceRoleKey)
+    local gearEngine = GEAR_ENGINE.BuildGearRecommendations(profile, items, strategyBook, self.selectedAdviceRoleKey, self.selectedStrategyModeKey)
 
     local lines = {
         "AI_READY_WOW_TBC_INVENTORY_EXPORT v1",
@@ -6468,6 +6937,8 @@ function Addon:SetExportView(view)
         self.exportView = "analysis"
     elseif view == "advice" then
         self.exportView = "advice"
+    elseif view == "phase2" then
+        self.exportView = "phase2"
     elseif view == "items" then
         self.exportView = "items"
     else
@@ -6507,6 +6978,14 @@ function Addon:SetExportView(view)
             self.exportFrame.analysisScroll:Show()
         else
             self.exportFrame.analysisScroll:Hide()
+        end
+    end
+
+    if self.exportFrame.phase2Scroll then
+        if self.exportView == "phase2" then
+            self.exportFrame.phase2Scroll:Show()
+        else
+            self.exportFrame.phase2Scroll:Hide()
         end
     end
 
@@ -6683,7 +7162,7 @@ function Addon:RefreshAdviceRoleButtons(engine, locale)
         local role = engine and engine.availableRoles and engine.availableRoles[index]
         if role then
             button.roleKey = role.key
-            button:SetText((role.key == engine.roleKey and "> " or "") .. tostring(AnalysisLookup(locale, "roles", role.key, role.label)))
+            button:SetText((role.key == engine.roleKey and "> " or "") .. tostring(GEAR_ENGINE.LocalizedDataLabel(role.labels, locale, AnalysisLookup(locale, "roles", role.key, role.label))))
             button:Show()
         else
             button.roleKey = nil
@@ -6872,6 +7351,122 @@ function Addon:RefreshStatsAnalysis(profile, chartStats, strategyBook)
     return roleCount or 0
 end
 
+function Addon:CreatePhase2TargetRow(parent, index)
+    local row = CreateFrame("Button", nil, parent)
+    SetFrameSize(row, 486, 42)
+    row:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, -((index - 1) * 44))
+
+    local icon = row:CreateTexture(nil, "ARTWORK")
+    SetFrameSize(icon, 34, 34)
+    icon:SetPoint("LEFT", 4, 0)
+    icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
+
+    local name = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    name:SetPoint("TOPLEFT", icon, "TOPRIGHT", 8, -2)
+    name:SetPoint("RIGHT", row, "RIGHT", -8, 0)
+    name:SetJustifyH("LEFT")
+
+    local meta = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    meta:SetPoint("TOPLEFT", icon, "TOPRIGHT", 8, -20)
+    meta:SetPoint("RIGHT", row, "RIGHT", -8, 0)
+    meta:SetJustifyH("LEFT")
+
+    row:SetScript("OnEnter", function(self)
+        if not self.item or not GameTooltip then
+            return
+        end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        if GameTooltip.SetHyperlink then
+            GameTooltip:SetHyperlink(self.item.link or ("item:" .. tostring(self.item.itemID)))
+        else
+            GameTooltip:SetText(self.item.name or ("Item #" .. tostring(self.item.itemID)))
+        end
+        if GameTooltip.AddLine then
+            GameTooltip:AddLine(self.item.wowheadUrl or "")
+        end
+        GameTooltip:Show()
+    end)
+    row:SetScript("OnLeave", function()
+        if GameTooltip then GameTooltip:Hide() end
+    end)
+
+    row.icon = icon
+    row.name = name
+    row.meta = meta
+    return row
+end
+
+function Addon:RefreshPhase2ModeButtons(engine, locale)
+    for index = 1, #(self.exportFrame and self.exportFrame.phase2ModeButtons or {}) do
+        local button = self.exportFrame.phase2ModeButtons[index]
+        local mode = engine and engine.availableModes and engine.availableModes[index]
+        if mode then
+            button.modeKey = mode.key
+            local label = GEAR_ENGINE.LocalizedDataLabel(mode.labels, locale, mode.key)
+            button:SetText((mode.key == engine.modeKey and "> " or "") .. tostring(label))
+            button:Show()
+        else
+            button.modeKey = nil
+            button:Hide()
+        end
+    end
+end
+
+function Addon:RefreshPhase2Strategy(profile, engine)
+    if not self.exportFrame or not self.exportFrame.phase2Content then
+        return 0
+    end
+
+    local locale = profile and profile.locale or ClientLocale()
+    local phase2 = engine and engine.phase2 or {}
+    local progress = phase2.presetProgress or { missing = {} }
+    self:RefreshPhase2ModeButtons(engine, locale)
+    self.exportFrame.phase2Summary:SetText(LForLocale(locale, "phase2_summary",
+        GEAR_ENGINE.GearRoleLabel(engine, locale),
+        GEAR_ENGINE.Phase2ModeLabel(engine, locale),
+        tostring(phase2.databaseVersion or "?"),
+        tostring(phase2.patch or "?")))
+    self.exportFrame.phase2Details:SetText(
+        LForLocale(locale, "phase2_set_goal", GEAR_ENGINE.Phase2Goal(engine, locale))
+        .. "\n" .. LForLocale(locale, "phase2_caps", GEAR_ENGINE.Phase2CapText(engine, locale))
+        .. "\n" .. LForLocale(locale, "phase2_preset", GEAR_ENGINE.Phase2PresetText(engine, locale, 0))
+        .. "\n" .. LForLocale(locale, "phase2_evidence", GEAR_ENGINE.Phase2EvidenceLabel(engine, locale))
+        .. "\n" .. LForLocale(locale, "phase2_talent", tostring(phase2.talentString or GEAR_ENGINE.ReportTerms(locale).none)))
+
+    local rows = self.exportFrame.phase2TargetRows or {}
+    self.exportFrame.phase2TargetRows = rows
+    for index = 1, #rows do
+        rows[index]:Hide()
+    end
+
+    for index = 1, #(progress.missing or {}) do
+        local item = progress.missing[index]
+        local row = rows[index] or self:CreatePhase2TargetRow(self.exportFrame.phase2TargetsContent, index)
+        rows[index] = row
+        row.item = item
+        row.icon:SetTexture(item.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
+        row.name:SetText(item.link or item.name or ("Item #" .. tostring(item.itemID)))
+        row.meta:SetText(GEAR_ENGINE.EquipmentSlotLabel(item.slotKey, locale) .. " · ID " .. tostring(item.itemID)
+            .. (item.itemLevel and " · " .. GEAR_ENGINE.ReportTerms(locale).item_level .. " " .. tostring(item.itemLevel) or ""))
+        row:Show()
+    end
+
+    if #(progress.missing or {}) == 0 then
+        self.exportFrame.phase2TargetsEmpty:SetText(LForLocale(locale, "phase2_no_targets"))
+        self.exportFrame.phase2TargetsEmpty:Show()
+    else
+        self.exportFrame.phase2TargetsEmpty:Hide()
+    end
+
+    if self.exportFrame.phase2TargetsContent.SetHeight then
+        self.exportFrame.phase2TargetsContent:SetHeight(math.max(42, (#(progress.missing or {}) * 44) + 8))
+    end
+    if self.exportFrame.phase2Content.SetHeight then
+        self.exportFrame.phase2Content:SetHeight(math.max(390, (#(progress.missing or {}) * 44) + 258))
+    end
+    return #(progress.missing or {})
+end
+
 function Addon:SelectExportText()
     if not self.exportFrame or not self.exportFrame.editBox then
         return
@@ -6902,16 +7497,19 @@ function Addon:RefreshExport(scope, format, filter)
     local profile = self:GetProfile()
     local chartStats = BuildChartStats(items)
     local strategyBook = BuildStrategyBook(profile, chartStats)
-    local gearEngine = GEAR_ENGINE.BuildGearRecommendations(profile, items, strategyBook, self.selectedAdviceRoleKey)
+    local gearEngine = GEAR_ENGINE.BuildGearRecommendations(profile, items, strategyBook, self.selectedAdviceRoleKey, self.selectedStrategyModeKey)
     self.selectedAdviceRoleKey = gearEngine.roleKey
+    self.selectedStrategyModeKey = gearEngine.modeKey
     local overviewRoleCount = 0
     local analysisRoleCount = 0
     local adviceCount = 0
+    local phase2TargetCount = 0
     self.exportFrame.editBox:SetText(text)
     self:RefreshVisualItems(items)
     overviewRoleCount = self:RefreshOverview(profile, chartStats, strategyBook, items)
     adviceCount = self:RefreshGearAdvice(profile, gearEngine)
     analysisRoleCount = self:RefreshStatsAnalysis(profile, chartStats, strategyBook)
+    phase2TargetCount = self:RefreshPhase2Strategy(profile, gearEngine)
     self:SetExportView(self.exportView or "overview")
 
     if self.exportView == "text" then
@@ -6930,6 +7528,8 @@ function Addon:RefreshExport(scope, format, filter)
         self.exportFrame.status:SetText(L("status_analysis", analysisRoleCount))
     elseif self.exportView == "advice" then
         self.exportFrame.status:SetText(L("status_advice", adviceCount, GEAR_ENGINE.GearRoleLabel(gearEngine, profile.locale)))
+    elseif self.exportView == "phase2" then
+        self.exportFrame.status:SetText(L("status_phase2", GEAR_ENGINE.GearRoleLabel(gearEngine, profile.locale), GEAR_ENGINE.Phase2ModeLabel(gearEngine, profile.locale), phase2TargetCount))
     elseif self.exportView == "items" then
         self.exportFrame.status:SetText(L("status_visual", #items))
     else
@@ -7172,9 +7772,18 @@ function Addon:CreateExportFrame()
         Addon:RefreshExport()
     end)
 
+    local phase2Tab = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
+    SetFrameSize(phase2Tab, 72, 24)
+    phase2Tab:SetPoint("LEFT", analysisTab, "RIGHT", 6, 0)
+    phase2Tab:SetText(L("phase2_tab"))
+    phase2Tab:SetScript("OnClick", function()
+        Addon:SetExportView("phase2")
+        Addon:RefreshExport()
+    end)
+
     local textTab = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
     SetFrameSize(textTab, 82, 24)
-    textTab:SetPoint("LEFT", analysisTab, "RIGHT", 6, 0)
+    textTab:SetPoint("LEFT", phase2Tab, "RIGHT", 6, 0)
     textTab:SetText(L("text_export_tab"))
     textTab:SetScript("OnClick", function()
         Addon:SelectExportText()
@@ -7345,6 +7954,62 @@ function Addon:CreateExportFrame()
     analysisText:SetJustifyH("LEFT")
     analysisText:SetText(L("analysis_no_roles"))
 
+    local phase2Scroll = CreateFrame("ScrollFrame", "TBCGearExporterPhase2ScrollFrame", exportFrame, "UIPanelScrollFrameTemplate")
+    phase2Scroll:SetPoint("TOPLEFT", 282, -96)
+    phase2Scroll:SetPoint("BOTTOMRIGHT", -38, 48)
+
+    local phase2Content = CreateFrame("Frame", nil, phase2Scroll)
+    SetFrameSize(phase2Content, 490, 390)
+    phase2Scroll:SetScrollChild(phase2Content)
+
+    local phase2Title = phase2Content:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    phase2Title:SetPoint("TOPLEFT", 4, -4)
+    phase2Title:SetText(L("phase2_title"))
+
+    local phase2Summary = phase2Content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    phase2Summary:SetPoint("TOPLEFT", 4, -28)
+    phase2Summary:SetPoint("RIGHT", phase2Content, "RIGHT", -8, 0)
+    phase2Summary:SetJustifyH("LEFT")
+
+    local phase2ModeHint = phase2Content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    phase2ModeHint:SetPoint("TOPLEFT", 4, -52)
+    phase2ModeHint:SetText(L("phase2_mode_hint"))
+
+    local phase2ModeButtons = {}
+    for index = 1, 3 do
+        local modeButton = CreateFrame("Button", nil, phase2Content, "UIPanelButtonTemplate")
+        SetFrameSize(modeButton, 150, 22)
+        modeButton:SetPoint("TOPLEFT", phase2Content, "TOPLEFT", 4 + ((index - 1) * 158), -68)
+        modeButton:SetScript("OnClick", function(self)
+            if self.modeKey then
+                Addon.selectedStrategyModeKey = self.modeKey
+                Addon.selectedAdviceIndex = 1
+                Addon:RefreshExport()
+            end
+        end)
+        modeButton:Hide()
+        phase2ModeButtons[index] = modeButton
+    end
+
+    local phase2Details = phase2Content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    phase2Details:SetPoint("TOPLEFT", 4, -100)
+    phase2Details:SetPoint("RIGHT", phase2Content, "RIGHT", -8, 0)
+    phase2Details:SetJustifyH("LEFT")
+
+    local phase2TargetsTitle = phase2Content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    phase2TargetsTitle:SetPoint("TOPLEFT", 4, -204)
+    phase2TargetsTitle:SetText(L("phase2_targets"))
+
+    local phase2TargetsContent = CreateFrame("Frame", nil, phase2Content)
+    SetFrameSize(phase2TargetsContent, 486, 42)
+    phase2TargetsContent:SetPoint("TOPLEFT", phase2Content, "TOPLEFT", 0, -228)
+
+    local phase2TargetsEmpty = phase2TargetsContent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    phase2TargetsEmpty:SetPoint("TOPLEFT", 4, -4)
+    phase2TargetsEmpty:SetPoint("RIGHT", phase2TargetsContent, "RIGHT", -8, 0)
+    phase2TargetsEmpty:SetJustifyH("LEFT")
+    phase2TargetsEmpty:SetText(L("phase2_no_targets"))
+
     local textScroll = CreateFrame("ScrollFrame", "TBCGearExporterScrollFrame", exportFrame, "UIPanelScrollFrameTemplate")
     textScroll:SetPoint("TOPLEFT", 282, -96)
     textScroll:SetPoint("BOTTOMRIGHT", -38, 48)
@@ -7384,11 +8049,13 @@ function Addon:CreateExportFrame()
     exportFrame.adviceTab = adviceTab
     exportFrame.itemsTab = itemsTab
     exportFrame.analysisTab = analysisTab
+    exportFrame.phase2Tab = phase2Tab
     exportFrame.textTab = textTab
     exportFrame.overviewScroll = overviewScroll
     exportFrame.adviceScroll = adviceScroll
     exportFrame.visualScroll = visualScroll
     exportFrame.analysisScroll = analysisScroll
+    exportFrame.phase2Scroll = phase2Scroll
     exportFrame.textScroll = textScroll
     exportFrame.overviewContent = overviewContent
     exportFrame.overviewText = overviewText
@@ -7411,6 +8078,13 @@ function Addon:CreateExportFrame()
     exportFrame.itemListContent = itemListContent
     exportFrame.analysisContent = analysisContent
     exportFrame.analysisText = analysisText
+    exportFrame.phase2Content = phase2Content
+    exportFrame.phase2Summary = phase2Summary
+    exportFrame.phase2ModeButtons = phase2ModeButtons
+    exportFrame.phase2Details = phase2Details
+    exportFrame.phase2TargetsContent = phase2TargetsContent
+    exportFrame.phase2TargetsEmpty = phase2TargetsEmpty
+    exportFrame.phase2TargetRows = {}
     exportFrame.emptyItems = emptyItems
     exportFrame.itemRows = {}
     self.exportFrame = exportFrame
@@ -7825,6 +8499,8 @@ if _G.TBCGearExporterTestMode then
         EquipmentSlotLabel = GEAR_ENGINE.EquipmentSlotLabel,
         MaximumWeight = GEAR_ENGINE.MaximumWeight,
         StatWeightForToken = GEAR_ENGINE.StatWeightForToken,
+        FindStrategyMode = GEAR_ENGINE.FindStrategyMode,
+        AvailableStrategyModes = GEAR_ENGINE.AvailableStrategyModes,
         BuildRoleStatWeights = GEAR_ENGINE.BuildRoleStatWeights,
         ItemRoleScore = GEAR_ENGINE.ItemRoleScore,
         ItemRelevantStatMap = GEAR_ENGINE.ItemRelevantStatMap,
@@ -7835,6 +8511,12 @@ if _G.TBCGearExporterTestMode then
         VerdictCounts = GEAR_ENGINE.VerdictCounts,
         CandidateCompatibleWithClass = GEAR_ENGINE.CandidateCompatibleWithClass,
         PriorityStats = GEAR_ENGINE.PriorityStats,
+        LocalizedDataLabel = GEAR_ENGINE.LocalizedDataLabel,
+        BuildPhase2CapStatuses = GEAR_ENGINE.BuildPhase2CapStatuses,
+        FindPhase2Preset = GEAR_ENGINE.FindPhase2Preset,
+        Phase2ItemInfo = GEAR_ENGINE.Phase2ItemInfo,
+        BuildPhase2PresetProgress = GEAR_ENGINE.BuildPhase2PresetProgress,
+        BuildPhase2Strategy = GEAR_ENGINE.BuildPhase2Strategy,
         FindStrategyRole = GEAR_ENGINE.FindStrategyRole,
         AvailableStrategyRoles = GEAR_ENGINE.AvailableStrategyRoles,
         CompareItems = GEAR_ENGINE.CompareItems,
@@ -7842,6 +8524,11 @@ if _G.TBCGearExporterTestMode then
         TalentEffectLabel = GEAR_ENGINE.TalentEffectLabel,
         TalentMapSummary = GEAR_ENGINE.TalentMapSummary,
         GearRoleLabel = GEAR_ENGINE.GearRoleLabel,
+        Phase2ModeLabel = GEAR_ENGINE.Phase2ModeLabel,
+        Phase2EvidenceLabel = GEAR_ENGINE.Phase2EvidenceLabel,
+        Phase2CapText = GEAR_ENGINE.Phase2CapText,
+        Phase2PresetText = GEAR_ENGINE.Phase2PresetText,
+        Phase2Goal = GEAR_ENGINE.Phase2Goal,
         GearPriorityText = GEAR_ENGINE.GearPriorityText,
         GearBenchmarkText = GEAR_ENGINE.GearBenchmarkText,
         GearMatchedStatsText = GEAR_ENGINE.GearMatchedStatsText,
