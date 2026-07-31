@@ -4,6 +4,14 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-07-31
+
+- Add archetype-level role-fit gates for healer, caster, melee, and ranged recommendations so incompatible stat directions are rejected before heuristic scoring.
+- Fix the Holy Paladin regression where Vicious Bracers could outrank White Stag Wristguards by treating generic critical-strike rating as spell crit despite the candidate containing attack power and no healing-role anchor stat.
+- Export `role_rejected_count` and localize the role-mismatch decision for English, simplified Chinese, and traditional Chinese.
+- Give the Gear Advice summary, caveat, comparison panel, and recommendation rows fixed non-overlapping regions; condense the summary to four readable lines.
+- Expand the suite to 67 tests with 99.27% executable-line coverage, including exact Holy Paladin item fixtures and GUI layout boundaries.
+
 ## [0.4.0] - 2026-07-31
 
 - Add a versioned Phase 2 strategy database covering all 9 TBC classes and 28 PvE specializations with localized role names, stat priorities, hard/soft caps, set goals, talent strings, guide links, and three switchable strategy modes per role.
