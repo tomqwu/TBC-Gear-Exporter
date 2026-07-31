@@ -4,6 +4,15 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-07-31
+
+- Map every selected talent into each class role model, including role-aligned points, selected talent icons/ranks, mapping coverage, and localized summaries.
+- Add rank-scaled curated key-talent rules across every TBC class and common tank, healing, melee, ranged, and caster roles; these rules adjust relevant stat weights without pretending to be a full combat simulator.
+- Add role switching to Gear Advice so hybrid classes can compare the same saved items through tank, healing, or damage priorities.
+- Add a visual comparison workbench with large current/candidate item icons, localized colored names, verdict, score change, evidence, gained/lost stats, and benchmark impact.
+- Add a reusable item comparison engine with slot compatibility checks and role-specific scoring, and export available roles plus full talent mappings in JSON, Markdown, and text.
+- Expand the suite to 62 tests with 99.17% executable-line coverage.
+
 ## [0.2.1] - 2026-07-30
 
 - Merge spell damage and spell power into one offensive spell stat for recommendation scoring and swap deltas, while preserving the original per-item stats in exports.

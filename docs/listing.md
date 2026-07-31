@@ -25,17 +25,17 @@ It scans current equipment, visible bags, bank containers, talents, and characte
 - Records item name, count, location, item level, quality, quality color, item type, equip slot, stats, item link, item string, and TBC Wowhead URL.
 - Normalizes the TBC Anniversary stat-token variants used for armor, ratings, spell damage/healing, spell power, mana regen, and weapon DPS before role scoring.
 - Exports chart-ready totals by source, category, quality, equip slot, item level, and aggregate stat values.
-- Builds a strategy book that maps class, race, current talents, raid/party context, live stats, and current equipped item stats to mitigation, threat, DPS, healing, and mana models; candidate inventory totals stay separate.
+- Builds a strategy book that maps every selected talent into each class role, including rank, icon, tree alignment, and coverage; curated rank-scaled key-talent rules adjust mitigation, threat, DPS, healing, and mana stat weights.
 - Compares compatible saved gear against current equipment and labels each result as a clear upgrade, small improvement, tradeoff, or manual check; each swap shows net gained/lost stats, benchmark impact, and evidence.
 - Opens to a localized Overview GUI page with compact inventory, talent, stat, quality, category, and role snapshots.
-- Shows an icon-based Gear Advice page with current-to-candidate comparisons, item tooltips, decision labels, score gains, stat tradeoffs, evidence levels, priority stats, and benchmark checks.
+- Shows an icon-based Gear Advice page with role switching and a visual current-to-candidate workbench: large real item icons, tooltips, quality-colored names, decision labels, score gains, stat tradeoffs, evidence, and benchmark checks.
 - Compares spell damage and spell power as one offensive stat, and treats the 102.4% shield table as a contextual check that still needs attacker miss and temporary block effects.
 - Shows a localized Stats Analysis GUI page with character stats, role-specific models, benchmark statuses, race/group notes, and current-gear highlights without repeating irrelevant tank or hit sections.
 - Filters exports by scope: all saved items, bags only, bank only, or gear only.
 - Filters by quality, including rare-or-better, epic-only, and epic gear-only views.
 - Exports as AI Text, JSON, Markdown, or plain text; AI Text/JSON retain the engineered prompt and full data, while the fully localized readable formats open directly to current equipment, recommendations, role judgment, detailed analysis, and candidate inventory.
 - Shows a visual item browser with saved item icons, colored names, counts, item levels, locations, quality/type labels, and item-link tooltips.
-- Generates a class-aware AI prompt before the data export so external GenAI tools can analyze gear by likely role/spec, using `character_stats`, `current_talents`, `chart_stats`, `strategy_book`, and `gear_recommendations`.
+- Generates a class-aware AI prompt before the data export so external GenAI tools can analyze gear by likely role/spec, using `character_stats`, `current_talents`, `chart_stats`, `strategy_book.roles[].talent_mapping`, `gear_recommendations.available_roles`, and role-specific comparisons.
 - Supports English, simplified Chinese, and traditional Chinese client UI text.
 
 ### AI-Ready Export
@@ -52,6 +52,8 @@ The prompt includes:
 - Instructions for ranking keepers, weak slots, upgrade priorities, duplicates, offspec pieces, consumables, and vendor/disenchant candidates.
 
 This makes the export easy to paste into ChatGPT or another AI tool for gear review.
+
+The built-in recommendations are an explainable strategy/comparison engine, not a full combat simulator. Encounter timelines, rotations, hidden proc rates, set bonuses, enchants, gems, temporary buffs, and unmodeled talent formulas still require tooltip or external analysis.
 
 ### Commands
 

@@ -882,6 +882,98 @@ local CLASS_STRATEGY_BOOK = {
         },
     },
 }
+
+local TALENT_EFFECT_RULES = {
+    DRUID = {
+        bear_tank = {
+            { key = "thick_hide", names = { "Thick Hide", "厚皮" }, labels = { enUS = "Thick Hide armor", zhCN = "厚皮护甲", zhTW = "厚皮護甲" }, tags = { "mitigation", "armor" }, multipliers = { ITEM_MOD_ARMOR = 1.12, ITEM_MOD_BONUS_ARMOR_SHORT = 1.12 } },
+            { key = "survival_of_the_fittest", names = { "Survival of the Fittest", "适者生存", "適者生存" }, labels = { enUS = "Survival of the Fittest", zhCN = "适者生存", zhTW = "適者生存" }, tags = { "mitigation", "survival" }, multipliers = { ITEM_MOD_STAMINA_SHORT = 1.08, ITEM_MOD_AGILITY_SHORT = 1.05 } },
+        },
+        cat_dps = {
+            { key = "predatory_instincts", names = { "Predatory Instincts", "狩猎天性", "狩獵天性" }, labels = { enUS = "Predatory Instincts", zhCN = "狩猎天性", zhTW = "狩獵天性" }, tags = { "melee_dps", "crit" }, multipliers = { ITEM_MOD_CRIT_RATING_SHORT = 1.12, ITEM_MOD_AGILITY_SHORT = 1.06 } },
+            { key = "shredding_attacks", names = { "Shredding Attacks", "撕碎攻击", "撕碎攻擊" }, labels = { enUS = "Shredding Attacks", zhCN = "撕碎攻击", zhTW = "撕碎攻擊" }, tags = { "melee_dps", "energy" }, multipliers = { ITEM_MOD_ATTACK_POWER_SHORT = 1.08, ITEM_MOD_DAMAGE_PER_SECOND_SHORT = 1.08 } },
+        },
+        restoration_healer = {
+            { key = "tree_of_life", names = { "Tree of Life", "生命之树", "生命之樹" }, labels = { enUS = "Tree of Life", zhCN = "生命之树", zhTW = "生命之樹" }, tags = { "healing", "spirit" }, multipliers = { ITEM_MOD_SPELL_HEALING_DONE_SHORT = 1.12, ITEM_MOD_SPIRIT_SHORT = 1.10 } },
+        },
+        balance_caster = {
+            { key = "balance_of_power", names = { "Balance of Power", "能量平衡" }, labels = { enUS = "Balance of Power", zhCN = "能量平衡", zhTW = "能量平衡" }, tags = { "caster_dps", "spell_hit" }, multipliers = { ITEM_MOD_HIT_SPELL_RATING_SHORT = 1.12, ITEM_MOD_SPELL_POWER_SHORT = 1.06 } },
+        },
+    },
+    WARRIOR = {
+        protection_tank = {
+            { key = "shield_specialization", names = { "Shield Specialization", "盾牌专精", "盾牌專精" }, labels = { enUS = "Shield Specialization", zhCN = "盾牌专精", zhTW = "盾牌專精" }, tags = { "shield", "block" }, multipliers = { ITEM_MOD_BLOCK_RATING_SHORT = 1.12, ITEM_MOD_BLOCK_VALUE_SHORT = 1.10 } },
+            { key = "vitality", names = { "Vitality", "活力" }, labels = { enUS = "Vitality", zhCN = "活力", zhTW = "活力" }, tags = { "survival", "threat" }, multipliers = { ITEM_MOD_STAMINA_SHORT = 1.08, ITEM_MOD_STRENGTH_SHORT = 1.05 } },
+        },
+        arms_fury_dps = {
+            { key = "flurry", names = { "Flurry", "乱舞", "亂舞" }, labels = { enUS = "Flurry", zhCN = "乱舞", zhTW = "亂舞" }, tags = { "melee_dps", "haste" }, multipliers = { ITEM_MOD_CRIT_RATING_SHORT = 1.10, ITEM_MOD_HASTE_MELEE_RATING_SHORT = 1.08 } },
+            { key = "weapon_mastery", names = { "Weapon Mastery", "武器掌握", "武器專精" }, labels = { enUS = "Weapon Mastery", zhCN = "武器掌握", zhTW = "武器專精" }, tags = { "melee_dps", "expertise" }, multipliers = { ITEM_MOD_EXPERTISE_RATING_SHORT = 1.12, ITEM_MOD_DAMAGE_PER_SECOND_SHORT = 1.06 } },
+        },
+    },
+    PALADIN = {
+        protection_tank = {
+            { key = "shield_specialization", tab = 2, index = 1, names = { "Shield Specialization", "盾牌壁垒", "盾牌壁壘" }, labels = { enUS = "Shield Specialization", zhCN = "盾牌壁垒", zhTW = "盾牌壁壘" }, tags = { "shield", "block" }, multipliers = { ITEM_MOD_BLOCK_RATING_SHORT = 1.15, ITEM_MOD_BLOCK_VALUE_SHORT = 1.10 } },
+            { key = "holy_shield", tab = 2, index = 8, names = { "Holy Shield", "神圣之盾", "神聖之盾" }, labels = { enUS = "Holy Shield", zhCN = "神圣之盾", zhTW = "神聖之盾" }, tags = { "shield_table", "spell_threat" }, multipliers = { ITEM_MOD_BLOCK_RATING_SHORT = 1.12, ITEM_MOD_SPELL_POWER_SHORT = 1.08 } },
+            { key = "improved_righteous_fury", tab = 2, index = 11, names = { "Improved Righteous Fury", "强化正义之怒", "強化正義之怒" }, labels = { enUS = "Improved Righteous Fury", zhCN = "强化正义之怒", zhTW = "強化正義之怒" }, tags = { "mitigation", "threat" }, multipliers = { ITEM_MOD_STAMINA_SHORT = 1.08, ITEM_MOD_ARMOR = 1.06 } },
+            { key = "combat_expertise", tab = 2, index = 20, names = { "Combat Expertise", "战斗精准", "戰鬥精準" }, labels = { enUS = "Combat Expertise", zhCN = "战斗精准", zhTW = "戰鬥精準" }, tags = { "survival", "threat" }, multipliers = { ITEM_MOD_STAMINA_SHORT = 1.08, ITEM_MOD_INTELLECT_SHORT = 1.05 } },
+            { key = "avengers_shield", tab = 2, index = 21, names = { "Avenger's Shield", "复仇者之盾", "復仇者之盾" }, labels = { enUS = "Avenger's Shield", zhCN = "复仇者之盾", zhTW = "復仇者之盾" }, tags = { "spell_threat", "ranged_pull" }, multipliers = { ITEM_MOD_SPELL_POWER_SHORT = 1.10, ITEM_MOD_HIT_SPELL_RATING_SHORT = 1.06 } },
+            { key = "improved_holy_shield", tab = 2, index = 22, names = { "Improved Holy Shield", "强化神圣之盾", "強化神聖之盾" }, labels = { enUS = "Improved Holy Shield", zhCN = "强化神圣之盾", zhTW = "強化神聖之盾" }, tags = { "shield_table", "block" }, multipliers = { ITEM_MOD_BLOCK_RATING_SHORT = 1.10, ITEM_MOD_BLOCK_VALUE_SHORT = 1.08 } },
+        },
+        holy_healer = {
+            { key = "illumination", names = { "Illumination", "启发", "啟發" }, labels = { enUS = "Illumination", zhCN = "启发", zhTW = "啟發" }, tags = { "healing", "mana" }, multipliers = { ITEM_MOD_CRIT_SPELL_RATING_SHORT = 1.12, ITEM_MOD_MANA_REGENERATION_SHORT = 1.08 } },
+            { key = "holy_guidance", names = { "Holy Guidance", "神圣指引", "神聖指引" }, labels = { enUS = "Holy Guidance", zhCN = "神圣指引", zhTW = "神聖指引" }, tags = { "healing", "intellect" }, multipliers = { ITEM_MOD_INTELLECT_SHORT = 1.10, ITEM_MOD_SPELL_HEALING_DONE_SHORT = 1.06 } },
+        },
+        retribution_dps = {
+            { key = "conviction", names = { "Conviction", "定罪" }, labels = { enUS = "Conviction", zhCN = "定罪", zhTW = "定罪" }, tags = { "melee_dps", "crit" }, multipliers = { ITEM_MOD_CRIT_RATING_SHORT = 1.12 } },
+            { key = "crusade", names = { "Crusade", "征伐" }, labels = { enUS = "Crusade", zhCN = "征伐", zhTW = "征伐" }, tags = { "melee_dps", "damage" }, multipliers = { ITEM_MOD_ATTACK_POWER_SHORT = 1.08, ITEM_MOD_STRENGTH_SHORT = 1.06 } },
+        },
+    },
+    PRIEST = {
+        healing = {
+            { key = "meditation", names = { "Meditation", "冥想" }, labels = { enUS = "Meditation", zhCN = "冥想", zhTW = "冥想" }, tags = { "healing", "mana" }, multipliers = { ITEM_MOD_MANA_REGENERATION_SHORT = 1.12, ITEM_MOD_SPIRIT_SHORT = 1.06 } },
+            { key = "spiritual_guidance", names = { "Spiritual Guidance", "精神指导", "精神導引" }, labels = { enUS = "Spiritual Guidance", zhCN = "精神指导", zhTW = "精神導引" }, tags = { "healing", "spirit" }, multipliers = { ITEM_MOD_SPIRIT_SHORT = 1.10, ITEM_MOD_SPELL_HEALING_DONE_SHORT = 1.08 } },
+        },
+        shadow_dps = {
+            { key = "shadow_focus", names = { "Shadow Focus", "暗影集中" }, labels = { enUS = "Shadow Focus", zhCN = "暗影集中", zhTW = "暗影集中" }, tags = { "caster_dps", "spell_hit" }, multipliers = { ITEM_MOD_HIT_SPELL_RATING_SHORT = 1.12 } },
+            { key = "shadowform", names = { "Shadowform", "暗影形态", "暗影形態" }, labels = { enUS = "Shadowform", zhCN = "暗影形态", zhTW = "暗影形態" }, tags = { "caster_dps", "shadow" }, multipliers = { ITEM_MOD_SPELL_POWER_SHORT = 1.10 } },
+        },
+    },
+    SHAMAN = {
+        restoration_healer = {
+            { key = "mana_tide_totem", names = { "Mana Tide Totem", "法力之潮图腾", "法力之潮圖騰" }, labels = { enUS = "Mana Tide Totem", zhCN = "法力之潮图腾", zhTW = "法力之潮圖騰" }, tags = { "healing", "mana" }, multipliers = { ITEM_MOD_MANA_REGENERATION_SHORT = 1.12, ITEM_MOD_INTELLECT_SHORT = 1.06 } },
+        },
+        elemental_dps = {
+            { key = "elemental_precision", names = { "Elemental Precision", "元素精准", "元素精準" }, labels = { enUS = "Elemental Precision", zhCN = "元素精准", zhTW = "元素精準" }, tags = { "caster_dps", "spell_hit" }, multipliers = { ITEM_MOD_HIT_SPELL_RATING_SHORT = 1.12, ITEM_MOD_SPELL_POWER_SHORT = 1.05 } },
+        },
+        enhancement_dps = {
+            { key = "dual_wield_specialization", names = { "Dual Wield Specialization", "双武器专精", "雙武器專精" }, labels = { enUS = "Dual Wield Specialization", zhCN = "双武器专精", zhTW = "雙武器專精" }, tags = { "melee_dps", "hit" }, multipliers = { ITEM_MOD_HIT_RATING_SHORT = 1.12, ITEM_MOD_DAMAGE_PER_SECOND_SHORT = 1.05 } },
+        },
+    },
+    HUNTER = {
+        ranged_dps = {
+            { key = "careful_aim", names = { "Careful Aim", "仔细瞄准", "仔細瞄準" }, labels = { enUS = "Careful Aim", zhCN = "仔细瞄准", zhTW = "仔細瞄準" }, tags = { "ranged_dps", "intellect" }, multipliers = { ITEM_MOD_INTELLECT_SHORT = 1.08, ITEM_MOD_RANGED_ATTACK_POWER_SHORT = 1.08 } },
+            { key = "lightning_reflexes", names = { "Lightning Reflexes", "闪电反射", "閃電反射" }, labels = { enUS = "Lightning Reflexes", zhCN = "闪电反射", zhTW = "閃電反射" }, tags = { "ranged_dps", "agility" }, multipliers = { ITEM_MOD_AGILITY_SHORT = 1.10 } },
+        },
+    },
+    ROGUE = {
+        melee_dps = {
+            { key = "precision", names = { "Precision", "精确", "精準" }, labels = { enUS = "Precision", zhCN = "精确", zhTW = "精準" }, tags = { "melee_dps", "hit" }, multipliers = { ITEM_MOD_HIT_RATING_SHORT = 1.12 } },
+            { key = "weapon_expertise", names = { "Weapon Expertise", "武器专家", "武器專家" }, labels = { enUS = "Weapon Expertise", zhCN = "武器专家", zhTW = "武器專家" }, tags = { "melee_dps", "expertise" }, multipliers = { ITEM_MOD_EXPERTISE_RATING_SHORT = 1.12 } },
+        },
+    },
+    MAGE = {
+        caster_dps = {
+            { key = "arcane_focus", names = { "Arcane Focus", "奥术集中", "奧術集中" }, labels = { enUS = "Arcane Focus", zhCN = "奥术集中", zhTW = "奧術集中" }, tags = { "caster_dps", "spell_hit" }, multipliers = { ITEM_MOD_HIT_SPELL_RATING_SHORT = 1.10 } },
+            { key = "elemental_precision", names = { "Elemental Precision", "元素精准", "元素精準" }, labels = { enUS = "Elemental Precision", zhCN = "元素精准", zhTW = "元素精準" }, tags = { "caster_dps", "spell_hit" }, multipliers = { ITEM_MOD_HIT_SPELL_RATING_SHORT = 1.10 } },
+        },
+    },
+    WARLOCK = {
+        caster_dps = {
+            { key = "suppression", names = { "Suppression", "镇压", "鎮壓" }, labels = { enUS = "Suppression", zhCN = "镇压", zhTW = "鎮壓" }, tags = { "caster_dps", "spell_hit" }, multipliers = { ITEM_MOD_HIT_SPELL_RATING_SHORT = 1.12 } },
+            { key = "demonic_knowledge", names = { "Demonic Knowledge", "恶魔知识", "惡魔知識" }, labels = { enUS = "Demonic Knowledge", zhCN = "恶魔知识", zhTW = "惡魔知識" }, tags = { "caster_dps", "pet" }, multipliers = { ITEM_MOD_STAMINA_SHORT = 1.06, ITEM_MOD_INTELLECT_SHORT = 1.06, ITEM_MOD_SPELL_POWER_SHORT = 1.08 } },
+        },
+    },
+}
 local EXPORT_FORMAT_LABELS = {
     ai = "AI Text",
     json = "JSON",
@@ -929,6 +1021,12 @@ local UI_STRINGS = {
         advice_title = "Gear Strategy",
         advice_summary = "%s · %d equipped · %d candidates · %d decisions",
         advice_verdicts = "Decision: %s",
+        advice_talent_map = "Talent mapping: %s",
+        advice_role_hint = "Role lens",
+        compare_title = "Selected item comparison",
+        compare_current = "Current",
+        compare_candidate = "Candidate",
+        compare_select_hint = "Click either item icon in a recommendation to inspect the full comparison.",
         advice_priorities = "Priority stats: %s",
         advice_benchmarks = "Key checks: %s",
         advice_no_gaps = "No unresolved benchmark check",
@@ -1029,6 +1127,12 @@ local UI_STRINGS = {
         advice_title = "装备策略",
         advice_summary = "%s · 已装备 %d 件 · 候选 %d 件 · 配装结论 %d 条",
         advice_verdicts = "结论：%s",
+        advice_talent_map = "天赋映射：%s",
+        advice_role_hint = "职责视角",
+        compare_title = "当前选择的物品对比",
+        compare_current = "当前",
+        compare_candidate = "候选",
+        compare_select_hint = "点击任意建议中的物品图标，可查看完整对比。",
         advice_priorities = "优先属性：%s",
         advice_benchmarks = "关键检查：%s",
         advice_no_gaps = "当前没有待处理的基准检查",
@@ -1129,6 +1233,12 @@ local UI_STRINGS = {
         advice_title = "裝備策略",
         advice_summary = "%s · 已裝備 %d 件 · 候選 %d 件 · 配裝結論 %d 條",
         advice_verdicts = "結論：%s",
+        advice_talent_map = "天賦映射：%s",
+        advice_role_hint = "職責視角",
+        compare_title = "目前選取的物品比較",
+        compare_current = "目前",
+        compare_candidate = "候選",
+        compare_select_hint = "點擊任一建議中的物品圖示，可查看完整比較。",
         advice_priorities = "優先屬性：%s",
         advice_benchmarks = "關鍵檢查：%s",
         advice_no_gaps = "目前沒有待處理的基準檢查",
@@ -1203,8 +1313,9 @@ GEAR_ENGINE.REPORT_TERMS = {
         priority_stats = "Priority stats", benchmark_gaps = "Key benchmark checks", caveat = "Limit",
         slot = "Slot", current = "Current", suggested = "Candidate", score = "Score", evidence = "Evidence", verdict = "Decision",
         gains = "Gains", losses = "Gives up", high = "High", medium = "Medium", low = "Low",
-        verdict_upgrade = "Clear upgrade", verdict_minor = "Small improvement", verdict_tradeoff = "Tradeoff", verdict_review = "Manual check",
+        verdict_upgrade = "Clear upgrade", verdict_minor = "Small improvement", verdict_tradeoff = "Tradeoff", verdict_review = "Manual check", verdict_incompatible = "Different slot",
         verdict_summary = "%d clear · %d small · %d tradeoff · %d manual",
+        talent_map = "Talent mapping", talent_map_summary = "%d/%d selected mapped · %d aligned points · key effects: %s", no_key_effects = "none",
         benchmark_impact = "Benchmark impact", impact_helps_gap = "moves toward target", impact_worsens_gap = "moves away from target",
         impact_cap_buffer = "adds buffer above target", impact_cap_risk = "recheck target after equipping",
         impact_context_help = "improves the visible subtotal", impact_context_risk = "reduces the visible subtotal",
@@ -1234,8 +1345,9 @@ GEAR_ENGINE.REPORT_TERMS = {
         priority_stats = "优先属性", benchmark_gaps = "关键基准检查", caveat = "分析限制",
         slot = "栏位", current = "当前装备", suggested = "候选装备", score = "评分变化", evidence = "证据", verdict = "结论",
         gains = "获得", losses = "失去", high = "高", medium = "中", low = "低",
-        verdict_upgrade = "明确升级", verdict_minor = "小幅提升", verdict_tradeoff = "有取舍", verdict_review = "需手动核对",
+        verdict_upgrade = "明确升级", verdict_minor = "小幅提升", verdict_tradeoff = "有取舍", verdict_review = "需手动核对", verdict_incompatible = "栏位不同",
         verdict_summary = "明确 %d · 小幅 %d · 有取舍 %d · 需核对 %d",
+        talent_map = "天赋映射", talent_map_summary = "已映射 %d/%d 个已点天赋 · 本职责 %d 点 · 关键效果：%s", no_key_effects = "无",
         benchmark_impact = "基准影响", impact_helps_gap = "向目标靠近", impact_worsens_gap = "离目标更远",
         impact_cap_buffer = "增加达标余量", impact_cap_risk = "换装后需重新核对是否达标",
         impact_context_help = "提高可见常驻小计", impact_context_risk = "降低可见常驻小计",
@@ -1265,8 +1377,9 @@ GEAR_ENGINE.REPORT_TERMS = {
         priority_stats = "優先屬性", benchmark_gaps = "關鍵基準檢查", caveat = "分析限制",
         slot = "欄位", current = "目前裝備", suggested = "候選裝備", score = "評分變化", evidence = "證據", verdict = "結論",
         gains = "獲得", losses = "失去", high = "高", medium = "中", low = "低",
-        verdict_upgrade = "明確升級", verdict_minor = "小幅提升", verdict_tradeoff = "有取捨", verdict_review = "需手動核對",
+        verdict_upgrade = "明確升級", verdict_minor = "小幅提升", verdict_tradeoff = "有取捨", verdict_review = "需手動核對", verdict_incompatible = "欄位不同",
         verdict_summary = "明確 %d · 小幅 %d · 有取捨 %d · 需核對 %d",
+        talent_map = "天賦映射", talent_map_summary = "已映射 %d/%d 個已點天賦 · 本職責 %d 點 · 關鍵效果：%s", no_key_effects = "無",
         benchmark_impact = "基準影響", impact_helps_gap = "向目標靠近", impact_worsens_gap = "離目標更遠",
         impact_cap_buffer = "增加達標餘量", impact_cap_risk = "換裝後需重新核對是否達標",
         impact_context_help = "提高可見常駐小計", impact_context_risk = "降低可見常駐小計",
@@ -1959,6 +2072,29 @@ function GEAR_ENGINE.BenchmarkImpactText(impacts, locale)
         parts[#parts + 1] = tostring(label) .. " " .. signedDelta .. " (" .. tostring(terms["impact_" .. tostring(impact.effect)] or impact.effect) .. ")"
     end
     return #parts > 0 and table.concat(parts, "; ") or terms.no_benchmark_impact
+end
+
+function GEAR_ENGINE.TalentEffectLabel(effect, locale)
+    local promptLocale = PromptLocale(locale or ClientLocale())
+    return effect and effect.labels and (effect.labels[promptLocale] or effect.labels.enUS) or effect and effect.name or ""
+end
+
+function GEAR_ENGINE.TalentMapSummary(talentMap, locale, maxEffects)
+    local terms = GEAR_ENGINE.ReportTerms(locale)
+    local effects = {}
+    maxEffects = maxEffects or 4
+    for index = 1, math.min(#(talentMap and talentMap.effects or {}), maxEffects) do
+        effects[#effects + 1] = GEAR_ENGINE.TalentEffectLabel(talentMap.effects[index], locale)
+    end
+    if #(talentMap and talentMap.effects or {}) > maxEffects then
+        effects[#effects + 1] = string.format(terms.more, #(talentMap.effects or {}) - maxEffects)
+    end
+    local effectText = #effects > 0 and table.concat(effects, ", ") or terms.no_key_effects
+    return string.format(terms.talent_map_summary,
+        talentMap and talentMap.mappedCount or 0,
+        talentMap and talentMap.selectedCount or 0,
+        talentMap and talentMap.alignedPoints or 0,
+        effectText)
 end
 
 local function FormatStats(stats)
@@ -3222,7 +3358,7 @@ local function BuildAIPrompt(profile, scope, filter, itemCount)
             "当前天赋：" .. talentSummary .. "。",
             "请优先使用 current_talents.tree_points、current_talents.trees[].points_spent 和每个已点天赋的 points_spent/rank 来判断当前天赋点数。",
             "银行内容是最后一次保存的快照。背包/银行来源只代表库存位置，不代表物品已经装备。",
-            "请使用 character_stats、chart_stats、strategy_book、gear_recommendations、当前装备、物品属性、物品等级、品质、装备栏位、来源位置和 wowhead_url 字段。优先核对 verdict、benchmark_impacts 和关键基准；不要编造隐藏附魔、宝石、套装或触发效果。",
+            "请使用 character_stats、chart_stats、strategy_book、gear_recommendations、当前装备、物品属性、物品等级、品质、装备栏位、来源位置和 wowhead_url 字段。重点读取 strategy_book.roles[].talent_mapping、gear_recommendations.available_roles、verdict、benchmark_impacts 和关键基准；比较不同职责时必须切换对应角色权重。不要编造隐藏附魔、宝石、套装或触发效果。",
             "请考虑该职业可能的天赋/职责，不要只假设一个专精。",
             "",
             "职业职责分析视角：",
@@ -3237,7 +3373,7 @@ local function BuildAIPrompt(profile, scope, filter, itemCount)
             "目前天賦：" .. talentSummary .. "。",
             "請優先使用 current_talents.tree_points、current_talents.trees[].points_spent 和每個已點天賦的 points_spent/rank 來判斷目前天賦點數。",
             "銀行內容是最後一次儲存的快照。背包/銀行來源只代表庫存位置，不代表物品已經裝備。",
-            "請使用 character_stats、chart_stats、strategy_book、gear_recommendations、目前裝備、物品屬性、物品等級、品質、裝備欄位、來源位置和 wowhead_url 欄位。優先核對 verdict、benchmark_impacts 和關鍵基準；不要編造隱藏附魔、寶石、套裝或觸發效果。",
+            "請使用 character_stats、chart_stats、strategy_book、gear_recommendations、目前裝備、物品屬性、物品等級、品質、裝備欄位、來源位置和 wowhead_url 欄位。重點讀取 strategy_book.roles[].talent_mapping、gear_recommendations.available_roles、verdict、benchmark_impacts 和關鍵基準；比較不同職責時必須切換對應角色權重。不要編造隱藏附魔、寶石、套裝或觸發效果。",
             "請考慮該職業可能的天賦/職責，不要只假設一個專精。",
             "",
             "職業職責分析視角：",
@@ -3252,7 +3388,7 @@ local function BuildAIPrompt(profile, scope, filter, itemCount)
             "Current talents: " .. talentSummary .. ".",
             "Use current_talents.tree_points, current_talents.trees[].points_spent, and each selected talent points_spent/rank to anchor the current talent distribution.",
             "Bank contents are the last saved snapshot. Treat bag and bank source labels as inventory location, not proof that an item is equipped.",
-            "Use character_stats, chart_stats, strategy_book, gear_recommendations, current equipment, item stats, item level, quality, equip slot, source location, and wowhead_url fields. Check verdict, benchmark_impacts, and key benchmarks first; do not invent hidden enchants, gems, set bonuses, or proc effects.",
+            "Use character_stats, chart_stats, strategy_book, gear_recommendations, current equipment, item stats, item level, quality, equip slot, source location, and wowhead_url fields. Read strategy_book.roles[].talent_mapping and gear_recommendations.available_roles; switch to the matching role weights when comparing roles. Check verdict, benchmark_impacts, and key benchmarks first; do not invent hidden enchants, gems, set bonuses, or proc effects.",
             "Consider plausible class talents/specs instead of assuming one role.",
             "",
             "Class role lenses:",
@@ -3794,6 +3930,124 @@ local function RoleConfidence(role, talents)
     return confidence
 end
 
+local function TalentTabMatches(tabIndex, tabIndexes)
+    if #(tabIndexes or {}) == 0 then
+        return true
+    end
+    for index = 1, #(tabIndexes or {}) do
+        if tonumber(tabIndex) == tonumber(tabIndexes[index]) then
+            return true
+        end
+    end
+    return false
+end
+
+local function NormalizeTalentName(name)
+    return tostring(name or ""):lower():gsub("[%s%p]", "")
+end
+
+local function TalentRuleMatches(rule, tabIndex, talent)
+    if rule.tab and rule.index and tonumber(rule.tab) == tonumber(tabIndex) and tonumber(rule.index) == tonumber(talent and talent.index) then
+        return true
+    end
+    local talentName = NormalizeTalentName(talent and talent.name)
+    for index = 1, #(rule.names or {}) do
+        if talentName ~= "" and talentName == NormalizeTalentName(rule.names[index]) then
+            return true
+        end
+    end
+    return false
+end
+
+local function TalentRuleFor(classToken, roleKey, tabIndex, talent)
+    local classRules = TALENT_EFFECT_RULES[ClassToken(classToken)] or {}
+    for index = 1, #(classRules[roleKey] or {}) do
+        local rule = classRules[roleKey][index]
+        if TalentRuleMatches(rule, tabIndex, talent) then
+            return rule
+        end
+    end
+    return nil
+end
+
+local function BuildTalentRoleMap(classToken, talents, role)
+    local result = {
+        version = 1,
+        selectedCount = 0,
+        selectedPoints = 0,
+        mappedCount = 0,
+        alignedCount = 0,
+        alignedPoints = 0,
+        affinityScore = 0,
+        selected = {},
+        effects = {},
+        weightMultipliers = {},
+        weightModifiers = {},
+    }
+
+    for tabIndex = 1, #(talents and talents.tabs or {}) do
+        local tab = talents.tabs[tabIndex]
+        for talentIndex = 1, #(tab and tab.talents or {}) do
+            local talent = tab.talents[talentIndex]
+            local rank = tonumber(talent and (talent.currentRank or talent.pointsSpent or talent.points or talent.rank)) or 0
+            if rank > 0 then
+                local aligned = TalentTabMatches(tab and tab.index or tabIndex, role and role.talentTabs)
+                local rule = TalentRuleFor(classToken, role and role.key, tab and tab.index or tabIndex, talent)
+                local entry = {
+                    treeIndex = tab and tab.index or tabIndex,
+                    treeName = tab and tab.name,
+                    talentIndex = talent and talent.index or talentIndex,
+                    name = talent and talent.name,
+                    icon = talent and talent.icon,
+                    rank = rank,
+                    maxRank = tonumber(talent and talent.maxRank) or rank,
+                    aligned = aligned,
+                    effectKey = rule and rule.key or nil,
+                    tags = rule and rule.tags or {},
+                }
+                result.selected[#result.selected + 1] = entry
+                result.selectedCount = result.selectedCount + 1
+                result.selectedPoints = result.selectedPoints + rank
+                result.mappedCount = result.mappedCount + 1
+                if aligned then
+                    result.alignedCount = result.alignedCount + 1
+                    result.alignedPoints = result.alignedPoints + rank
+                end
+                if rule then
+                    local effect = {
+                        key = rule.key,
+                        name = talent and talent.name,
+                        icon = talent and talent.icon,
+                        rank = rank,
+                        maxRank = entry.maxRank,
+                        labels = rule.labels or {},
+                        tags = rule.tags or {},
+                    }
+                    result.effects[#result.effects + 1] = effect
+                    for token, maximumMultiplier in pairs(rule.multipliers or {}) do
+                        local progress = entry.maxRank > 0 and (rank / entry.maxRank) or 1
+                        local multiplier = 1 + ((maximumMultiplier - 1) * progress)
+                        result.weightMultipliers[token] = (result.weightMultipliers[token] or 1) * multiplier
+                    end
+                end
+            end
+        end
+    end
+
+    for token, multiplier in pairs(result.weightMultipliers) do
+        result.weightModifiers[#result.weightModifiers + 1] = {
+            token = token,
+            multiplier = RoundedStatNumber(multiplier),
+        }
+    end
+    table.sort(result.weightModifiers, function(left, right)
+        return tostring(left.token) < tostring(right.token)
+    end)
+    result.affinityScore = result.alignedPoints + (#result.effects * 3)
+    result.coverage = result.selectedCount > 0 and RoundedStatNumber(result.mappedCount / result.selectedCount) or 0
+    return result
+end
+
 local function BuildRoleObservedStats(role, characterStats, chartStats)
     local chances = characterStats and characterStats.chances or {}
     local spell = characterStats and characterStats.spell or {}
@@ -3920,6 +4174,7 @@ local function BuildStrategyBook(profile, chartStats)
         local observed = BuildRoleObservedStats(role, characterStats, equippedChartStats)
         local talentPoints = TalentPointsForTabs(profile and profile.talents, role.talentTabs)
         local primaryMatch = TalentPrimaryMatches(profile and profile.talents, role.talentTabs)
+        local talentMap = BuildTalentRoleMap(classToken, profile and profile.talents, role)
         roles[#roles + 1] = {
             key = role.key,
             label = role.label,
@@ -3929,6 +4184,7 @@ local function BuildStrategyBook(profile, chartStats)
             models = role.models or {},
             priorities = role.priorities or {},
             statTokens = role.statTokens or {},
+            talentMap = talentMap,
             observed = observed,
             benchmarks = BuildRoleBenchmarks(role, observed),
             notes = {
@@ -3943,11 +4199,17 @@ local function BuildStrategyBook(profile, chartStats)
             return left.confidence > right.confidence
         end
 
+        local leftAffinity = left.talentMap and left.talentMap.affinityScore or 0
+        local rightAffinity = right.talentMap and right.talentMap.affinityScore or 0
+        if leftAffinity ~= rightAffinity then
+            return leftAffinity > rightAffinity
+        end
+
         return tostring(left.label) < tostring(right.label)
     end)
 
     return {
-        version = 1,
+        version = 2,
         generatedAt = Now(),
         classToken = classToken,
         raceToken = race and race.english or "UNKNOWN",
@@ -4038,6 +4300,14 @@ function GEAR_ENGINE.BuildRoleStatWeights(role)
             local base = weights[token] or (GEAR_ENGINE.STAT_SCORE_SCALES[token] or 1)
             weights[token] = base * boost
         end
+    end
+
+    for index = 1, #(role and role.talentMap and role.talentMap.weightModifiers or {}) do
+        local modifier = role.talentMap.weightModifiers[index]
+        local token = GEAR_ENGINE.NormalizeStatToken(modifier and modifier.token)
+        local multiplier = tonumber(modifier and modifier.multiplier) or 1
+        local base = weights[token] or (GEAR_ENGINE.STAT_SCORE_SCALES[token] or 1)
+        weights[token] = base * multiplier
     end
 
     local spellOffenseWeight = GEAR_ENGINE.MaximumWeight(weights, {
@@ -4294,9 +4564,68 @@ function GEAR_ENGINE.PriorityStats(role, weights)
     return priorities
 end
 
-function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyBook)
+function GEAR_ENGINE.FindStrategyRole(strategyBook, roleKey)
+    for index = 1, #(strategyBook and strategyBook.roles or {}) do
+        local role = strategyBook.roles[index]
+        if not roleKey or role.key == roleKey then
+            return role
+        end
+    end
+    return strategyBook and strategyBook.roles and strategyBook.roles[1] or DEFAULT_STRATEGY_ROLES[1]
+end
+
+function GEAR_ENGINE.AvailableStrategyRoles(strategyBook)
+    local roles = {}
+    for index = 1, #(strategyBook and strategyBook.roles or {}) do
+        local role = strategyBook.roles[index]
+        roles[#roles + 1] = {
+            key = role.key,
+            label = role.label,
+            confidence = role.confidence or 0,
+            talentPoints = role.talentPoints or 0,
+            talentAffinity = role.talentMap and role.talentMap.affinityScore or 0,
+            keyEffectCount = #(role.talentMap and role.talentMap.effects or {}),
+        }
+    end
+    return roles
+end
+
+function GEAR_ENGINE.CompareItems(profile, currentItem, candidateItem, strategyBook, roleKey, weights)
+    strategyBook = strategyBook or BuildStrategyBook(profile, BuildChartStats({ candidateItem }))
+    local role = GEAR_ENGINE.FindStrategyRole(strategyBook, roleKey)
+    weights = weights or GEAR_ENGINE.BuildRoleStatWeights(role)
+    local currentScore = currentItem and GEAR_ENGINE.ItemRoleScore(currentItem, role, weights) or 0
+    local candidateScore, matchedStats = GEAR_ENGINE.ItemRoleScore(candidateItem, role, weights)
+    local scoreGain = candidateScore - currentScore
+    local statGains, statLosses = GEAR_ENGINE.BuildStatDeltas(currentItem, candidateItem, weights)
+    local evidence = GEAR_ENGINE.RecommendationEvidence(currentItem, candidateItem, statGains, statLosses)
+    local benchmarkImpacts = GEAR_ENGINE.BuildBenchmarkImpacts(role, statGains, statLosses)
+    local currentSlot = GEAR_ENGINE.EquipmentSlotKey(currentItem)
+    local candidateSlot = GEAR_ENGINE.EquipmentSlotKey(candidateItem)
+    local slotCompatible = not currentItem or currentSlot == candidateSlot
+    return {
+        slotKey = candidateSlot or currentSlot,
+        slotCompatible = slotCompatible,
+        current = currentItem,
+        candidate = candidateItem,
+        currentScore = currentScore,
+        candidateScore = candidateScore,
+        scoreGain = RoundedStatNumber(scoreGain),
+        matchedStats = matchedStats,
+        statGains = statGains,
+        statLosses = statLosses,
+        benchmarkImpacts = benchmarkImpacts,
+        evidence = evidence,
+        verdict = slotCompatible and GEAR_ENGINE.RecommendationVerdict(evidence, scoreGain, benchmarkImpacts) or "incompatible",
+        roleKey = role.key,
+        roleLabel = role.label,
+        talentMap = role.talentMap,
+    }
+end
+
+function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyBook, roleKey)
     strategyBook = strategyBook or BuildStrategyBook(profile, BuildChartStats(candidateItems or {}))
-    local role = strategyBook.roles and strategyBook.roles[1] or DEFAULT_STRATEGY_ROLES[1]
+    local role = GEAR_ENGINE.FindStrategyRole(strategyBook, roleKey)
     local weights = GEAR_ENGINE.BuildRoleStatWeights(role)
     local currentBySlot = {}
     local equippedItems = profile and profile.equipped and profile.equipped.items or {}
@@ -4320,28 +4649,10 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
         local slotKey = GEAR_ENGINE.EquipmentSlotKey(item)
         if slotKey ~= "SHIRT" and slotKey ~= "TABARD" and GEAR_ENGINE.CandidateCompatibleWithClass(profile, item) then
             candidateCount = candidateCount + 1
-            local score, matched = GEAR_ENGINE.ItemRoleScore(item, role, weights)
             local current = currentBySlot[slotKey]
-            local gain = score - (current and current.score or 0)
-            if gain >= 2 and #matched > 0 then
-                local statGains, statLosses = GEAR_ENGINE.BuildStatDeltas(current and current.item or nil, item, weights)
-                local evidence = GEAR_ENGINE.RecommendationEvidence(current and current.item or nil, item, statGains, statLosses)
-                local benchmarkImpacts = GEAR_ENGINE.BuildBenchmarkImpacts(role, statGains, statLosses)
-                local recommendation = {
-                    slotKey = slotKey,
-                    current = current and current.item or nil,
-                    candidate = item,
-                    currentScore = current and current.score or 0,
-                    candidateScore = score,
-                    scoreGain = RoundedStatNumber(gain),
-                    matchedStats = matched,
-                    statGains = statGains,
-                    statLosses = statLosses,
-                    benchmarkImpacts = benchmarkImpacts,
-                    evidence = evidence,
-                    verdict = GEAR_ENGINE.RecommendationVerdict(evidence, gain, benchmarkImpacts),
-                }
-                if not bestBySlot[slotKey] or score > bestBySlot[slotKey].candidateScore then
+            local recommendation = GEAR_ENGINE.CompareItems(profile, current and current.item or nil, item, strategyBook, role.key, weights)
+            if recommendation.scoreGain >= 2 and #recommendation.matchedStats > 0 then
+                if not bestBySlot[slotKey] or recommendation.candidateScore > bestBySlot[slotKey].candidateScore then
                     bestBySlot[slotKey] = recommendation
                 end
             end
@@ -4373,12 +4684,14 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
     end
 
     return {
-        version = 3,
+        version = 4,
         generatedAt = Now(),
         roleKey = role.key,
         roleLabel = role.label,
         roleConfidence = role.confidence or 0,
         roleWeights = weights,
+        talentMap = role.talentMap,
+        availableRoles = GEAR_ENGINE.AvailableStrategyRoles(strategyBook),
         equippedCount = #equippedItems,
         candidateCount = candidateCount,
         priorityStats = GEAR_ENGINE.PriorityStats(role, weights),
@@ -4505,6 +4818,42 @@ local function AppendObservedStatsJson(lines, indent, observed)
     AppendIndented(lines, indent, "}")
 end
 
+local function AppendTalentRoleMapJson(lines, indent, talentMap, comma)
+    talentMap = talentMap or {}
+    AppendIndented(lines, indent, "\"talent_mapping\": {")
+    AppendIndented(lines, indent + 2, JsonField("version", talentMap.version or 1, true))
+    AppendIndented(lines, indent + 2, JsonField("selected_count", talentMap.selectedCount or 0, true))
+    AppendIndented(lines, indent + 2, JsonField("selected_points", talentMap.selectedPoints or 0, true))
+    AppendIndented(lines, indent + 2, JsonField("mapped_count", talentMap.mappedCount or 0, true))
+    AppendIndented(lines, indent + 2, JsonField("aligned_count", talentMap.alignedCount or 0, true))
+    AppendIndented(lines, indent + 2, JsonField("aligned_points", talentMap.alignedPoints or 0, true))
+    AppendIndented(lines, indent + 2, JsonField("coverage", talentMap.coverage or 0, true))
+    AppendIndented(lines, indent + 2, JsonField("affinity_score", talentMap.affinityScore or 0, true))
+    AppendJsonObjectArray(lines, indent + 2, "selected_talents", talentMap.selected, {
+        { name = "tree_index", value = "treeIndex" },
+        { name = "tree_name", value = "treeName" },
+        { name = "talent_index", value = "talentIndex" },
+        { name = "name", value = "name" },
+        { name = "icon", value = "icon" },
+        { name = "rank", value = "rank" },
+        { name = "max_rank", value = "maxRank" },
+        { name = "aligned", value = "aligned" },
+        { name = "effect_key", value = "effectKey" },
+    }, true)
+    AppendJsonObjectArray(lines, indent + 2, "key_effects", talentMap.effects, {
+        { name = "key", value = "key" },
+        { name = "name", value = "name" },
+        { name = "icon", value = "icon" },
+        { name = "rank", value = "rank" },
+        { name = "max_rank", value = "maxRank" },
+    }, true)
+    AppendJsonObjectArray(lines, indent + 2, "weight_modifiers", talentMap.weightModifiers, {
+        { name = "token", value = "token" },
+        { name = "multiplier", value = "multiplier" },
+    }, false)
+    AppendIndented(lines, indent, "}" .. (comma and "," or ""))
+end
+
 local function AppendStrategyBookJson(lines, indent, strategyBook, comma)
     strategyBook = strategyBook or BuildStrategyBook({}, BuildChartStats({}))
     AppendIndented(lines, indent, "\"strategy_book\": {")
@@ -4527,6 +4876,7 @@ local function AppendStrategyBookJson(lines, indent, strategyBook, comma)
         AppendIndented(lines, indent + 6, JsonField("primary_talent_match", role.primaryTalentMatch and true or false, true))
         AppendJsonStringArray(lines, indent + 6, "models", role.models, true)
         AppendJsonStringArray(lines, indent + 6, "priorities", role.priorities, true)
+        AppendTalentRoleMapJson(lines, indent + 6, role.talentMap, true)
         AppendObservedStatsJson(lines, indent + 6, role.observed)
         AppendIndented(lines, indent + 6, ",")
         AppendJsonObjectArray(lines, indent + 6, "benchmarks", role.benchmarks, {
@@ -4586,6 +4936,15 @@ function GEAR_ENGINE.AppendGearRecommendationsJson(lines, indent, engine, comma)
     AppendIndented(lines, indent + 2, JsonField("equipped_count", engine.equippedCount, true))
     AppendIndented(lines, indent + 2, JsonField("candidate_count", engine.candidateCount, true))
     AppendIndented(lines, indent + 2, JsonField("caveat", engine.caveat, true))
+    AppendJsonObjectArray(lines, indent + 2, "available_roles", engine.availableRoles, {
+        { name = "key", value = "key" },
+        { name = "label", value = "label" },
+        { name = "confidence", value = "confidence" },
+        { name = "talent_points", value = "talentPoints" },
+        { name = "talent_affinity", value = "talentAffinity" },
+        { name = "key_effect_count", value = "keyEffectCount" },
+    }, true)
+    AppendTalentRoleMapJson(lines, indent + 2, engine.talentMap, true)
     local verdictCounts = engine.verdictCounts or GEAR_ENGINE.VerdictCounts(engine.upgrades)
     AppendIndented(lines, indent + 2, "\"verdict_counts\": { "
         .. JsonField("upgrade", verdictCounts.upgrade or 0, true) .. " "
@@ -4693,6 +5052,7 @@ function GEAR_ENGINE.AppendGearRecommendationsMarkdown(lines, engine, locale)
     lines[#lines + 1] = ""
     lines[#lines + 1] = "- " .. terms.role .. ": " .. tostring(GEAR_ENGINE.GearRoleLabel(engine, locale)) .. " (" .. terms.confidence .. " " .. tostring(engine.roleConfidence or 0) .. ")"
     lines[#lines + 1] = "- " .. terms.verdict .. ": " .. GEAR_ENGINE.VerdictSummary(engine, locale)
+    lines[#lines + 1] = "- " .. terms.talent_map .. ": " .. GEAR_ENGINE.TalentMapSummary(engine.talentMap, locale, 5)
     lines[#lines + 1] = "- " .. terms.priority_stats .. ": " .. GEAR_ENGINE.GearPriorityText(engine, locale)
     lines[#lines + 1] = "- " .. terms.benchmark_gaps .. ": " .. GEAR_ENGINE.GearBenchmarkText(engine, locale)
     lines[#lines + 1] = "- " .. terms.caveat .. ": " .. tostring(engine.caveat)
@@ -4723,6 +5083,7 @@ function GEAR_ENGINE.AppendGearRecommendationsText(lines, engine, locale)
     lines[#lines + 1] = terms.gear_recommendations
     lines[#lines + 1] = terms.role .. ": " .. tostring(GEAR_ENGINE.GearRoleLabel(engine, locale)) .. "; " .. terms.confidence .. " " .. tostring(engine.roleConfidence or 0)
     lines[#lines + 1] = terms.verdict .. ": " .. GEAR_ENGINE.VerdictSummary(engine, locale)
+    lines[#lines + 1] = terms.talent_map .. ": " .. GEAR_ENGINE.TalentMapSummary(engine.talentMap, locale, 5)
     lines[#lines + 1] = terms.priority_stats .. ": " .. GEAR_ENGINE.GearPriorityText(engine, locale)
     lines[#lines + 1] = terms.benchmark_gaps .. ": " .. GEAR_ENGINE.GearBenchmarkText(engine, locale)
     for index = 1, #(engine.upgrades or {}) do
@@ -4938,6 +5299,7 @@ local function BuildStatsAnalysisText(profile, chartStats, strategyBook)
         local tank = observed.tank or {}
         lines[#lines + 1] = ""
         lines[#lines + 1] = LForLocale(locale, "analysis_role", AnalysisRoleLabel(role, locale), AnalysisValue(role.confidence, nil, locale), AnalysisValue(role.talentPoints, nil, locale))
+        lines[#lines + 1] = LForLocale(locale, "advice_talent_map", GEAR_ENGINE.TalentMapSummary(role.talentMap, locale, 5))
         lines[#lines + 1] = LForLocale(locale, "analysis_models", AnalysisModelLabels(role.models, locale))
         if GEAR_ENGINE.RoleUsesHitModel(role) then
             lines[#lines + 1] = LForLocale(locale, "analysis_role_hit",
@@ -5933,7 +6295,7 @@ function Addon:BuildExport(scope, format, filter)
 
     local chartStats = BuildChartStats(items)
     local strategyBook = BuildStrategyBook(profile, chartStats)
-    local gearEngine = GEAR_ENGINE.BuildGearRecommendations(profile, items, strategyBook)
+    local gearEngine = GEAR_ENGINE.BuildGearRecommendations(profile, items, strategyBook, self.selectedAdviceRoleKey)
 
     local lines = {
         "AI_READY_WOW_TBC_INVENTORY_EXPORT v1",
@@ -6293,6 +6655,16 @@ function Addon:CreateGearAdviceRow(parent, index)
     candidateButton:SetScript("OnLeave", function()
         if GameTooltip then GameTooltip:Hide() end
     end)
+    currentButton:SetScript("OnClick", function(self)
+        if self.upgradeIndex then
+            Addon:RefreshGearComparison(Addon.currentAdviceProfile, Addon.currentGearEngine, self.upgradeIndex)
+        end
+    end)
+    candidateButton:SetScript("OnClick", function(self)
+        if self.upgradeIndex then
+            Addon:RefreshGearComparison(Addon.currentAdviceProfile, Addon.currentGearEngine, self.upgradeIndex)
+        end
+    end)
 
     row.slot = slot
     row.currentButton = currentButton
@@ -6305,6 +6677,54 @@ function Addon:CreateGearAdviceRow(parent, index)
     return row
 end
 
+function Addon:RefreshAdviceRoleButtons(engine, locale)
+    for index = 1, #(self.exportFrame and self.exportFrame.adviceRoleButtons or {}) do
+        local button = self.exportFrame.adviceRoleButtons[index]
+        local role = engine and engine.availableRoles and engine.availableRoles[index]
+        if role then
+            button.roleKey = role.key
+            button:SetText((role.key == engine.roleKey and "> " or "") .. tostring(AnalysisLookup(locale, "roles", role.key, role.label)))
+            button:Show()
+        else
+            button.roleKey = nil
+            button:Hide()
+        end
+    end
+end
+
+function Addon:RefreshGearComparison(profile, engine, index)
+    if not self.exportFrame or not self.exportFrame.comparePanel then
+        return nil
+    end
+    local locale = profile and profile.locale or ClientLocale()
+    local upgrade = engine and engine.upgrades and engine.upgrades[index]
+    self.selectedAdviceIndex = upgrade and index or nil
+    if not upgrade then
+        self.exportFrame.compareCurrentButton.item = nil
+        self.exportFrame.compareCandidateButton.item = nil
+        self.exportFrame.compareCurrentIcon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
+        self.exportFrame.compareCandidateIcon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
+        self.exportFrame.compareNames:SetText(LForLocale(locale, "compare_select_hint"))
+        self.exportFrame.compareVerdict:SetText("")
+        self.exportFrame.compareDetails:SetText("")
+        return nil
+    end
+
+    self.exportFrame.compareCurrentButton.item = upgrade.current
+    self.exportFrame.compareCandidateButton.item = upgrade.candidate
+    self.exportFrame.compareCurrentIcon:SetTexture(upgrade.current and upgrade.current.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
+    self.exportFrame.compareCandidateIcon:SetTexture(upgrade.candidate and upgrade.candidate.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
+    self.exportFrame.compareNames:SetText((upgrade.current and ItemColoredName(upgrade.current) or LForLocale(locale, "advice_empty_slot"))
+        .. "  >  " .. ItemColoredName(upgrade.candidate))
+    self.exportFrame.compareVerdict:SetText(GEAR_ENGINE.RecommendationVerdictLabel(upgrade.verdict, locale)
+        .. "  |cff33ff99+" .. CompactNumber(upgrade.scoreGain, 2) .. "|r  · "
+        .. LForLocale(locale, "advice_evidence", LForLocale(locale, "advice_evidence_" .. tostring(upgrade.evidence or "low"))))
+    self.exportFrame.compareDetails:SetText(LForLocale(locale, "advice_gains", GEAR_ENGINE.DeltaText(upgrade.statGains, locale))
+        .. "\n" .. LForLocale(locale, "advice_losses", GEAR_ENGINE.DeltaText(upgrade.statLosses, locale))
+        .. "\n" .. LForLocale(locale, "advice_impact", GEAR_ENGINE.BenchmarkImpactText(upgrade.benchmarkImpacts, locale)))
+    return upgrade
+end
+
 function Addon:RefreshGearAdvice(profile, engine)
     if not self.exportFrame or not self.exportFrame.adviceContent then
         return 0
@@ -6312,8 +6732,12 @@ function Addon:RefreshGearAdvice(profile, engine)
 
     local locale = profile and profile.locale or ClientLocale()
     local roleLabel = GEAR_ENGINE.GearRoleLabel(engine, locale)
+    self.currentAdviceProfile = profile
+    self.currentGearEngine = engine
+    self:RefreshAdviceRoleButtons(engine, locale)
     self.exportFrame.adviceSummary:SetText(LForLocale(locale, "advice_summary", roleLabel, engine.equippedCount or 0, engine.candidateCount or 0, #(engine.upgrades or {}))
         .. "\n" .. LForLocale(locale, "advice_verdicts", GEAR_ENGINE.VerdictSummary(engine, locale))
+        .. "\n" .. LForLocale(locale, "advice_talent_map", GEAR_ENGINE.TalentMapSummary(engine.talentMap, locale, 4))
         .. "\n" .. LForLocale(locale, "advice_priorities", GEAR_ENGINE.GearPriorityText(engine, locale))
         .. "\n" .. LForLocale(locale, "advice_benchmarks", GEAR_ENGINE.GearBenchmarkText(engine, locale)))
     self.exportFrame.adviceCaveat:SetText(engine.caveat or LForLocale(locale, "advice_caveat"))
@@ -6338,6 +6762,8 @@ function Addon:RefreshGearAdvice(profile, engine)
         rows[index] = row
         row.currentButton.item = upgrade.current
         row.candidateButton.item = upgrade.candidate
+        row.currentButton.upgradeIndex = index
+        row.candidateButton.upgradeIndex = index
         row.currentIcon:SetTexture(upgrade.current and upgrade.current.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
         row.candidateIcon:SetTexture(upgrade.candidate and upgrade.candidate.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
         row.slot:SetText(GEAR_ENGINE.EquipmentSlotLabel(upgrade.slotKey, locale))
@@ -6351,11 +6777,14 @@ function Addon:RefreshGearAdvice(profile, engine)
         row:Show()
     end
 
+    local selectedIndex = math.min(self.selectedAdviceIndex or 1, #upgrades)
+    self:RefreshGearComparison(profile, engine, selectedIndex > 0 and selectedIndex or nil)
+
     if self.exportFrame.adviceRowsContent.SetHeight then
         self.exportFrame.adviceRowsContent:SetHeight(math.max(220, (#upgrades * 74) + 8))
     end
     if self.exportFrame.adviceContent.SetHeight then
-        self.exportFrame.adviceContent:SetHeight(math.max(340, (#upgrades * 74) + 132))
+        self.exportFrame.adviceContent:SetHeight(math.max(540, (#upgrades * 74) + 344))
     end
     return #upgrades
 end
@@ -6473,7 +6902,8 @@ function Addon:RefreshExport(scope, format, filter)
     local profile = self:GetProfile()
     local chartStats = BuildChartStats(items)
     local strategyBook = BuildStrategyBook(profile, chartStats)
-    local gearEngine = GEAR_ENGINE.BuildGearRecommendations(profile, items, strategyBook)
+    local gearEngine = GEAR_ENGINE.BuildGearRecommendations(profile, items, strategyBook, self.selectedAdviceRoleKey)
+    self.selectedAdviceRoleKey = gearEngine.roleKey
     local overviewRoleCount = 0
     local analysisRoleCount = 0
     local adviceCount = 0
@@ -6772,21 +7202,116 @@ function Addon:CreateExportFrame()
     SetFrameSize(adviceContent, 490, 300)
     adviceScroll:SetScrollChild(adviceContent)
 
+    local adviceRoleLabel = adviceContent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    adviceRoleLabel:SetPoint("TOPLEFT", 4, -4)
+    adviceRoleLabel:SetText(L("advice_role_hint"))
+
+    local adviceRoleButtons = {}
+    for index = 1, 4 do
+        local roleButton = CreateFrame("Button", nil, adviceContent, "UIPanelButtonTemplate")
+        SetFrameSize(roleButton, 232, 22)
+        local column = (index - 1) % 2
+        local row = math.floor((index - 1) / 2)
+        roleButton:SetPoint("TOPLEFT", adviceContent, "TOPLEFT", 4 + (column * 238), -22 - (row * 24))
+        roleButton:SetScript("OnClick", function(self)
+            if self.roleKey then
+                Addon.selectedAdviceRoleKey = self.roleKey
+                Addon.selectedAdviceIndex = 1
+                Addon:RefreshExport()
+            end
+        end)
+        roleButton:Hide()
+        adviceRoleButtons[index] = roleButton
+    end
+
     local adviceSummary = adviceContent:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    adviceSummary:SetPoint("TOPLEFT", 4, -4)
+    adviceSummary:SetPoint("TOPLEFT", 4, -76)
     adviceSummary:SetPoint("RIGHT", adviceContent, "RIGHT", -8, 0)
     adviceSummary:SetJustifyH("LEFT")
     adviceSummary:SetText(L("advice_title"))
 
     local adviceCaveat = adviceContent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    adviceCaveat:SetPoint("TOPLEFT", 4, -76)
+    adviceCaveat:SetPoint("TOPLEFT", 4, -164)
     adviceCaveat:SetPoint("RIGHT", adviceContent, "RIGHT", -8, 0)
     adviceCaveat:SetJustifyH("LEFT")
     adviceCaveat:SetText(L("advice_caveat"))
 
+    local comparePanel = CreateFrame("Frame", nil, adviceContent, BackdropTemplate())
+    SetFrameSize(comparePanel, 486, 118)
+    comparePanel:SetPoint("TOPLEFT", adviceContent, "TOPLEFT", 2, -198)
+    if comparePanel.SetBackdrop then
+        comparePanel:SetBackdrop({
+            bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
+            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+            tile = true,
+            tileSize = 16,
+            edgeSize = 12,
+            insets = { left = 3, right = 3, top = 3, bottom = 3 },
+        })
+        comparePanel:SetBackdropColor(0.04, 0.05, 0.06, 0.96)
+        comparePanel:SetBackdropBorderColor(0.55, 0.45, 0.22, 1)
+    end
+
+    local compareTitle = comparePanel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    compareTitle:SetPoint("TOPLEFT", 8, -7)
+    compareTitle:SetText(L("compare_title"))
+
+    local compareCurrentLabel = comparePanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    compareCurrentLabel:SetPoint("TOPLEFT", 10, -28)
+    compareCurrentLabel:SetText(L("compare_current"))
+    local compareCurrentButton = CreateFrame("Button", nil, comparePanel)
+    SetFrameSize(compareCurrentButton, 42, 42)
+    compareCurrentButton:SetPoint("TOPLEFT", 8, -44)
+    local compareCurrentIcon = compareCurrentButton:CreateTexture(nil, "ARTWORK")
+    compareCurrentIcon:SetPoint("TOPLEFT", 0, 0)
+    compareCurrentIcon:SetPoint("BOTTOMRIGHT", 0, 0)
+
+    local compareArrow = comparePanel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    compareArrow:SetPoint("LEFT", compareCurrentButton, "RIGHT", 6, 0)
+    compareArrow:SetText(">")
+
+    local compareCandidateLabel = comparePanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    compareCandidateLabel:SetPoint("TOPLEFT", 68, -28)
+    compareCandidateLabel:SetText(L("compare_candidate"))
+    local compareCandidateButton = CreateFrame("Button", nil, comparePanel)
+    SetFrameSize(compareCandidateButton, 42, 42)
+    compareCandidateButton:SetPoint("TOPLEFT", 68, -44)
+    local compareCandidateIcon = compareCandidateButton:CreateTexture(nil, "ARTWORK")
+    compareCandidateIcon:SetPoint("TOPLEFT", 0, 0)
+    compareCandidateIcon:SetPoint("BOTTOMRIGHT", 0, 0)
+
+    local compareNames = comparePanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    compareNames:SetPoint("TOPLEFT", 120, -27)
+    compareNames:SetPoint("RIGHT", comparePanel, "RIGHT", -8, 0)
+    compareNames:SetJustifyH("LEFT")
+    compareNames:SetText(L("compare_select_hint"))
+
+    local compareVerdict = comparePanel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    compareVerdict:SetPoint("TOPLEFT", 120, -47)
+    compareVerdict:SetPoint("RIGHT", comparePanel, "RIGHT", -8, 0)
+    compareVerdict:SetJustifyH("LEFT")
+
+    local compareDetails = comparePanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    compareDetails:SetPoint("TOPLEFT", 120, -66)
+    compareDetails:SetPoint("RIGHT", comparePanel, "RIGHT", -8, 0)
+    compareDetails:SetJustifyH("LEFT")
+
+    compareCurrentButton:SetScript("OnEnter", function(self)
+        GEAR_ENGINE.ShowRecommendationTooltip(self, self.item)
+    end)
+    compareCandidateButton:SetScript("OnEnter", function(self)
+        GEAR_ENGINE.ShowRecommendationTooltip(self, self.item)
+    end)
+    compareCurrentButton:SetScript("OnLeave", function()
+        if GameTooltip then GameTooltip:Hide() end
+    end)
+    compareCandidateButton:SetScript("OnLeave", function()
+        if GameTooltip then GameTooltip:Hide() end
+    end)
+
     local adviceRowsContent = CreateFrame("Frame", nil, adviceContent)
     SetFrameSize(adviceRowsContent, 490, 220)
-    adviceRowsContent:SetPoint("TOPLEFT", adviceContent, "TOPLEFT", 0, -116)
+    adviceRowsContent:SetPoint("TOPLEFT", adviceContent, "TOPLEFT", 0, -328)
 
     local adviceEmpty = adviceRowsContent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     adviceEmpty:SetPoint("TOPLEFT", 4, -4)
@@ -6868,8 +7393,18 @@ function Addon:CreateExportFrame()
     exportFrame.overviewContent = overviewContent
     exportFrame.overviewText = overviewText
     exportFrame.adviceContent = adviceContent
+    exportFrame.adviceRoleLabel = adviceRoleLabel
+    exportFrame.adviceRoleButtons = adviceRoleButtons
     exportFrame.adviceSummary = adviceSummary
     exportFrame.adviceCaveat = adviceCaveat
+    exportFrame.comparePanel = comparePanel
+    exportFrame.compareCurrentButton = compareCurrentButton
+    exportFrame.compareCurrentIcon = compareCurrentIcon
+    exportFrame.compareCandidateButton = compareCandidateButton
+    exportFrame.compareCandidateIcon = compareCandidateIcon
+    exportFrame.compareNames = compareNames
+    exportFrame.compareVerdict = compareVerdict
+    exportFrame.compareDetails = compareDetails
     exportFrame.adviceRowsContent = adviceRowsContent
     exportFrame.adviceEmpty = adviceEmpty
     exportFrame.adviceRows = {}
@@ -7275,6 +7810,11 @@ if _G.TBCGearExporterTestMode then
         TalentPointsForTabs = TalentPointsForTabs,
         TalentPrimaryMatches = TalentPrimaryMatches,
         RoleConfidence = RoleConfidence,
+        TalentTabMatches = TalentTabMatches,
+        NormalizeTalentName = NormalizeTalentName,
+        TalentRuleMatches = TalentRuleMatches,
+        TalentRuleFor = TalentRuleFor,
+        BuildTalentRoleMap = BuildTalentRoleMap,
         BuildRoleObservedStats = BuildRoleObservedStats,
         BenchmarkObservedValue = BenchmarkObservedValue,
         BenchmarkStatus = BenchmarkStatus,
@@ -7283,6 +7823,8 @@ if _G.TBCGearExporterTestMode then
         BuildStrategyBook = BuildStrategyBook,
         EquipmentSlotKey = GEAR_ENGINE.EquipmentSlotKey,
         EquipmentSlotLabel = GEAR_ENGINE.EquipmentSlotLabel,
+        MaximumWeight = GEAR_ENGINE.MaximumWeight,
+        StatWeightForToken = GEAR_ENGINE.StatWeightForToken,
         BuildRoleStatWeights = GEAR_ENGINE.BuildRoleStatWeights,
         ItemRoleScore = GEAR_ENGINE.ItemRoleScore,
         ItemRelevantStatMap = GEAR_ENGINE.ItemRelevantStatMap,
@@ -7293,7 +7835,12 @@ if _G.TBCGearExporterTestMode then
         VerdictCounts = GEAR_ENGINE.VerdictCounts,
         CandidateCompatibleWithClass = GEAR_ENGINE.CandidateCompatibleWithClass,
         PriorityStats = GEAR_ENGINE.PriorityStats,
+        FindStrategyRole = GEAR_ENGINE.FindStrategyRole,
+        AvailableStrategyRoles = GEAR_ENGINE.AvailableStrategyRoles,
+        CompareItems = GEAR_ENGINE.CompareItems,
         BuildGearRecommendations = GEAR_ENGINE.BuildGearRecommendations,
+        TalentEffectLabel = GEAR_ENGINE.TalentEffectLabel,
+        TalentMapSummary = GEAR_ENGINE.TalentMapSummary,
         GearRoleLabel = GEAR_ENGINE.GearRoleLabel,
         GearPriorityText = GEAR_ENGINE.GearPriorityText,
         GearBenchmarkText = GEAR_ENGINE.GearBenchmarkText,
