@@ -233,6 +233,9 @@ local function createMockFrame(frameType, name, parent, template)
         fontString.SetJustifyH = frameMethod("SetJustifyH", function(target, value)
             target.justifyH = value
         end)
+        fontString.SetJustifyV = frameMethod("SetJustifyV", function(target, value)
+            target.justifyV = value
+        end)
         self.children[#self.children + 1] = fontString
         return fontString
     end)
@@ -2350,11 +2353,93 @@ test("item comparison switches role weights and rejects mismatched slots", funct
     assertEquals(private.FindStrategyRole(nil, "missing").key, "general_inventory")
 
     local damageEngine = private.BuildGearRecommendations(profile, { candidate }, strategy, "retribution_dps")
-    assertEquals(damageEngine.version, 5)
+    assertEquals(damageEngine.version, 6)
     assertEquals(damageEngine.roleKey, "retribution_dps")
     assertEquals(#damageEngine.availableRoles, 3)
     assertEquals(damageEngine.talentMap.effects[1].key, "crusade")
     assertEquals(#damageEngine.upgrades, 1)
+end)
+
+test("holy paladin role fit rejects physical crit bracers before upgrade scoring", function()
+    local current = {
+        itemID = 28453, name = "White Stag Wristguards", category = "Gear", equipSlot = "INVTYPE_WRIST",
+        classID = 4, subClassID = 2, itemLevel = 115, quality = 4, source = "equipped", slotKey = "WRIST",
+        stats = {
+            { token = "ITEM_MOD_STAMINA_SHORT", label = "Stamina", value = 16 },
+            { token = "ITEM_MOD_INTELLECT_SHORT", label = "Intellect", value = 18 },
+            { token = "ITEM_MOD_SPIRIT_SHORT", label = "Spirit", value = 22 },
+            { token = "ITEM_MOD_ARMOR", label = "Armor", value = 159 },
+            { token = "ITEM_MOD_SPELL_POWER_SHORT", label = "Spell Power", value = 25 },
+        },
+    }
+    local physicalCandidate = {
+        itemID = 28514, name = "Vicious Bracers", category = "Gear", equipSlot = "INVTYPE_WRIST",
+        classID = 4, subClassID = 2, itemLevel = 115, quality = 4, source = "bags", slotKey = "WRIST",
+        stats = {
+            { token = "ITEM_MOD_STAMINA_SHORT", label = "Stamina", value = 25 },
+            { token = "ITEM_MOD_ATTACK_POWER_SHORT", label = "Attack Power", value = 49 },
+            { token = "ITEM_MOD_ARMOR", label = "Armor", value = 159 },
+            { token = "ITEM_MOD_CRIT_RATING_SHORT", label = "Critical Strike Rating", value = 22 },
+        },
+    }
+    local healingCandidate = {
+        itemID = 99901, name = "Merciful Bracers", category = "Gear", equipSlot = "INVTYPE_WRIST",
+        classID = 4, subClassID = 2, itemLevel = 115, quality = 4, source = "bank", slotKey = "WRIST",
+        stats = {
+            { token = "ITEM_MOD_INTELLECT_SHORT", label = "Intellect", value = 24 },
+            { token = "ITEM_MOD_SPELL_HEALING_DONE_SHORT", label = "Healing", value = 80 },
+            { token = "ITEM_MOD_MANA_REGENERATION_SHORT", label = "Mana per 5", value = 6 },
+        },
+    }
+    local profile = {
+        classEnglish = "PALADIN", classLocalized = "圣骑士", locale = "zhCN",
+        talents = {
+            available = true, primaryTabIndex = 1, primaryTab = "神圣", totalPoints = 61, pointsSpent = 61,
+            summary = "45/0/16", unspentPoints = 0,
+            tabs = {
+                { index = 1, name = "神圣", points = 45, pointsSpent = 45, talents = {} },
+                { index = 2, name = "防护", points = 0, pointsSpent = 0, talents = {} },
+                { index = 3, name = "惩戒", points = 16, pointsSpent = 16, talents = {} },
+            },
+        },
+        characterStats = private.BuildCharacterStatsSnapshot(),
+        equipped = { items = { current } },
+    }
+    local strategy = private.BuildStrategyBook(profile, private.BuildChartStats({ physicalCandidate, healingCandidate }))
+    local role = private.FindStrategyRole(strategy, "holy_healer")
+    local physicalFit = private.ItemRoleFit(physicalCandidate, role)
+    local healingFit = private.ItemRoleFit(healingCandidate, role)
+    local wrongComparison = private.CompareItems(profile, current, physicalCandidate, strategy, "holy_healer")
+
+    assertEquals(role.archetype, "healer")
+    assertFalse(physicalFit.suitable)
+    assertEquals(physicalFit.reason, "conflicting_role_stats")
+    assertEquals(physicalFit.primarySignalCount, 0)
+    assertEquals(physicalFit.secondarySignalCount, 0)
+    assertTrue(physicalFit.conflictSignalCount >= 1)
+    assertTrue(healingFit.suitable)
+    assertEquals(healingFit.reason, "role_signals_present")
+    assertTrue(wrongComparison.scoreGain >= 2, "regression fixture must reproduce the old false-positive score")
+    assertEquals(wrongComparison.verdict, "role_mismatch")
+    assertEquals(private.RecommendationVerdictLabel(wrongComparison.verdict, "zhCN"), "属性方向不符")
+
+    local incidentalIntellectFit = private.ItemRoleFit({ stats = {
+        { token = "ITEM_MOD_INTELLECT_SHORT", value = 5 },
+        { token = "ITEM_MOD_ATTACK_POWER_SHORT", value = 50 },
+        { token = "ITEM_MOD_CRIT_RATING_SHORT", value = 20 },
+    } }, role)
+    assertFalse(incidentalIntellectFit.suitable, "incidental intellect must not make physical gear healer-suitable")
+
+    local engine = private.BuildGearRecommendations(profile, { physicalCandidate, healingCandidate }, strategy, "holy_healer")
+    assertEquals(engine.version, 6)
+    assertEquals(engine.candidateCount, 1)
+    assertEquals(engine.roleRejectedCount, 1)
+    assertEquals(#engine.upgrades, 1)
+    assertEquals(engine.upgrades[1].candidate.itemID, 99901)
+
+    local hiddenEffectFit = private.ItemRoleFit({ stats = {} }, role)
+    assertTrue(hiddenEffectFit.suitable)
+    assertEquals(hiddenEffectFit.reason, "hidden_effects_require_review")
 end)
 
 test("gear strategy engine compares current slots with compatible saved candidates", function()
@@ -2543,7 +2628,7 @@ test("protection paladin strategy compares visible gains and losses without inve
     assertEquals(role.observed.gearStatHighlights[1].value, 20)
     assertFalse(role.observed.gearStatHighlights[1].value == 30, "candidate stamina must not leak into current gear highlights")
 
-    assertEquals(engine.version, 5)
+    assertEquals(engine.version, 6)
     assertEquals(#engine.upgrades, 1)
     assertEquals(engine.upgrades[1].evidence, "high")
     assertEquals(engine.upgrades[1].verdict, "upgrade")
@@ -3227,6 +3312,7 @@ test("recommendation exports include current gear and concrete upgrades", functi
     assertContains(json, "\"role_key\": \"bear_tank\"")
     assertContains(json, "\"equipped_count\": 1")
     assertContains(json, "\"candidate_count\": 2")
+    assertContains(json, "\"role_rejected_count\": 0")
     assertContains(json, "\"slot_key\": \"HEAD\"")
     assertContains(json, "\"current\": {")
     assertContains(json, "Worn Leather Cap")
@@ -3363,7 +3449,9 @@ test("RefreshExport no-ops without frame and updates edit box with frame", funct
     assertEquals(Addon.exportFrame.compareCandidateIcon.texture, "guardian-crown-icon")
     assertContains(Addon.exportFrame.compareNames.text, "Guardian Leather Crown")
     assertContains(Addon.exportFrame.compareVerdict.text, "证据")
-    assertTrue(Addon.exportFrame.adviceContent.height >= 540)
+    assertTrue(Addon.exportFrame.adviceContent.height >= 568)
+    local _, adviceBreaks = Addon.exportFrame.adviceSummary.text:gsub("\n", "\n")
+    assertEquals(adviceBreaks, 3)
     assertEquals(#Addon.exportFrame.adviceRows, 2)
     Addon:SetExportView("advice")
     Addon:RefreshExport("bags")
@@ -3471,14 +3559,22 @@ test("CreateExportFrame wires UI controls and scripts", function()
     assertEquals(#exportFrame.adviceRoleButtons, 4)
     assertTrue(exportFrame.adviceSummary ~= nil)
     assertTrue(exportFrame.adviceCaveat ~= nil)
+    assertEquals(exportFrame.adviceSummary.width, 478)
+    assertEquals(exportFrame.adviceSummary.height, 88)
+    assertEquals(exportFrame.adviceSummary.justifyV, "TOP")
+    assertEquals(exportFrame.adviceCaveat.width, 478)
+    assertEquals(exportFrame.adviceCaveat.height, 38)
+    assertEquals(exportFrame.adviceCaveat.justifyV, "TOP")
     assertTrue(exportFrame.comparePanel ~= nil)
     assertTrue(exportFrame.comparePanel.backdrop ~= nil)
+    assertEquals(exportFrame.comparePanel.points[1][5], -214)
     assertTrue(exportFrame.compareCurrentButton ~= nil)
     assertTrue(exportFrame.compareCandidateButton ~= nil)
     assertTrue(exportFrame.compareNames ~= nil)
     assertTrue(exportFrame.compareVerdict ~= nil)
     assertTrue(exportFrame.compareDetails ~= nil)
     assertTrue(exportFrame.adviceRowsContent ~= nil)
+    assertEquals(exportFrame.adviceRowsContent.points[1][5], -344)
     assertTrue(exportFrame.itemListContent ~= nil)
     assertTrue(exportFrame.analysisContent ~= nil)
     assertTrue(exportFrame.analysisText ~= nil)

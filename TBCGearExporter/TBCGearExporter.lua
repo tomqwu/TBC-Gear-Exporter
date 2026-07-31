@@ -404,6 +404,93 @@ GEAR_ENGINE.STAT_SCORE_SCALES = {
     ITEM_MOD_DAMAGE_PER_SECOND_SHORT = 1.50,
 }
 
+GEAR_ENGINE.ROLE_FIT_SIGNALS = {
+    healer = {
+        primary = {
+            ITEM_MOD_SPELL_HEALING_DONE_SHORT = true,
+            ITEM_MOD_SPELL_POWER_SHORT = true,
+            ITEM_MOD_SPELL_DAMAGE_DONE_SHORT = true,
+            ITEM_MOD_MANA_REGENERATION_SHORT = true,
+        },
+        secondary = {
+            ITEM_MOD_INTELLECT_SHORT = true,
+            ITEM_MOD_SPIRIT_SHORT = true,
+        },
+        conflict = {
+            ITEM_MOD_ATTACK_POWER_SHORT = true,
+            ITEM_MOD_RANGED_ATTACK_POWER_SHORT = true,
+            ITEM_MOD_FERAL_ATTACK_POWER_SHORT = true,
+            ITEM_MOD_DAMAGE_PER_SECOND_SHORT = true,
+            ITEM_MOD_STRENGTH_SHORT = true,
+            ITEM_MOD_AGILITY_SHORT = true,
+            ITEM_MOD_HIT_MELEE_RATING_SHORT = true,
+            ITEM_MOD_HIT_RANGED_RATING_SHORT = true,
+            ITEM_MOD_EXPERTISE_RATING_SHORT = true,
+        },
+    },
+    caster = {
+        primary = {
+            ITEM_MOD_SPELL_POWER_SHORT = true,
+            ITEM_MOD_SPELL_DAMAGE_DONE_SHORT = true,
+            ITEM_MOD_HIT_SPELL_RATING_SHORT = true,
+        },
+        secondary = {
+            ITEM_MOD_INTELLECT_SHORT = true,
+            ITEM_MOD_SPIRIT_SHORT = true,
+            ITEM_MOD_MANA_REGENERATION_SHORT = true,
+        },
+        conflict = {
+            ITEM_MOD_ATTACK_POWER_SHORT = true,
+            ITEM_MOD_RANGED_ATTACK_POWER_SHORT = true,
+            ITEM_MOD_FERAL_ATTACK_POWER_SHORT = true,
+            ITEM_MOD_DAMAGE_PER_SECOND_SHORT = true,
+            ITEM_MOD_STRENGTH_SHORT = true,
+            ITEM_MOD_AGILITY_SHORT = true,
+            ITEM_MOD_HIT_MELEE_RATING_SHORT = true,
+            ITEM_MOD_HIT_RANGED_RATING_SHORT = true,
+            ITEM_MOD_EXPERTISE_RATING_SHORT = true,
+        },
+    },
+    melee = {
+        primary = {
+            ITEM_MOD_ATTACK_POWER_SHORT = true,
+            ITEM_MOD_FERAL_ATTACK_POWER_SHORT = true,
+            ITEM_MOD_DAMAGE_PER_SECOND_SHORT = true,
+            ITEM_MOD_HIT_RATING_SHORT = true,
+            ITEM_MOD_HIT_MELEE_RATING_SHORT = true,
+            ITEM_MOD_EXPERTISE_RATING_SHORT = true,
+        },
+        secondary = {
+            ITEM_MOD_STRENGTH_SHORT = true,
+            ITEM_MOD_AGILITY_SHORT = true,
+        },
+        conflict = {
+            ITEM_MOD_SPELL_HEALING_DONE_SHORT = true,
+            ITEM_MOD_SPELL_POWER_SHORT = true,
+            ITEM_MOD_SPELL_DAMAGE_DONE_SHORT = true,
+            ITEM_MOD_HIT_SPELL_RATING_SHORT = true,
+        },
+    },
+    ranged = {
+        primary = {
+            ITEM_MOD_RANGED_ATTACK_POWER_SHORT = true,
+            ITEM_MOD_ATTACK_POWER_SHORT = true,
+            ITEM_MOD_DAMAGE_PER_SECOND_SHORT = true,
+            ITEM_MOD_HIT_RATING_SHORT = true,
+            ITEM_MOD_HIT_RANGED_RATING_SHORT = true,
+        },
+        secondary = {
+            ITEM_MOD_AGILITY_SHORT = true,
+        },
+        conflict = {
+            ITEM_MOD_SPELL_HEALING_DONE_SHORT = true,
+            ITEM_MOD_SPELL_POWER_SHORT = true,
+            ITEM_MOD_SPELL_DAMAGE_DONE_SHORT = true,
+            ITEM_MOD_HIT_SPELL_RATING_SHORT = true,
+        },
+    },
+}
+
 GEAR_ENGINE.STAT_TOKEN_ALIASES = {
     RESISTANCE0_NAME = "ITEM_MOD_ARMOR",
     ITEM_MOD_CRIT_RATING = "ITEM_MOD_CRIT_RATING_SHORT",
@@ -1025,7 +1112,7 @@ local UI_STRINGS = {
         status_overview = "Overview updated: %d items, %d role models. Use Text Export to copy AI-ready data.",
         status_advice = "Gear advice updated: %d decisions for %s.",
         advice_title = "Gear Strategy",
-        advice_summary = "%s · %d equipped · %d candidates · %d decisions",
+        advice_summary = "%s · %d equipped · %d candidates · %d role-rejected · %d decisions",
         advice_verdicts = "Decision: %s",
         advice_talent_map = "Talent mapping: %s",
         advice_role_hint = "Role lens",
@@ -1143,7 +1230,7 @@ local UI_STRINGS = {
         status_overview = "总览已更新：%d 件物品，%d 个职责模型。切到文本导出即可复制 AI 数据。",
         status_advice = "装备建议已更新：%d 条配装结论，职责 %s。",
         advice_title = "装备策略",
-        advice_summary = "%s · 已装备 %d 件 · 候选 %d 件 · 配装结论 %d 条",
+        advice_summary = "%s · 已装备 %d 件 · 候选 %d 件 · 职责排除 %d 件 · 配装结论 %d 条",
         advice_verdicts = "结论：%s",
         advice_talent_map = "天赋映射：%s",
         advice_role_hint = "职责视角",
@@ -1261,7 +1348,7 @@ local UI_STRINGS = {
         status_overview = "總覽已更新：%d 件物品，%d 個職責模型。切到文字匯出即可複製 AI 資料。",
         status_advice = "裝備建議已更新：%d 條配裝結論，職責 %s。",
         advice_title = "裝備策略",
-        advice_summary = "%s · 已裝備 %d 件 · 候選 %d 件 · 配裝結論 %d 條",
+        advice_summary = "%s · 已裝備 %d 件 · 候選 %d 件 · 職責排除 %d 件 · 配裝結論 %d 條",
         advice_verdicts = "結論：%s",
         advice_talent_map = "天賦映射：%s",
         advice_role_hint = "職責視角",
@@ -1356,7 +1443,7 @@ GEAR_ENGINE.REPORT_TERMS = {
         priority_stats = "Priority stats", benchmark_gaps = "Key benchmark checks", caveat = "Limit",
         slot = "Slot", current = "Current", suggested = "Candidate", score = "Score", evidence = "Evidence", verdict = "Decision",
         gains = "Gains", losses = "Gives up", high = "High", medium = "Medium", low = "Low",
-        verdict_upgrade = "Clear upgrade", verdict_minor = "Small improvement", verdict_tradeoff = "Tradeoff", verdict_review = "Manual check", verdict_incompatible = "Different slot",
+        verdict_upgrade = "Clear upgrade", verdict_minor = "Small improvement", verdict_tradeoff = "Tradeoff", verdict_review = "Manual check", verdict_incompatible = "Different slot", verdict_role_mismatch = "Wrong stats for role",
         verdict_summary = "%d clear · %d small · %d tradeoff · %d manual",
         talent_map = "Talent mapping", talent_map_summary = "%d/%d selected mapped · %d aligned points · key effects: %s", no_key_effects = "none",
         benchmark_impact = "Benchmark impact", impact_helps_gap = "moves toward target", impact_worsens_gap = "moves away from target",
@@ -1391,7 +1478,7 @@ GEAR_ENGINE.REPORT_TERMS = {
         priority_stats = "优先属性", benchmark_gaps = "关键基准检查", caveat = "分析限制",
         slot = "栏位", current = "当前装备", suggested = "候选装备", score = "评分变化", evidence = "证据", verdict = "结论",
         gains = "获得", losses = "失去", high = "高", medium = "中", low = "低",
-        verdict_upgrade = "明确升级", verdict_minor = "小幅提升", verdict_tradeoff = "有取舍", verdict_review = "需手动核对", verdict_incompatible = "栏位不同",
+        verdict_upgrade = "明确升级", verdict_minor = "小幅提升", verdict_tradeoff = "有取舍", verdict_review = "需手动核对", verdict_incompatible = "栏位不同", verdict_role_mismatch = "属性方向不符",
         verdict_summary = "明确 %d · 小幅 %d · 有取舍 %d · 需核对 %d",
         talent_map = "天赋映射", talent_map_summary = "已映射 %d/%d 个已点天赋 · 本职责 %d 点 · 关键效果：%s", no_key_effects = "无",
         benchmark_impact = "基准影响", impact_helps_gap = "向目标靠近", impact_worsens_gap = "离目标更远",
@@ -1426,7 +1513,7 @@ GEAR_ENGINE.REPORT_TERMS = {
         priority_stats = "優先屬性", benchmark_gaps = "關鍵基準檢查", caveat = "分析限制",
         slot = "欄位", current = "目前裝備", suggested = "候選裝備", score = "評分變化", evidence = "證據", verdict = "結論",
         gains = "獲得", losses = "失去", high = "高", medium = "中", low = "低",
-        verdict_upgrade = "明確升級", verdict_minor = "小幅提升", verdict_tradeoff = "有取捨", verdict_review = "需手動核對", verdict_incompatible = "欄位不同",
+        verdict_upgrade = "明確升級", verdict_minor = "小幅提升", verdict_tradeoff = "有取捨", verdict_review = "需手動核對", verdict_incompatible = "欄位不同", verdict_role_mismatch = "屬性方向不符",
         verdict_summary = "明確 %d · 小幅 %d · 有取捨 %d · 需核對 %d",
         talent_map = "天賦映射", talent_map_summary = "已映射 %d/%d 個已點天賦 · 本職責 %d 點 · 關鍵效果：%s", no_key_effects = "無",
         benchmark_impact = "基準影響", impact_helps_gap = "向目標靠近", impact_worsens_gap = "離目標更遠",
@@ -4457,6 +4544,54 @@ function GEAR_ENGINE.ItemRoleScore(item, role, weights)
     return RoundedStatNumber(score), matched
 end
 
+function GEAR_ENGINE.ItemRoleFit(item, role)
+    local archetype = role and role.archetype
+    local signals = GEAR_ENGINE.ROLE_FIT_SIGNALS[archetype]
+    if not signals then
+        return { suitable = true, reason = "not_gated", archetype = archetype }
+    end
+
+    local fit = {
+        suitable = false,
+        reason = "missing_role_stats",
+        archetype = archetype,
+        positiveStatCount = 0,
+        primarySignalCount = 0,
+        secondarySignalCount = 0,
+        conflictSignalCount = 0,
+    }
+
+    for index = 1, #(item and item.stats or {}) do
+        local stat = item.stats[index]
+        local token = GEAR_ENGINE.NormalizeStatToken(stat and stat.token)
+        local value = tonumber(stat and stat.value)
+        if token and value and value > 0 then
+            fit.positiveStatCount = fit.positiveStatCount + 1
+            if signals.primary[token] then
+                fit.primarySignalCount = fit.primarySignalCount + 1
+            end
+            if signals.secondary[token] then
+                fit.secondarySignalCount = fit.secondarySignalCount + 1
+            end
+            if signals.conflict[token] then
+                fit.conflictSignalCount = fit.conflictSignalCount + 1
+            end
+        end
+    end
+
+    if fit.positiveStatCount == 0 then
+        fit.suitable = true
+        fit.reason = "hidden_effects_require_review"
+    elseif fit.primarySignalCount > 0 or (fit.secondarySignalCount > 0 and fit.conflictSignalCount == 0) then
+        fit.suitable = true
+        fit.reason = "role_signals_present"
+    elseif fit.conflictSignalCount > 0 then
+        fit.reason = "conflicting_role_stats"
+    end
+
+    return fit
+end
+
 function GEAR_ENGINE.ItemRelevantStatMap(item, weights)
     local values = {}
 
@@ -4876,6 +5011,10 @@ function GEAR_ENGINE.CompareItems(profile, currentItem, candidateItem, strategyB
     local currentSlot = GEAR_ENGINE.EquipmentSlotKey(currentItem)
     local candidateSlot = GEAR_ENGINE.EquipmentSlotKey(candidateItem)
     local slotCompatible = not currentItem or currentSlot == candidateSlot
+    local roleFit = GEAR_ENGINE.ItemRoleFit(candidateItem, role)
+    local verdict = not slotCompatible and "incompatible"
+        or (not roleFit.suitable and "role_mismatch")
+        or GEAR_ENGINE.RecommendationVerdict(evidence, scoreGain, benchmarkImpacts)
     return {
         slotKey = candidateSlot or currentSlot,
         slotCompatible = slotCompatible,
@@ -4889,7 +5028,8 @@ function GEAR_ENGINE.CompareItems(profile, currentItem, candidateItem, strategyB
         statLosses = statLosses,
         benchmarkImpacts = benchmarkImpacts,
         evidence = evidence,
-        verdict = slotCompatible and GEAR_ENGINE.RecommendationVerdict(evidence, scoreGain, benchmarkImpacts) or "incompatible",
+        verdict = verdict,
+        roleFit = roleFit,
         roleKey = role.key,
         roleLabel = role.label,
         roleLabels = role.labels,
@@ -4921,17 +5061,23 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
 
     local bestBySlot = {}
     local candidateCount = 0
+    local roleRejectedCount = 0
     for index = 1, #(candidateItems or {}) do
         local item = candidateItems[index]
         local slotKey = GEAR_ENGINE.EquipmentSlotKey(item)
         if slotKey ~= "SHIRT" and slotKey ~= "TABARD" and GEAR_ENGINE.CandidateCompatibleWithClass(profile, item) then
-            candidateCount = candidateCount + 1
-            local current = currentBySlot[slotKey]
-            local recommendation = GEAR_ENGINE.CompareItems(profile, current and current.item or nil, item, strategyBook, role.key, weights, mode and mode.key)
-            if recommendation.scoreGain >= 2 and #recommendation.matchedStats > 0 then
-                if not bestBySlot[slotKey] or recommendation.candidateScore > bestBySlot[slotKey].candidateScore then
-                    bestBySlot[slotKey] = recommendation
+            local roleFit = GEAR_ENGINE.ItemRoleFit(item, role)
+            if roleFit.suitable then
+                candidateCount = candidateCount + 1
+                local current = currentBySlot[slotKey]
+                local recommendation = GEAR_ENGINE.CompareItems(profile, current and current.item or nil, item, strategyBook, role.key, weights, mode and mode.key)
+                if recommendation.scoreGain >= 2 and #recommendation.matchedStats > 0 then
+                    if not bestBySlot[slotKey] or recommendation.candidateScore > bestBySlot[slotKey].candidateScore then
+                        bestBySlot[slotKey] = recommendation
+                    end
                 end
+            else
+                roleRejectedCount = roleRejectedCount + 1
             end
         end
     end
@@ -4961,7 +5107,7 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
     end
 
     return {
-        version = 5,
+        version = 6,
         generatedAt = Now(),
         roleKey = role.key,
         roleLabel = role.label,
@@ -4975,6 +5121,7 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
         availableRoles = GEAR_ENGINE.AvailableStrategyRoles(strategyBook),
         equippedCount = #equippedItems,
         candidateCount = candidateCount,
+        roleRejectedCount = roleRejectedCount,
         priorityStats = GEAR_ENGINE.PriorityStats(role, weights),
         benchmarkGaps = benchmarkGaps,
         upgrades = upgrades,
@@ -5338,6 +5485,7 @@ function GEAR_ENGINE.AppendGearRecommendationsJson(lines, indent, engine, comma)
     AppendIndented(lines, indent + 2, JsonField("mode_label_zh_cn", engine.modeLabels and engine.modeLabels.zhCN, true))
     AppendIndented(lines, indent + 2, JsonField("equipped_count", engine.equippedCount, true))
     AppendIndented(lines, indent + 2, JsonField("candidate_count", engine.candidateCount, true))
+    AppendIndented(lines, indent + 2, JsonField("role_rejected_count", engine.roleRejectedCount or 0, true))
     AppendIndented(lines, indent + 2, JsonField("caveat", engine.caveat, true))
     AppendJsonObjectArray(lines, indent + 2, "available_roles", engine.availableRoles, {
         { name = "key", value = "key" },
@@ -7214,11 +7362,10 @@ function Addon:RefreshGearAdvice(profile, engine)
     self.currentAdviceProfile = profile
     self.currentGearEngine = engine
     self:RefreshAdviceRoleButtons(engine, locale)
-    self.exportFrame.adviceSummary:SetText(LForLocale(locale, "advice_summary", roleLabel, engine.equippedCount or 0, engine.candidateCount or 0, #(engine.upgrades or {}))
+    self.exportFrame.adviceSummary:SetText(LForLocale(locale, "advice_summary", roleLabel, engine.equippedCount or 0, engine.candidateCount or 0, engine.roleRejectedCount or 0, #(engine.upgrades or {}))
         .. "\n" .. LForLocale(locale, "advice_verdicts", GEAR_ENGINE.VerdictSummary(engine, locale))
         .. "\n" .. LForLocale(locale, "advice_talent_map", GEAR_ENGINE.TalentMapSummary(engine.talentMap, locale, 4))
-        .. "\n" .. LForLocale(locale, "advice_priorities", GEAR_ENGINE.GearPriorityText(engine, locale))
-        .. "\n" .. LForLocale(locale, "advice_benchmarks", GEAR_ENGINE.GearBenchmarkText(engine, locale)))
+        .. "\n" .. LForLocale(locale, "advice_priorities", GEAR_ENGINE.GearPriorityText(engine, locale)))
     self.exportFrame.adviceCaveat:SetText(engine.caveat or LForLocale(locale, "advice_caveat"))
 
     local rows = self.exportFrame.adviceRows or {}
@@ -7263,7 +7410,7 @@ function Addon:RefreshGearAdvice(profile, engine)
         self.exportFrame.adviceRowsContent:SetHeight(math.max(220, (#upgrades * 74) + 8))
     end
     if self.exportFrame.adviceContent.SetHeight then
-        self.exportFrame.adviceContent:SetHeight(math.max(540, (#upgrades * 74) + 344))
+        self.exportFrame.adviceContent:SetHeight(math.max(568, (#upgrades * 74) + 360))
     end
     return #upgrades
 end
@@ -7833,21 +7980,25 @@ function Addon:CreateExportFrame()
         adviceRoleButtons[index] = roleButton
     end
 
-    local adviceSummary = adviceContent:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    local adviceSummary = adviceContent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     adviceSummary:SetPoint("TOPLEFT", 4, -76)
-    adviceSummary:SetPoint("RIGHT", adviceContent, "RIGHT", -8, 0)
+    adviceSummary:SetWidth(478)
+    adviceSummary:SetHeight(88)
     adviceSummary:SetJustifyH("LEFT")
+    adviceSummary:SetJustifyV("TOP")
     adviceSummary:SetText(L("advice_title"))
 
     local adviceCaveat = adviceContent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    adviceCaveat:SetPoint("TOPLEFT", 4, -164)
-    adviceCaveat:SetPoint("RIGHT", adviceContent, "RIGHT", -8, 0)
+    adviceCaveat:SetPoint("TOPLEFT", 4, -168)
+    adviceCaveat:SetWidth(478)
+    adviceCaveat:SetHeight(38)
     adviceCaveat:SetJustifyH("LEFT")
+    adviceCaveat:SetJustifyV("TOP")
     adviceCaveat:SetText(L("advice_caveat"))
 
     local comparePanel = CreateFrame("Frame", nil, adviceContent, BackdropTemplate())
     SetFrameSize(comparePanel, 486, 118)
-    comparePanel:SetPoint("TOPLEFT", adviceContent, "TOPLEFT", 2, -198)
+    comparePanel:SetPoint("TOPLEFT", adviceContent, "TOPLEFT", 2, -214)
     if comparePanel.SetBackdrop then
         comparePanel:SetBackdrop({
             bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
@@ -7920,7 +8071,7 @@ function Addon:CreateExportFrame()
 
     local adviceRowsContent = CreateFrame("Frame", nil, adviceContent)
     SetFrameSize(adviceRowsContent, 490, 220)
-    adviceRowsContent:SetPoint("TOPLEFT", adviceContent, "TOPLEFT", 0, -328)
+    adviceRowsContent:SetPoint("TOPLEFT", adviceContent, "TOPLEFT", 0, -344)
 
     local adviceEmpty = adviceRowsContent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     adviceEmpty:SetPoint("TOPLEFT", 4, -4)
@@ -8503,6 +8654,7 @@ if _G.TBCGearExporterTestMode then
         AvailableStrategyModes = GEAR_ENGINE.AvailableStrategyModes,
         BuildRoleStatWeights = GEAR_ENGINE.BuildRoleStatWeights,
         ItemRoleScore = GEAR_ENGINE.ItemRoleScore,
+        ItemRoleFit = GEAR_ENGINE.ItemRoleFit,
         ItemRelevantStatMap = GEAR_ENGINE.ItemRelevantStatMap,
         BuildStatDeltas = GEAR_ENGINE.BuildStatDeltas,
         RecommendationEvidence = GEAR_ENGINE.RecommendationEvidence,
