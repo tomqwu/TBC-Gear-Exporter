@@ -4,6 +4,16 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-08-01
+
+- Make overview and role analysis stats follow the selected tank, melee, ranged, caster, or healer model instead of showing the same generic melee/spell fields for every class.
+- Scope weapon DPS to the relevant equipment slots, so Hunter analysis and scoring use the ranged weapon rather than summing main-hand, off-hand, and ranged DPS.
+- Recognize Beast Mastery key talents including Bestial Wrath, Focused Fire, Frenzy, Unleashed Fury, Ferocity, Animal Handler, Intimidation, and The Beast Within.
+- Select 9% Hunter and Feral reference routes while an observed hit benchmark is unresolved, while preserving dual-wield versus two-hand weapon choice.
+- Exclude candidate swaps that worsen an already unmet benchmark, export `gate_rejected_count`, and explain when no safe upgrade remains.
+- Localize raid-support, raid-debuff, and control model names, and round role highlight values to two decimals.
+- Expand the suite to 72 tests with 99.13% executable-line coverage, including a 41/20/0 Beast Mastery Hunter export fixture and all five role-sheet summaries.
+
 ## [0.4.1] - 2026-07-31
 
 - Add archetype-level role-fit gates for healer, caster, melee, and ranged recommendations so incompatible stat directions are rejected before heuristic scoring.

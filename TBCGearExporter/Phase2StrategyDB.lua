@@ -1,9 +1,9 @@
 local DB = {
-    version = 1,
+    version = 2,
     phase = 2,
     phaseLabel = "TBC Anniversary Phase 2 (Tier 5)",
     patch = "2.5.6",
-    updatedAt = "2026-07-31",
+    updatedAt = "2026-08-01",
     content = { "Serpentshrine Cavern", "Tempest Keep: The Eye", "Arena Season 2", "Ogri'la", "Sha'tari Skyguard" },
     slotOrder = { "HEAD", "NECK", "SHOULDER", "BACK", "CHEST", "WRIST", "HANDS", "WAIST", "LEGS", "FEET", "FINGER1", "FINGER2", "TRINKET1", "TRINKET2", "MAINHAND", "OFFHAND", "RANGED" },
     sources = {
@@ -127,7 +127,7 @@ local MELEE_CAPS = {
 }
 
 local RANGED_CAPS = {
-    Cap("ranged_hit", 9, "%", "cap", Labels("Ranged hit", "远程命中", "遠程命中"), "Use 6% from gear when a Draenei party aura supplies the remaining 3%."),
+    Cap("ranged_hit", 9, "%", "cap", Labels("Ranged hit", "远程命中", "遠程命中"), "Use a 6% gear route only when reliable talents or raid support supplies the remaining 3%; otherwise use 9%."),
 }
 
 local SPELL_CAPS = {
