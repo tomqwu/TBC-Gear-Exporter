@@ -10,6 +10,10 @@ strings from WoWSims TBC at:
 https://github.com/wowsims/tbc-new
 Commit: 3fc6a414979d62186f75d51ab6f6dd5d44f35b9c
 
+Level-70 combat-rating constants are adapted from WoWSims TBC core at:
+
+https://github.com/wowsims/tbc/blob/9e7504dca2e5253fb9ddff566c66c00e11679376/sim/core/constants.go
+
 MIT License
 
 Copyright (c) 2022 wowsims team

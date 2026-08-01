@@ -1,5 +1,5 @@
 local DB = {
-    version = 4,
+    version = 5,
     phase = 2,
     phaseLabel = "TBC Anniversary Phase 2 (Tier 5)",
     patch = "2.5.6",
@@ -74,6 +74,14 @@ end
 
 local function TankModes(threat)
     local threatMultipliers = {
+        [S.stamina] = 0.70,
+        [S.armor] = 0.72,
+        [S.bonusArmor] = 0.72,
+        [S.defense] = 0.65,
+        [S.dodge] = 0.55,
+        [S.parry] = 0.55,
+        [S.block] = 0.70,
+        [S.resilience] = 0.50,
         [S.hit] = 1.28,
         [S.spellHit] = 1.28,
         [S.expertise] = 1.30,
@@ -205,7 +213,7 @@ Preset("warrior_hydross_p2", "Protection Warrior Hydross", "warrior_protection",
 
 DB.classes.DRUID = { roles = {
     Role({ key = "balance_caster", talentRuleKey = "balance_caster", label = "Balance Druid", labels = Labels("Balance Druid", "平衡德鲁伊", "平衡德魯伊"), talentTabs = { 1 }, archetype = "caster", models = { "caster_dps", "mana_longevity" }, priorities = { "spell hit to adjusted cap", "Tier 5 set threshold", "spell damage", "spell crit", "haste", "intellect" }, benchmarkKeys = { "spell_hit" }, statTokens = { S.spellPower, S.spellHit, S.spellCrit, S.spellHaste, S.intellect, S.spirit }, caps = SPELL_CAPS, modes = DpsModes({ S.spellPower }), setGoal = "Nordrassil Regalia 4-piece", talentString = "510022312503135231351--520033", presets = { "balance_p2" }, guideUrl = "https://www.wowhead.com/tbc/guide/classes/druid/balance/dps-bis-gear-pve-phase-2" }),
-    Role({ key = "bear_tank", talentRuleKey = "bear_tank", label = "Feral Bear Tank", labels = Labels("Feral Bear Tank", "野性熊坦", "野性熊坦"), talentTabs = { 2 }, archetype = "tank", models = { "tank_mitigation", "tank_threat" }, priorities = { "combined crit immunity", "armor and effective health", "stamina", "agility/dodge", "expertise", "hit", "feral attack power" }, benchmarkKeys = { "crit_immunity", "melee_special_hit", "expertise_dodge" }, statTokens = { S.stamina, S.armor, S.bonusArmor, S.agility, S.resilience, S.defense, S.expertise, S.hit, S.feralAttackPower }, caps = { TANK_CAPS[1], MELEE_CAPS[1], MELEE_CAPS[2] }, modes = TankModes({ [S.feralAttackPower] = 1.25, [S.agility] = 1.12 }), setGoal = "Choose Survival, Balanced, Offensive, Warden, or Hydross resistance set per encounter", talentString = "-503032132322105301251-05503301", presets = { "bear_balanced", "bear_survival", "bear_offensive", "bear_warden", "bear_hydross_frost", "bear_hydross_nature" }, guideUrl = "https://www.wowhead.com/tbc/guide/classes/druid/feral/tank-bis-gear-pve-phase-2" }),
+    Role({ key = "bear_tank", talentRuleKey = "bear_tank", label = "Feral Bear Tank", labels = Labels("Feral Bear Tank", "野性熊坦", "野性熊坦"), talentTabs = { 2 }, archetype = "tank", models = { "tank_mitigation", "tank_threat" }, priorities = { "combined crit immunity", "armor and effective health", "stamina", "agility/dodge", "expertise", "hit", "feral attack power and threat" }, benchmarkKeys = { "crit_immunity", "melee_special_hit", "expertise_dodge" }, statTokens = { S.stamina, S.armor, S.bonusArmor, S.agility, S.dodge, S.resilience, S.defense, S.expertise, S.hit, S.feralAttackPower, S.strength, S.crit }, caps = { TANK_CAPS[1], MELEE_CAPS[1], MELEE_CAPS[2] }, modes = TankModes({ [S.feralAttackPower] = 1.25, [S.agility] = 1.12, [S.strength] = 1.20, [S.crit] = 1.12 }), setGoal = "Choose Survival, Balanced, Offensive, Warden, or Hydross resistance set per encounter", talentString = "-503032132322105301251-05503301", presets = { "bear_balanced", "bear_survival", "bear_offensive", "bear_warden", "bear_hydross_frost", "bear_hydross_nature" }, guideUrl = "https://www.wowhead.com/tbc/guide/classes/druid/feral/tank-bis-gear-pve-phase-2" }),
     Role({ key = "cat_dps", talentRuleKey = "cat_dps", label = "Feral Cat DPS", labels = Labels("Feral Cat DPS", "野性猎豹输出", "野性獵豹輸出"), talentTabs = { 2 }, archetype = "melee", models = { "melee_dps", "weapon_selection" }, priorities = { "6% or 9% hit route", "Tier 4 2-piece versus T5 off-pieces", "agility", "strength", "feral attack power", "crit", "expertise" }, benchmarkKeys = { "melee_special_hit", "expertise_dodge" }, statTokens = { S.agility, S.strength, S.feralAttackPower, S.attackPower, S.hit, S.expertise, S.crit }, caps = MELEE_CAPS, modes = DpsModes({ S.agility, S.feralAttackPower }), setGoal = "Compare Tier 4 2-piece finisher route against T5 alternatives", talentString = "-503032132322105301251-05503301", presets = { "cat_6_hit", "cat_9_hit", "cat_alt_6_hit", "cat_alt_9_hit" }, guideUrl = "https://www.wowhead.com/tbc/guide/classes/druid/feral/dps-bis-gear-pve-phase-2" }),
     Role({ key = "restoration_healer", talentRuleKey = "restoration_healer", label = "Restoration Druid", labels = Labels("Restoration Druid", "恢复德鲁伊", "恢復德魯伊"), talentTabs = { 3 }, archetype = "healer", models = { "healing_throughput", "mana_longevity" }, priorities = { "bonus healing", "spirit", "mp5", "intellect", "haste", "Lifebloom idol" }, benchmarkKeys = {}, statTokens = { S.healing, S.spirit, S.mp5, S.intellect, S.spellHaste }, caps = {}, modes = HealerModes(), setGoal = "Nordrassil Raiment and encounter-length mana set", talentString = "05320031103--230023312131502331050313051", presets = {}, guideUrl = "https://www.wowhead.com/tbc/guide/classes/druid/healer-bis-gear-pve-phase-2", evidence = "guide" }),
 } }

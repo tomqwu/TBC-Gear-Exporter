@@ -4,6 +4,16 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+## [0.4.7] - 2026-08-01
+
+- Convert level-70 hit, spell hit, expertise, defense, dodge, parry, block, and resilience rating changes into their real benchmark units using pinned WoWSims TBC constants.
+- Restore the omitted dodge-rating weight for Feral Bear recommendations and include lower-priority strength/critical-strike threat signals.
+- Devalue excess resilience after combined critical-hit immunity is already met while preserving defense's remaining avoidance value.
+- Make Threat / farm reduce survival weighting and increase offensive weighting, so it produces a genuinely different ranking from Balanced and Mitigation / progression.
+- Distinguish a reduced-but-still-safe cap buffer from a swap that actually falls below the target.
+- Expand Gear Advice rows to a fixed non-overlapping layout with separate compact gain, loss, and benchmark lines; full details remain in the comparison panel and exports.
+- Add the exact Thatdruid Wildfury Greatstaff versus Merciless Gladiator's Maul regression and expand the suite to 85 tests with 99.16% executable-line coverage.
+
 ## [0.4.6] - 2026-08-01
 
 - Put the three strategy controls directly on Gear Advice, so tank players can switch Balanced, Mitigation / progression, and Threat / farm without discovering them on another page.

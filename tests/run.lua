@@ -1151,7 +1151,7 @@ end)
 
 test("Phase 2 database covers every TBC class and PvE specialization", function()
     local db = assert(_G.TBCGearExporterP2DB)
-    assertEquals(db.version, 4)
+    assertEquals(db.version, 5)
     assertEquals(db.phase, 2)
     assertEquals(db.patch, "2.5.6")
     assertEquals(#db.sources, 2)
@@ -1456,7 +1456,7 @@ test("Yamede dual wield evaluates generic one-hand candidates against both weapo
     assertEquals(private.EquipmentSlotKey(spiteblade), "MAINHAND")
 
     local engine = private.BuildGearRecommendations(profile, { spiteblade }, strategy, role.key, "balanced")
-    assertEquals(engine.version, 9)
+    assertEquals(engine.version, 10)
     assertEquals(engine.candidateCount, 1)
     assertEquals(#engine.upgrades, 1)
     local upgrade = engine.upgrades[1]
@@ -2653,7 +2653,7 @@ test("item comparison switches role weights and rejects mismatched slots", funct
     assertEquals(private.FindStrategyRole(nil, "missing").key, "general_inventory")
 
     local damageEngine = private.BuildGearRecommendations(profile, { candidate }, strategy, "retribution_dps")
-    assertEquals(damageEngine.version, 9)
+    assertEquals(damageEngine.version, 10)
     assertEquals(damageEngine.roleKey, "retribution_dps")
     assertEquals(#damageEngine.availableRoles, 3)
     assertEquals(damageEngine.talentMap.effects[1].key, "crusade")
@@ -2731,7 +2731,7 @@ test("holy paladin role fit rejects physical crit bracers before upgrade scoring
     assertFalse(incidentalIntellectFit.suitable, "incidental intellect must not make physical gear healer-suitable")
 
     local engine = private.BuildGearRecommendations(profile, { physicalCandidate, healingCandidate }, strategy, "holy_healer")
-    assertEquals(engine.version, 9)
+    assertEquals(engine.version, 10)
     assertEquals(engine.candidateCount, 1)
     assertEquals(engine.roleRejectedCount, 1)
     assertEquals(#engine.upgrades, 1)
@@ -2928,7 +2928,7 @@ test("protection paladin strategy compares visible gains and losses without inve
     assertEquals(role.observed.gearStatHighlights[1].value, 20)
     assertFalse(role.observed.gearStatHighlights[1].value == 30, "candidate stamina must not leak into current gear highlights")
 
-    assertEquals(engine.version, 9)
+    assertEquals(engine.version, 10)
     assertEquals(#engine.upgrades, 1)
     assertEquals(engine.upgrades[1].evidence, "high")
     assertEquals(engine.upgrades[1].verdict, "upgrade")
@@ -3000,7 +3000,7 @@ test("benchmark impacts distinguish gaps caps and contextual shield totals", fun
     assertEquals(#impacts, 3)
     assertEquals(impacts[1].effect, "cap_buffer")
     assertEquals(impacts[2].effect, "helps_gap")
-    assertEquals(impacts[3].delta, -2)
+    assertEquals(impacts[3].delta, -0.62)
     assertEquals(impacts[3].effect, "context_risk")
 end)
 
@@ -3119,9 +3119,27 @@ test("benchmark impact copy explains the direction without claiming a simulated 
     }
     local zhCN = private.BenchmarkImpactText(impacts, "zhCN")
     assertContains(zhCN, "防御免暴基准 -18")
-    assertContains(zhCN, "换装后需重新核对是否达标")
+    assertContains(zhCN, "换装后将低于目标")
     assertContains(zhCN, "提高可见常驻小计")
     assertEquals(private.BenchmarkImpactText({}, "zhCN"), "不改变已跟踪基准")
+end)
+
+test("benchmark impacts preserve a still-safe crit immunity buffer", function()
+    local role = { benchmarks = {
+        { key = "crit_immunity", label = "Combined Crit", status = "meets_or_exceeds", observed = 7.11, target = 5.6, unit = "% crit reduction" },
+    } }
+    local safe = private.BuildBenchmarkImpacts(role, {}, {
+        { token = "ITEM_MOD_RESILIENCE_RATING_SHORT", value = 2 },
+    })
+    assertEquals(safe[1].effect, "cap_buffer_reduced")
+    assertEquals(safe[1].projected, 7.06)
+    assertContains(private.BenchmarkImpactText(safe, "zhCN"), "换装后仍达标")
+
+    local unsafe = private.BuildBenchmarkImpacts(role, {}, {
+        { token = "ITEM_MOD_RESILIENCE_RATING_SHORT", value = 80 },
+    })
+    assertEquals(unsafe[1].effect, "cap_risk")
+    assertTrue(unsafe[1].projected < unsafe[1].target)
 end)
 
 test("shield table benchmark is contextual instead of a false failed cap", function()
@@ -3527,7 +3545,7 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(allExport, "\"loadout_rejected_count\":")
     assertContains(allExport, "\"unscorable_rejected_count\":")
     assertContains(allExport, "\"phase2_strategy\": {")
-    assertContains(allExport, "\"database_version\": 4")
+    assertContains(allExport, "\"database_version\": 5")
     assertContains(allExport, "\"phase\": 2")
     assertContains(allExport, "\"mode_key\": \"balanced\"")
     assertContains(allExport, "\"mode_label_zh_cn\": \"均衡\"")
@@ -3688,6 +3706,7 @@ test("recommendation exports include current gear and concrete upgrades", functi
     assertContains(json, "\"stat_gains\": [")
     assertContains(json, "\"stat_losses\": [")
     assertContains(json, "\"benchmark_impacts\": [")
+    assertContains(json, "\"projected\":")
     assertContains(json, "\"verdict_counts\": {")
     assertContains(json, "\"verdict\": \"")
     assertContains(json, "\"evidence\": \"high\"")
@@ -3820,6 +3839,13 @@ test("RefreshExport no-ops without frame and updates edit box with frame", funct
     local _, adviceBreaks = Addon.exportFrame.adviceSummary.text:gsub("\n", "\n")
     assertEquals(adviceBreaks, 3)
     assertEquals(#Addon.exportFrame.adviceRows, 2)
+    assertEquals(Addon.exportFrame.adviceRows[1].height, 116)
+    assertEquals(Addon.exportFrame.adviceRows[1].reason.height, 78)
+    assertEquals(Addon.exportFrame.adviceRows[2].points[1][5], -120)
+    local _, reasonBreaks = Addon.exportFrame.adviceRows[1].reason.text:gsub("\n", "\n")
+    assertEquals(reasonBreaks, 2)
+    assertContains(Addon.exportFrame.adviceRows[1].reason.text, "\n失去：")
+    assertContains(Addon.exportFrame.adviceRows[1].reason.text, "\n基准影响：")
     Addon:SetExportView("advice")
     Addon:RefreshExport("bags")
     assertTrue(Addon.exportFrame.adviceScroll:IsShown())
@@ -4424,7 +4450,7 @@ test("Thatdruid report uses the talent-aware combined crit benchmark", function(
     local strategy = private.BuildStrategyBook(profile, private.BuildChartStats({}))
     local bear = private.FindStrategyRole(strategy, "bear_tank")
     assertEquals(strategy.version, 5)
-    assertEquals(strategy.phaseDatabase.version, 4)
+    assertEquals(strategy.phaseDatabase.version, 5)
     assertEquals(bear.observed.tank.critReduction, 5.03)
     assertEquals(bear.observed.tank.critImmunity.gap, 0.57)
     assertEquals(private.BenchmarkObservedValue("crit_immunity", bear.observed), 5.03)
@@ -4448,8 +4474,15 @@ end)
 
 test("crit benchmark item impacts convert rating into crit reduction percent", function()
     assertEquals(private.RoundedStatNumber(private.BenchmarkDeltaValue("crit_immunity", "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT", 24)), 0.41)
-    assertEquals(private.BenchmarkDeltaValue("crit_immunity", "ITEM_MOD_RESILIENCE_RATING_SHORT", 39.4), 1)
-    assertEquals(private.BenchmarkDeltaValue("spell_hit", "ITEM_MOD_HIT_SPELL_RATING_SHORT", 7), 7)
+    assertEquals(private.RoundedStatNumber(private.BenchmarkDeltaValue("crit_immunity", "ITEM_MOD_RESILIENCE_RATING_SHORT", 39.4231)), 1)
+    assertEquals(private.RoundedStatNumber(private.BenchmarkDeltaValue("defense_crit_immunity", "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT", 24)), 10.15)
+    assertEquals(private.RoundedStatNumber(private.BenchmarkDeltaValue("melee_special_hit", "ITEM_MOD_HIT_RATING_SHORT", 21)), 1.33)
+    assertEquals(private.RoundedStatNumber(private.BenchmarkDeltaValue("ranged_hit", "ITEM_MOD_HIT_RANGED_RATING_SHORT", 21)), 1.33)
+    assertEquals(private.RoundedStatNumber(private.BenchmarkDeltaValue("spell_hit", "ITEM_MOD_HIT_SPELL_RATING_SHORT", 7)), 0.55)
+    assertEquals(private.RoundedStatNumber(private.BenchmarkDeltaValue("expertise_dodge", "ITEM_MOD_EXPERTISE_RATING_SHORT", 18)), 1.14)
+    assertEquals(private.RoundedStatNumber(private.BenchmarkDeltaValue("avoidance_table", "ITEM_MOD_DODGE_RATING_SHORT", 18.9231)), 1)
+    assertEquals(private.RoundedStatNumber(private.BenchmarkDeltaValue("avoidance_table", "ITEM_MOD_PARRY_RATING_SHORT", 23.6538)), 1)
+    assertEquals(private.RoundedStatNumber(private.BenchmarkDeltaValue("avoidance_table", "ITEM_MOD_BLOCK_RATING_SHORT", 7.8846)), 1)
 
     local impacts = private.BuildBenchmarkImpacts({ benchmarks = {
         { key = "crit_immunity", label = "Combined Crit", status = "below", unit = "% crit reduction" },
@@ -4461,6 +4494,69 @@ test("crit benchmark item impacts convert rating into crit reduction percent", f
     assertEquals(impacts[1].delta, 1.41)
     assertEquals(impacts[1].unit, "% crit reduction")
     assertContains(private.BenchmarkImpactText(impacts, "zhCN"), "综合免暴基准 +1.41%")
+end)
+
+test("Thatdruid bear modes keep dodge for survival and expose the PvP maul only for threat", function()
+    local wildfury = {
+        itemID = 30021, name = "野性怒火法杖", category = "Gear", slotKey = "MAINHAND", equipSlot = "INVTYPE_2HWEAPON",
+        classID = 2, subClassID = 10, itemLevel = 134, quality = 4,
+        stats = {
+            { token = "ITEM_MOD_STAMINA_SHORT", value = 75 },
+            { token = "ITEM_MOD_DODGE_RATING_SHORT", value = 54 },
+            { token = "ITEM_MOD_FERAL_ATTACK_POWER_SHORT", value = 991 },
+        },
+    }
+    local maul = {
+        itemID = 32014, name = "残酷角斗士的重槌", category = "Gear", slotKey = "MAINHAND", equipSlot = "INVTYPE_2HWEAPON",
+        classID = 2, subClassID = 5, itemLevel = 136, quality = 4,
+        stats = {
+            { token = "ITEM_MOD_STRENGTH_SHORT", value = 42 },
+            { token = "ITEM_MOD_STAMINA_SHORT", value = 55 },
+            { token = "ITEM_MOD_CRIT_RATING_SHORT", value = 42 },
+            { token = "ITEM_MOD_HIT_RATING_SHORT", value = 18 },
+            { token = "ITEM_MOD_RESILIENCE_RATING_SHORT", value = 33 },
+            { token = "ITEM_MOD_FERAL_ATTACK_POWER_SHORT", value = 1009 },
+        },
+    }
+    local profile = {
+        player = "Thatdruid", realm = "Nightslayer", classEnglish = "DRUID", classLocalized = "德鲁伊", locale = "zhCN",
+        talents = {
+            available = true, primaryTabIndex = 2, primaryTab = "野性战斗", totalPoints = 61, pointsSpent = 61, summary = "0/44/17",
+            tabs = {
+                { index = 1, name = "平衡", points = 0, talents = {} },
+                { index = 2, name = "野性战斗", points = 44, talents = { { index = 16, name = "适者生存", currentRank = 3, maxRank = 3 } } },
+                { index = 3, name = "恢复", points = 17, talents = {} },
+            },
+        },
+        characterStats = {
+            defense = { effective = 376 }, armor = { effective = 7226 },
+            attributes = { { key = "stamina", effective = 844 } },
+            ratings = { { key = "resilience", rating = 121, bonus = 0 } },
+            chances = { dodge = 36.27, parry = 0, block = 0 }, spell = {}, attackPower = {},
+            race = { english = "NIGHTELF", localized = "暗夜精灵" }, group = { type = "raid", size = 25 },
+        },
+        equipped = { items = { wildfury } },
+    }
+    local strategy = private.BuildStrategyBook(profile, private.BuildChartStats({ maul }))
+    local bear = private.FindStrategyRole(strategy, "bear_tank")
+    local balanced = private.CompareItems(profile, wildfury, maul, strategy, "bear_tank", nil, "balanced")
+    local mitigation = private.CompareItems(profile, wildfury, maul, strategy, "bear_tank", nil, "mitigation")
+    local threat = private.CompareItems(profile, wildfury, maul, strategy, "bear_tank", nil, "threat")
+
+    assertEquals(bear.benchmarks[1].status, "meets_or_exceeds")
+    assertTrue(balanced.statLosses[1].token == "ITEM_MOD_DODGE_RATING_SHORT")
+    assertTrue(balanced.scoreGain < 0)
+    assertTrue(mitigation.scoreGain < balanced.scoreGain)
+    assertTrue(threat.scoreGain > 0)
+    assertEquals(#private.BuildGearRecommendations(profile, { maul }, strategy, "bear_tank", "balanced").upgrades, 0)
+    assertEquals(private.BuildGearRecommendations(profile, { maul }, strategy, "bear_tank", "threat").upgrades[1].candidate.itemID, 32014)
+
+    local balancedWeights = private.BuildRoleStatWeights(bear, "balanced")
+    local threatWeights = private.BuildRoleStatWeights(bear, "threat")
+    assertTrue(balancedWeights.ITEM_MOD_DODGE_RATING_SHORT > 0)
+    assertTrue(balancedWeights.ITEM_MOD_RESILIENCE_RATING_SHORT < balancedWeights.ITEM_MOD_DEFENSE_SKILL_RATING_SHORT)
+    assertTrue(threatWeights.ITEM_MOD_STRENGTH_SHORT > balancedWeights.ITEM_MOD_STRENGTH_SHORT)
+    assertTrue(threatWeights.ITEM_MOD_DODGE_RATING_SHORT < balancedWeights.ITEM_MOD_DODGE_RATING_SHORT)
 end)
 
 test("weapon loadout rules reject offhands beside an equipped two-hander", function()
@@ -4527,7 +4623,7 @@ test("hidden trinket effects are excluded instead of scored as upgrades", functi
     assertEquals(private.RecommendationVerdictLabel(comparison.verdict, "zhCN"), "效果无法量化")
 
     local engine = private.BuildGearRecommendations(profile, { shard }, { roles = { role } }, role.key)
-    assertEquals(engine.version, 9)
+    assertEquals(engine.version, 10)
     assertEquals(engine.unscorableRejectedCount, 1)
     assertEquals(engine.loadoutRejectedCount, 0)
     assertEquals(#engine.upgrades, 0)

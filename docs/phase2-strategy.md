@@ -1,6 +1,6 @@
 # Phase 2 Strategy Database
 
-TBC Gear Exporter v0.4.6 includes a versioned Phase 2 / Tier 5 strategy database used by the in-game P2 Guide, gear comparison engine, and AI/JSON exports.
+TBC Gear Exporter v0.4.7 includes a versioned Phase 2 / Tier 5 strategy database used by the in-game P2 Guide, gear comparison engine, and AI/JSON exports.
 
 ## Database Scale
 
@@ -10,7 +10,7 @@ TBC Gear Exporter v0.4.6 includes a versioned Phase 2 / Tier 5 strategy database
 - 29 simulation reference presets with 475 non-empty target item slots.
 - 17-slot target-set tracking against current equipment plus saved bags and bank.
 - English, simplified Chinese, and traditional Chinese role, mode, cap, and route labels.
-- Database version 4, including explicit pinned Hunter EP weights and dual-wield-aware one-hand comparisons.
+- Database version 5, including explicit pinned Hunter EP weights, dual-wield-aware one-hand comparisons, Feral Bear dodge/threat corrections, and distinct threat-mode survival tradeoffs.
 
 The source of truth is [`TBCGearExporter/Phase2StrategyDB.lua`](../TBCGearExporter/Phase2StrategyDB.lua). Every role records its talent-tree rule, archetype, analysis models, priorities, stat tokens, caps, three modes, set/route goal, reference talent string where available, presets, evidence level, and guide URL.
 
@@ -31,7 +31,7 @@ The addon deliberately labels evidence instead of calling every weighted score a
 | Healer | Throughput and longevity | Burst throughput: healing, crit/haste, intellect | Mana longevity: mp5, spirit, intellect, fight length |
 | DPS | Caps, set value, output | Cap recovery: hit and expertise | Maximum output: primary power, crit, haste |
 
-Mode selection changes the role weights used by every item comparison. The same three localized controls appear on Gear Advice and the P2 Guide, and changing one immediately recalculates both pages and the export. Readable reports name the selected view and all available views; AI/JSON exports retain their keys and weights so external tools can reproduce the intended lens. Tank mitigation/progression and threat/farm remain separate rankings rather than being averaged together.
+Mode selection changes the role weights used by every item comparison. The same three localized controls appear on Gear Advice and the P2 Guide, and changing one immediately recalculates both pages and the export. Readable reports name the selected view and all available views; AI/JSON exports retain their keys and weights so external tools can reproduce the intended lens. Tank mitigation/progression and threat/farm remain separate rankings rather than being averaged together. Threat / farm deliberately lowers survival weights while raising offensive weights; unresolved hard gates still prevent unsafe suggestions.
 
 ## Class And Route Matrix
 
@@ -69,11 +69,14 @@ Mode selection changes the role weights used by every item comparison. The same 
 ## Tank Rules
 
 1. Resolve critical-hit immunity before treating a threat piece as a clean upgrade. The engine targets 5.6% combined boss critical-hit reduction from defense skill above the level-70 base, resilience rating, and applicable talents.
-2. Defense skill contributes 0.04% critical-hit reduction per point above 350. At level 70, about 59.1 defense rating contributes 1%; 39.4 resilience rating contributes 1%.
+2. Defense skill contributes 0.04% critical-hit reduction per point above 350. At level 70, 2.3654 defense rating supplies one defense skill, about 59.1 defense rating supplies 1% critical-hit reduction, and 39.4231 resilience rating supplies 1%.
 3. A Feral bear with 3/3 Survival of the Fittest receives 3% from talents and therefore needs the remaining 2.6% from defense and resilience. This corresponds to 415 defense skill with no resilience, or about 103 resilience with no defense rating.
 4. Treat the 102.4% shield combat table as contextual. The standing paper doll does not include boss miss or temporary block effects such as Holy Shield or Shield Block.
-5. After gates, use Mitigation for progression/effective health, Balanced for general encounters, or Threat for farm and damage-limited pulls.
-6. Resistance presets are encounter sets, never default boss sets.
+5. Item benchmark impacts convert ratings to their matching units: 15.77 physical hit rating per 1%, 12.62 spell hit rating per 1%, 3.94 expertise rating per expertise point, 18.9231 dodge rating per 1%, 23.6538 parry rating per 1%, and 7.8846 block rating per 1%.
+6. Once the combined critical-hit reduction target is already met, excess resilience is heavily devalued; defense keeps partial value because it still contributes avoidance. A swap that reduces buffer but remains above target is labeled separately from one that actually falls below target.
+7. Feral Bear Balanced and Mitigation include dodge rating. Strength and critical strike remain lower-priority threat signals and become more important in Threat / farm.
+8. After gates, use Mitigation for progression/effective health, Balanced for general encounters, or Threat for farm and damage-limited pulls.
+9. Resistance presets are encounter sets, never default boss sets.
 
 ## Healer Rules
 
@@ -93,6 +96,7 @@ Mode selection changes the role weights used by every item comparison. The same 
 
 - [WoWSims TBC](https://github.com/wowsims/tbc-new), pinned to commit `3fc6a414979d62186f75d51ab6f6dd5d44f35b9c`, supplies the adapted P2/T5 item-ID presets and reference talent strings where available.
 - [Pinned WoWSims Hunter preset source](https://github.com/wowsims/tbc-new/blob/3fc6a414979d62186f75d51ab6f6dd5d44f35b9c/ui/hunter/dps/presets.ts) supplies the Hunter EP values used by database version 4.
+- [Pinned WoWSims TBC combat-rating constants](https://github.com/wowsims/tbc/blob/9e7504dca2e5253fb9ddff566c66c00e11679376/sim/core/constants.go) supply the level-70 rating conversions used by database version 5.
 - [Wowhead Phase 2 specialization guide index](https://www.wowhead.com/tbc/news/best-in-slot-guides-for-every-class-specialization-updated-for-phase-2-tbc-381617) supplies role-specific acquisition, alternative, set-bonus, and healer context.
 - [Wowhead Hunter stat priority](https://www.wowhead.com/tbc/guide/classes/hunter/dps-stat-priority-attributes-pve) supplies the TBC agility, hit, crit, and ranged attack-power context used to interpret the simulator weights.
 - [Wowhead Feral tank stat priority](https://www.wowhead.com/tbc/guide/classes/druid/feral/tank-stat-priority-attributes-pve) supplies the defense/resilience equivalence and 39.4 resilience per 1% critical-hit reduction reference.
