@@ -8,7 +8,7 @@
 ![Lua 5.1](https://img.shields.io/badge/Lua-5.1-2C2D72?logo=lua&logoColor=white)
 ![WoW AddOn](https://img.shields.io/badge/WoW-TBC%20Classic-C69B6D)
 ![TBC Anniversary](https://img.shields.io/badge/client-Anniversary-0E8A16)
-![Tests](https://img.shields.io/badge/tests-81%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-82%20passing-brightgreen)
 ![Coverage](https://img.shields.io/badge/coverage-99.16%25-brightgreen)
 ![Coverage Gate](https://img.shields.io/badge/coverage%20gate-99%25-blue)
 ![Local Install](https://img.shields.io/badge/local%20install-PowerShell-5391FE?logo=powershell&logoColor=white)
@@ -36,7 +36,7 @@ When I create a GitHub release or tag from this workspace, I also run that local
 
 ## Manual Package
 
-CurseForge tag monitoring is the normal release path. If a manual fallback is needed, run the `Manual Package` GitHub Actions workflow. Leave `publish_curseforge` off to build a downloadable artifact only; turn it on only when the `CF_API_KEY` repository secret is set and you want to upload to CurseForge.
+Stable `v*` tags now publish both the GitHub Release and the CurseForge `release` automatically from the same `Release` workflow. The workflow requires the `CF_API_KEY` repository secret and fails visibly if it is missing. The `Manual Package` workflow remains a recovery path: leave `publish_curseforge` off to build a downloadable artifact only, or turn it on to retry a CurseForge upload.
 
 Local build-only fallback:
 
@@ -118,6 +118,6 @@ CI runs syntax checks for every Lua file and the local WoW API mock suite on eve
 This repo follows the same shape as `ArenaCoachTBC`:
 
 - Pull requests and `main` pushes run Lua tests, the 99% coverage gate, syntax checks, and a package dry run.
-- Stable tags named `v*`, for example `v0.4.4`, build a GitHub Release using notes from `CHANGELOG.md`; routine `main` pushes do not create development tags.
+- Stable tags named `v*`, for example `v0.4.5`, build a GitHub Release using notes from `CHANGELOG.md`, then automatically publish the BCC package to CurseForge as a stable release. Routine `main` pushes do not create development tags or uploads.
 - The release zip contains the addon folder as the top-level entry, so extraction into `Interface/AddOns/` works directly.
 - Local release mirroring is done with `scripts/install-local.ps1` because GitHub Actions cannot access your `F:\` drive.
