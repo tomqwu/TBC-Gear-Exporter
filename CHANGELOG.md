@@ -4,6 +4,17 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-08-01
+
+- Replace the tank defense-only benchmark with combined 5.6% boss critical-hit reduction from defense skill, resilience, and applicable talents.
+- Model Feral Druid Survival of the Fittest at 1% critical-hit reduction per rank; export and localize the total, target, remaining gap, and each contribution.
+- Convert item defense/resilience rating changes into critical-hit reduction percentages so benchmark impact no longer mixes rating, defense skill, and percent units.
+- Reject off-hand recommendations while a two-handed weapon is equipped, and reject two-handed comparisons that ignore an equipped off-hand.
+- Exclude comparisons where either item has no parsed static stats, instead of assigning a misleading score that ignores possible use/proc/set/gem/enchant value.
+- Merge one-hand and two-hand inventory counts under the localized main-hand slot instead of showing duplicate slot labels.
+- Add resilience API compatibility and a current-equipped-item fallback for Anniversary clients that expose a different resilience combat-rating constant.
+- Expand the suite to 78 tests with 99.15% executable-line coverage, including the exact 350 defense, 80 resilience, 3/3 Survival of the Fittest regression fixture.
+
 ## [0.4.2] - 2026-08-01
 
 - Make overview and role analysis stats follow the selected tank, melee, ranged, caster, or healer model instead of showing the same generic melee/spell fields for every class.
