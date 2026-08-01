@@ -1,6 +1,6 @@
 # Phase 2 Strategy Database
 
-TBC Gear Exporter v0.4.5 includes a versioned Phase 2 / Tier 5 strategy database used by the in-game P2 Guide, gear comparison engine, and AI/JSON exports.
+TBC Gear Exporter v0.4.6 includes a versioned Phase 2 / Tier 5 strategy database used by the in-game P2 Guide, gear comparison engine, and AI/JSON exports.
 
 ## Database Scale
 
@@ -31,7 +31,7 @@ The addon deliberately labels evidence instead of calling every weighted score a
 | Healer | Throughput and longevity | Burst throughput: healing, crit/haste, intellect | Mana longevity: mp5, spirit, intellect, fight length |
 | DPS | Caps, set value, output | Cap recovery: hit and expertise | Maximum output: primary power, crit, haste |
 
-Mode selection changes the role weights used by every item comparison. The selected mode is exported with the result so an external AI can reproduce the intended lens.
+Mode selection changes the role weights used by every item comparison. The same three localized controls appear on Gear Advice and the P2 Guide, and changing one immediately recalculates both pages and the export. Readable reports name the selected view and all available views; AI/JSON exports retain their keys and weights so external tools can reproduce the intended lens. Tank mitigation/progression and threat/farm remain separate rankings rather than being averaged together.
 
 ## Class And Route Matrix
 

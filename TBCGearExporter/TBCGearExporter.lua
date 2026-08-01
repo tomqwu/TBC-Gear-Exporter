@@ -226,6 +226,7 @@ local AI_OUTPUT_REQUESTS = {
     "Use chart_stats for high-level totals by source, category, quality, equip slot, item level, and stat totals before drilling into individual items.",
     "For each plausible role, rank strong keepers, weak slots, and upgrade priorities. Validate every proposed swap with gear_recommendations.upgrades[].stat_gains, stat_losses, evidence, and both item links.",
     "Use gear_recommendations.phase2_strategy to select the requested strategy mode, resolve caps before throughput, compare the saved target-set progress, and separate simulation presets from guide-only evidence.",
+    "For tank roles, compare mitigation/progression and threat/farm modes separately; never collapse both views into one ranking.",
     "Separate mitigation, threat, DPS, healing, caster, and utility value when relevant.",
     "Flag duplicates, offspec pieces, consumables, materials, or items that are probably safe to vendor, bank, disenchant, or keep.",
     "Use wowhead_url fields when naming specific items so the user can inspect them quickly.",
@@ -282,6 +283,7 @@ local AI_OUTPUT_REQUESTS_ZHCN = {
     "在逐件分析前，请先使用 character_stats、chart_stats 和 strategy_book 按当前天赋、职业、种族、队伍/团队环境、命中、暴击、防御、免伤、仇恨、治疗、续航和输出价值做整体对比。",
     "针对每个可能职责，列出值得保留的强力装备、薄弱部位和升级优先级；每条换装建议必须核对 gear_recommendations.upgrades[] 中的 stat_gains、stat_losses、evidence 和新旧物品链接。",
     "使用 gear_recommendations.phase2_strategy 选择当前策略模式，先处理属性硬门槛，再比较目标套装收集进度，并明确区分模拟器预设与仅攻略证据。",
+    "坦克职责必须分别比较减伤/开荒与仇恨/Farm模式，不要把两种视角合并成同一份排名。",
     "在相关时分别分析减伤、仇恨、输出、治疗、法系和功能性价值。",
     "标记重复物品、副天赋装备、消耗品、材料，或可能适合出售、存银行、分解、保留的物品。",
     "提到具体物品时使用 wowhead_url 字段，方便用户快速查看。",
@@ -308,6 +310,7 @@ local AI_OUTPUT_REQUESTS_ZHTW = {
     "在逐件分析前，請先使用 character_stats、chart_stats 和 strategy_book 按目前天賦、職業、種族、隊伍/團隊環境、命中、致命、防禦、減傷、仇恨、治療、續航和輸出價值做整體比較。",
     "針對每個可能職責，列出值得保留的強力裝備、薄弱部位和升級優先順序；每條換裝建議必須核對 gear_recommendations.upgrades[] 中的 stat_gains、stat_losses、evidence 和新舊物品連結。",
     "使用 gear_recommendations.phase2_strategy 選擇目前策略模式，先處理屬性硬門檻，再比較目標套裝收集進度，並明確區分模擬器預設與僅攻略證據。",
+    "坦克職責必須分別比較減傷/開荒與仇恨/Farm模式，不要把兩種視角合併成同一份排名。",
     "在相關時分別分析減傷、仇恨、輸出、治療、法系和功能性價值。",
     "標記重複物品、副天賦裝備、消耗品、材料，或可能適合出售、存銀行、分解、保留的物品。",
     "提到具體物品時使用 wowhead_url 欄位，方便使用者快速查看。",
@@ -1228,6 +1231,7 @@ local UI_STRINGS = {
         analysis_roles_title = "Role Strategy",
         analysis_role = "%s - confidence %s, talent points %s",
         analysis_models = "Models: %s",
+        analysis_modes = "Tank recommendation views: %s. Gear Advice recalculates when the selected view changes.",
         analysis_role_hit = "Observed hit/crit: hit melee %s, spell %s; crit melee %s, spell %s",
         analysis_role_hit_melee = "Observed melee: hit %s, expertise %s, crit %s",
         analysis_role_hit_ranged = "Observed ranged: hit %s, crit %s",
@@ -1358,6 +1362,7 @@ local UI_STRINGS = {
         analysis_roles_title = "职责策略",
         analysis_role = "%s - 置信度 %s，天赋点 %s",
         analysis_models = "模型：%s",
+        analysis_modes = "坦克策略视角：%s；装备建议会按当前选择的视角重新计算。",
         analysis_role_hit = "实测命中/暴击：近战命中 %s，法术命中 %s；近战暴击 %s，法术暴击 %s",
         analysis_role_hit_melee = "实测近战：命中 %s，熟练 %s，暴击 %s",
         analysis_role_hit_ranged = "实测远程：命中 %s，暴击 %s",
@@ -1488,6 +1493,7 @@ local UI_STRINGS = {
         analysis_roles_title = "職責策略",
         analysis_role = "%s - 信心 %s，天賦點 %s",
         analysis_models = "模型：%s",
+        analysis_modes = "坦克策略視角：%s；裝備建議會按目前選擇的視角重新計算。",
         analysis_role_hit = "實測命中/致命：近戰命中 %s，法術命中 %s；近戰致命 %s，法術致命 %s",
         analysis_role_hit_melee = "實測近戰：命中 %s，熟練 %s，致命 %s",
         analysis_role_hit_ranged = "實測遠程：命中 %s，致命 %s",
@@ -1524,7 +1530,7 @@ GEAR_ENGINE.REPORT_TERMS = {
         top_role = "Primary role", core_stats = "Live core stats", categories = "Categories", top_stats = "Candidate stat totals",
         role_snapshot = "Role Snapshot", role = "Role", confidence = "Confidence", talent_points = "Talent points",
         models = "Models", current_highlights = "Current gear highlights", gear_recommendations = "Gear Recommendations",
-        phase2_strategy = "Phase 2 Strategy", mode = "Strategy mode", set_goal = "Set / route goal", target_preset = "Reference gear set",
+        phase2_strategy = "Phase 2 Strategy", mode = "Strategy mode", available_modes = "Available views", set_goal = "Set / route goal", target_preset = "Reference gear set",
         target_progress = "Saved progress", missing_targets = "Next target items", caps = "Caps and gates", research_evidence = "Research evidence",
         sources = "Sources", no_preset = "No simulator preset; use the class guide and the current stat model.",
         priority_stats = "Priority stats", benchmark_gaps = "Key benchmark checks", caveat = "Limit",
@@ -1559,7 +1565,7 @@ GEAR_ENGINE.REPORT_TERMS = {
         top_role = "主要职责", core_stats = "实时核心属性", categories = "物品分类", top_stats = "候选库存属性合计",
         role_snapshot = "职责判断", role = "职责", confidence = "置信度", talent_points = "天赋点",
         models = "分析模型", current_highlights = "当前装备属性重点", gear_recommendations = "换装建议",
-        phase2_strategy = "P2 配装攻略", mode = "策略模式", set_goal = "套装 / 路线目标", target_preset = "参考目标套装",
+        phase2_strategy = "P2 配装攻略", mode = "策略模式", available_modes = "可切换视角", set_goal = "套装 / 路线目标", target_preset = "参考目标套装",
         target_progress = "本地收集进度", missing_targets = "下一批目标物品", caps = "属性阈值与硬门槛", research_evidence = "研究证据",
         sources = "资料来源", no_preset = "该专精暂无成熟模拟器预设；使用职业攻略与当前属性模型。",
         priority_stats = "优先属性", benchmark_gaps = "关键基准检查", caveat = "分析限制",
@@ -1594,7 +1600,7 @@ GEAR_ENGINE.REPORT_TERMS = {
         top_role = "主要職責", core_stats = "即時核心屬性", categories = "物品分類", top_stats = "候選庫存屬性合計",
         role_snapshot = "職責判斷", role = "職責", confidence = "信心", talent_points = "天賦點",
         models = "分析模型", current_highlights = "目前裝備屬性重點", gear_recommendations = "換裝建議",
-        phase2_strategy = "P2 配裝攻略", mode = "策略模式", set_goal = "套裝 / 路線目標", target_preset = "參考目標套裝",
+        phase2_strategy = "P2 配裝攻略", mode = "策略模式", available_modes = "可切換視角", set_goal = "套裝 / 路線目標", target_preset = "參考目標套裝",
         target_progress = "本地收集進度", missing_targets = "下一批目標物品", caps = "屬性門檻與硬條件", research_evidence = "研究證據",
         sources = "資料來源", no_preset = "該專精暫無成熟模擬器預設；使用職業攻略與目前屬性模型。",
         priority_stats = "優先屬性", benchmark_gaps = "關鍵基準檢查", caveat = "分析限制",
@@ -6000,6 +6006,15 @@ function GEAR_ENGINE.Phase2ModeLabel(engine, locale)
     return GEAR_ENGINE.LocalizedDataLabel(engine and engine.phase2 and engine.phase2.modeLabels, locale, engine and engine.modeKey or "balanced")
 end
 
+function GEAR_ENGINE.AvailableModesText(engine, locale)
+    local labels = {}
+    for index = 1, #(engine and engine.availableModes or {}) do
+        local mode = engine.availableModes[index]
+        labels[#labels + 1] = GEAR_ENGINE.LocalizedDataLabel(mode and mode.labels, locale, mode and mode.key or "")
+    end
+    return #labels > 0 and table.concat(labels, ", ") or GEAR_ENGINE.ReportTerms(locale).none
+end
+
 function GEAR_ENGINE.Phase2EvidenceLabel(engine, locale)
     local evidence = engine and engine.phase2 and engine.phase2.evidence or "sim_and_guide"
     local promptLocale = PromptLocale(locale or ClientLocale())
@@ -6080,6 +6095,7 @@ function GEAR_ENGINE.AppendGearRecommendationsMarkdown(lines, engine, locale)
     lines[#lines + 1] = ""
     lines[#lines + 1] = "- " .. terms.role .. ": " .. tostring(GEAR_ENGINE.GearRoleLabel(engine, locale)) .. " (" .. terms.confidence .. " " .. tostring(engine.roleConfidence or 0) .. ")"
     lines[#lines + 1] = "- " .. terms.mode .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.Phase2ModeLabel(engine, locale))
+    lines[#lines + 1] = "- " .. terms.available_modes .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.AvailableModesText(engine, locale))
     lines[#lines + 1] = "- " .. terms.caps .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.Phase2CapText(engine, locale))
     lines[#lines + 1] = "- " .. terms.set_goal .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.Phase2Goal(engine, locale))
     lines[#lines + 1] = "- " .. terms.target_preset .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.Phase2PresetText(engine, locale, 6))
@@ -6117,6 +6133,7 @@ function GEAR_ENGINE.AppendGearRecommendationsText(lines, engine, locale)
     lines[#lines + 1] = terms.gear_recommendations
     lines[#lines + 1] = terms.role .. ": " .. tostring(GEAR_ENGINE.GearRoleLabel(engine, locale)) .. "; " .. terms.confidence .. " " .. tostring(engine.roleConfidence or 0)
     lines[#lines + 1] = terms.mode .. ": " .. GEAR_ENGINE.Phase2ModeLabel(engine, locale)
+    lines[#lines + 1] = terms.available_modes .. ": " .. GEAR_ENGINE.AvailableModesText(engine, locale)
     lines[#lines + 1] = terms.caps .. ": " .. GEAR_ENGINE.Phase2CapText(engine, locale)
     lines[#lines + 1] = terms.set_goal .. ": " .. GEAR_ENGINE.Phase2Goal(engine, locale)
     lines[#lines + 1] = terms.target_preset .. ": " .. GEAR_ENGINE.Phase2PresetText(engine, locale, 6)
@@ -6423,6 +6440,11 @@ local function BuildStatsAnalysisText(profile, chartStats, strategyBook)
         lines[#lines + 1] = LForLocale(locale, "analysis_role", AnalysisRoleLabel(role, locale), AnalysisValue(role.confidence, nil, locale), AnalysisValue(role.talentPoints, nil, locale))
         lines[#lines + 1] = LForLocale(locale, "advice_talent_map", GEAR_ENGINE.TalentMapSummary(role.talentMap, locale, 5))
         lines[#lines + 1] = LForLocale(locale, "analysis_models", AnalysisModelLabels(role.models, locale))
+        if role.archetype == "tank" then
+            lines[#lines + 1] = LForLocale(locale, "analysis_modes", GEAR_ENGINE.AvailableModesText({
+                availableModes = GEAR_ENGINE.AvailableStrategyModes(role),
+            }, locale))
+        end
         if GEAR_ENGINE.RoleUsesHitModel(role) then
             lines[#lines + 1] = GEAR_ENGINE.RoleHitCritText(role, observed, locale)
         end
@@ -7860,6 +7882,7 @@ function Addon:RefreshGearAdvice(profile, engine)
     self.currentAdviceProfile = profile
     self.currentGearEngine = engine
     self:RefreshAdviceRoleButtons(engine, locale)
+    self:RefreshAdviceModeButtons(engine, locale)
     self.exportFrame.adviceSummary:SetText(LForLocale(locale, "advice_summary", roleLabel, engine.equippedCount or 0, engine.candidateCount or 0, engine.roleRejectedCount or 0, #(engine.upgrades or {}))
         .. "\n" .. LForLocale(locale, "advice_verdicts", GEAR_ENGINE.VerdictSummary(engine, locale))
         .. "\n" .. LForLocale(locale, "advice_talent_map", GEAR_ENGINE.TalentMapSummary(engine.talentMap, locale, 4))
@@ -7908,7 +7931,7 @@ function Addon:RefreshGearAdvice(profile, engine)
         self.exportFrame.adviceRowsContent:SetHeight(math.max(220, (#upgrades * 74) + 8))
     end
     if self.exportFrame.adviceContent.SetHeight then
-        self.exportFrame.adviceContent:SetHeight(math.max(568, (#upgrades * 74) + 360))
+        self.exportFrame.adviceContent:SetHeight(math.max(616, (#upgrades * 74) + 408))
     end
     return #upgrades
 end
@@ -8041,9 +8064,9 @@ function Addon:CreatePhase2TargetRow(parent, index)
     return row
 end
 
-function Addon:RefreshPhase2ModeButtons(engine, locale)
-    for index = 1, #(self.exportFrame and self.exportFrame.phase2ModeButtons or {}) do
-        local button = self.exportFrame.phase2ModeButtons[index]
+function Addon:RefreshStrategyModeButtons(buttons, engine, locale)
+    for index = 1, #(buttons or {}) do
+        local button = buttons[index]
         local mode = engine and engine.availableModes and engine.availableModes[index]
         if mode then
             button.modeKey = mode.key
@@ -8055,6 +8078,14 @@ function Addon:RefreshPhase2ModeButtons(engine, locale)
             button:Hide()
         end
     end
+end
+
+function Addon:RefreshAdviceModeButtons(engine, locale)
+    self:RefreshStrategyModeButtons(self.exportFrame and self.exportFrame.adviceModeButtons, engine, locale)
+end
+
+function Addon:RefreshPhase2ModeButtons(engine, locale)
+    self:RefreshStrategyModeButtons(self.exportFrame and self.exportFrame.phase2ModeButtons, engine, locale)
 end
 
 function Addon:RefreshPhase2Strategy(profile, engine)
@@ -8478,8 +8509,28 @@ function Addon:CreateExportFrame()
         adviceRoleButtons[index] = roleButton
     end
 
+    local adviceModeLabel = adviceContent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    adviceModeLabel:SetPoint("TOPLEFT", 4, -76)
+    adviceModeLabel:SetText(L("phase2_mode_hint"))
+
+    local adviceModeButtons = {}
+    for index = 1, 3 do
+        local modeButton = CreateFrame("Button", nil, adviceContent, "UIPanelButtonTemplate")
+        SetFrameSize(modeButton, 150, 22)
+        modeButton:SetPoint("TOPLEFT", adviceContent, "TOPLEFT", 4 + ((index - 1) * 158), -92)
+        modeButton:SetScript("OnClick", function(self)
+            if self.modeKey then
+                Addon.selectedStrategyModeKey = self.modeKey
+                Addon.selectedAdviceIndex = 1
+                Addon:RefreshExport()
+            end
+        end)
+        modeButton:Hide()
+        adviceModeButtons[index] = modeButton
+    end
+
     local adviceSummary = adviceContent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    adviceSummary:SetPoint("TOPLEFT", 4, -76)
+    adviceSummary:SetPoint("TOPLEFT", 4, -124)
     adviceSummary:SetWidth(478)
     adviceSummary:SetHeight(88)
     adviceSummary:SetJustifyH("LEFT")
@@ -8487,7 +8538,7 @@ function Addon:CreateExportFrame()
     adviceSummary:SetText(L("advice_title"))
 
     local adviceCaveat = adviceContent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    adviceCaveat:SetPoint("TOPLEFT", 4, -168)
+    adviceCaveat:SetPoint("TOPLEFT", 4, -216)
     adviceCaveat:SetWidth(478)
     adviceCaveat:SetHeight(38)
     adviceCaveat:SetJustifyH("LEFT")
@@ -8496,7 +8547,7 @@ function Addon:CreateExportFrame()
 
     local comparePanel = CreateFrame("Frame", nil, adviceContent, BackdropTemplate())
     SetFrameSize(comparePanel, 486, 118)
-    comparePanel:SetPoint("TOPLEFT", adviceContent, "TOPLEFT", 2, -214)
+    comparePanel:SetPoint("TOPLEFT", adviceContent, "TOPLEFT", 2, -262)
     if comparePanel.SetBackdrop then
         comparePanel:SetBackdrop({
             bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
@@ -8569,7 +8620,7 @@ function Addon:CreateExportFrame()
 
     local adviceRowsContent = CreateFrame("Frame", nil, adviceContent)
     SetFrameSize(adviceRowsContent, 490, 220)
-    adviceRowsContent:SetPoint("TOPLEFT", adviceContent, "TOPLEFT", 0, -344)
+    adviceRowsContent:SetPoint("TOPLEFT", adviceContent, "TOPLEFT", 0, -392)
 
     local adviceEmpty = adviceRowsContent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     adviceEmpty:SetPoint("TOPLEFT", 4, -4)
@@ -8711,6 +8762,8 @@ function Addon:CreateExportFrame()
     exportFrame.adviceContent = adviceContent
     exportFrame.adviceRoleLabel = adviceRoleLabel
     exportFrame.adviceRoleButtons = adviceRoleButtons
+    exportFrame.adviceModeLabel = adviceModeLabel
+    exportFrame.adviceModeButtons = adviceModeButtons
     exportFrame.adviceSummary = adviceSummary
     exportFrame.adviceCaveat = adviceCaveat
     exportFrame.comparePanel = comparePanel
@@ -9190,6 +9243,7 @@ if _G.TBCGearExporterTestMode then
         TalentMapSummary = GEAR_ENGINE.TalentMapSummary,
         GearRoleLabel = GEAR_ENGINE.GearRoleLabel,
         Phase2ModeLabel = GEAR_ENGINE.Phase2ModeLabel,
+        AvailableModesText = GEAR_ENGINE.AvailableModesText,
         Phase2EvidenceLabel = GEAR_ENGINE.Phase2EvidenceLabel,
         Phase2CapText = GEAR_ENGINE.Phase2CapText,
         Phase2PresetText = GEAR_ENGINE.Phase2PresetText,
