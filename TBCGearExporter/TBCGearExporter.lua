@@ -408,6 +408,21 @@ GEAR_ENGINE.STAT_SCORE_SCALES = {
     ITEM_MOD_DAMAGE_PER_SECOND_SHORT = 1.50,
 }
 
+-- Level-70 TBC rating conversions pinned to WoWSims core constants.
+GEAR_ENGINE.TBC_RATING = {
+    meleeHitPerPercent = 15.77,
+    spellHitPerPercent = 12.62,
+    expertisePerQuarterPercent = 3.94,
+    defensePerSkill = 2.3654,
+    dodgePerPercent = 18.9231,
+    parryPerPercent = 23.6538,
+    blockPerPercent = 7.8846,
+    resiliencePerCritPercent = 39.4231,
+}
+
+GEAR_ENGINE.ADVICE_ROW_HEIGHT = 116
+GEAR_ENGINE.ADVICE_ROW_STEP = 120
+
 GEAR_ENGINE.ROLE_FIT_SIGNALS = {
     healer = {
         primary = {
@@ -1540,7 +1555,7 @@ GEAR_ENGINE.REPORT_TERMS = {
         verdict_summary = "%d clear · %d small · %d tradeoff · %d manual",
         talent_map = "Talent mapping", talent_map_summary = "%d/%d selected mapped · %d aligned points · key effects: %s", no_key_effects = "none",
         benchmark_impact = "Benchmark impact", impact_helps_gap = "moves toward target", impact_worsens_gap = "moves away from target",
-        impact_cap_buffer = "adds buffer above target", impact_cap_risk = "recheck target after equipping",
+        impact_cap_buffer = "adds buffer above target", impact_cap_buffer_reduced = "reduces buffer but remains above target", impact_cap_risk = "falls below target after equipping",
         impact_context_help = "improves the visible subtotal", impact_context_risk = "reduces the visible subtotal",
         no_benchmark_impact = "no tracked benchmark change",
         ai_prompt = "AI Analysis Prompt", details = "Detailed character, strategy, and inventory statistics",
@@ -1575,7 +1590,7 @@ GEAR_ENGINE.REPORT_TERMS = {
         verdict_summary = "明确 %d · 小幅 %d · 有取舍 %d · 需核对 %d",
         talent_map = "天赋映射", talent_map_summary = "已映射 %d/%d 个已点天赋 · 本职责 %d 点 · 关键效果：%s", no_key_effects = "无",
         benchmark_impact = "基准影响", impact_helps_gap = "向目标靠近", impact_worsens_gap = "离目标更远",
-        impact_cap_buffer = "增加达标余量", impact_cap_risk = "换装后需重新核对是否达标",
+        impact_cap_buffer = "增加达标余量", impact_cap_buffer_reduced = "达标余量减少，但换装后仍达标", impact_cap_risk = "换装后将低于目标",
         impact_context_help = "提高可见常驻小计", impact_context_risk = "降低可见常驻小计",
         no_benchmark_impact = "不改变已跟踪基准",
         ai_prompt = "AI 分析指令", details = "角色、策略与候选库存详细数据",
@@ -1610,7 +1625,7 @@ GEAR_ENGINE.REPORT_TERMS = {
         verdict_summary = "明確 %d · 小幅 %d · 有取捨 %d · 需核對 %d",
         talent_map = "天賦映射", talent_map_summary = "已映射 %d/%d 個已點天賦 · 本職責 %d 點 · 關鍵效果：%s", no_key_effects = "無",
         benchmark_impact = "基準影響", impact_helps_gap = "向目標靠近", impact_worsens_gap = "離目標更遠",
-        impact_cap_buffer = "增加達標餘量", impact_cap_risk = "換裝後需重新核對是否達標",
+        impact_cap_buffer = "增加達標餘量", impact_cap_buffer_reduced = "達標餘量減少，但換裝後仍達標", impact_cap_risk = "換裝後將低於目標",
         impact_context_help = "提高可見常駐小計", impact_context_risk = "降低可見常駐小計",
         no_benchmark_impact = "不改變已追蹤基準",
         ai_prompt = "AI 分析指令", details = "角色、策略與候選庫存詳細資料",
@@ -2269,8 +2284,8 @@ function GEAR_ENGINE.FormatLocalizedStats(stats, locale, maxCount)
     return table.concat(parts, ", ")
 end
 
-function GEAR_ENGINE.DeltaText(entries, locale)
-    return GEAR_ENGINE.FormatLocalizedStats(entries, locale, 3)
+function GEAR_ENGINE.DeltaText(entries, locale, maxStats)
+    return GEAR_ENGINE.FormatLocalizedStats(entries, locale, maxStats or 3)
 end
 
 function GEAR_ENGINE.EvidenceLabel(evidence, locale)
@@ -2289,11 +2304,11 @@ function GEAR_ENGINE.VerdictSummary(engine, locale)
     return string.format(terms.verdict_summary, counts.upgrade or 0, counts.minor or 0, counts.tradeoff or 0, counts.review or 0)
 end
 
-function GEAR_ENGINE.BenchmarkImpactText(impacts, locale)
+function GEAR_ENGINE.BenchmarkImpactText(impacts, locale, maxImpacts)
     local terms = GEAR_ENGINE.ReportTerms(locale)
     local localized = ANALYSIS_LOCALIZATION[PromptLocale(locale or ClientLocale())]
     local parts = {}
-    for index = 1, math.min(#(impacts or {}), 2) do
+    for index = 1, math.min(#(impacts or {}), maxImpacts or 2) do
         local impact = impacts[index]
         local label = localized and localized.benchmarks and localized.benchmarks[impact.key] or impact.label or impact.key
         local delta = tonumber(impact.delta) or 0
@@ -4752,7 +4767,15 @@ function GEAR_ENGINE.BuildRoleStatWeights(role, modeKey)
         for tokenIndex = 1, #tokens do
             local token = tokens[tokenIndex]
             local base = weights[token] or (GEAR_ENGINE.STAT_SCORE_SCALES[token] or 1)
-            weights[token] = base * boost
+            local multiplier = boost
+            if benchmark.key == "crit_immunity" and benchmark.status == "meets_or_exceeds" then
+                if token == "ITEM_MOD_RESILIENCE_RATING_SHORT" then
+                    multiplier = 0.10
+                elseif token == "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT" then
+                    multiplier = 0.55
+                end
+            end
+            weights[token] = base * multiplier
         end
     end
 
@@ -4961,12 +4984,42 @@ end
 function GEAR_ENGINE.BenchmarkDeltaValue(benchmarkKey, token, value)
     value = tonumber(value) or 0
     token = GEAR_ENGINE.ComparisonStatToken(token)
+    local rating = GEAR_ENGINE.TBC_RATING
+    if benchmarkKey == "defense_crit_immunity" and token == "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT" then
+        return value / rating.defensePerSkill
+    end
     if benchmarkKey == "crit_immunity" then
         if token == "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT" then
-            return value / 59.1
+            return (value / rating.defensePerSkill) * 0.04
         end
         if token == "ITEM_MOD_RESILIENCE_RATING_SHORT" then
-            return value / 39.4
+            return value / rating.resiliencePerCritPercent
+        end
+    end
+    if benchmarkKey == "melee_special_hit"
+        and (token == "ITEM_MOD_HIT_RATING_SHORT" or token == "ITEM_MOD_HIT_MELEE_RATING_SHORT") then
+        return value / rating.meleeHitPerPercent
+    end
+    if benchmarkKey == "ranged_hit"
+        and (token == "ITEM_MOD_HIT_RATING_SHORT" or token == "ITEM_MOD_HIT_RANGED_RATING_SHORT") then
+        return value / rating.meleeHitPerPercent
+    end
+    if benchmarkKey == "spell_hit"
+        and (token == "ITEM_MOD_HIT_RATING_SHORT" or token == "ITEM_MOD_HIT_SPELL_RATING_SHORT") then
+        return value / rating.spellHitPerPercent
+    end
+    if benchmarkKey == "expertise_dodge" and token == "ITEM_MOD_EXPERTISE_RATING_SHORT" then
+        return value / (rating.expertisePerQuarterPercent * 4)
+    end
+    if benchmarkKey == "avoidance_table" then
+        if token == "ITEM_MOD_DODGE_RATING_SHORT" then
+            return value / rating.dodgePerPercent
+        end
+        if token == "ITEM_MOD_PARRY_RATING_SHORT" then
+            return value / rating.parryPerPercent
+        end
+        if token == "ITEM_MOD_BLOCK_RATING_SHORT" then
+            return value / rating.blockPerPercent
         end
     end
     return value
@@ -5000,10 +5053,19 @@ function GEAR_ENGINE.BuildBenchmarkImpacts(role, gains, losses)
 
         if delta ~= 0 then
             local effect
+            local observed = tonumber(benchmark.observed)
+            local target = tonumber(benchmark.target)
+            local projected = observed and RoundedStatNumber(observed + delta) or nil
             if benchmark.status == "below" or benchmark.status == "near" then
                 effect = delta > 0 and "helps_gap" or "worsens_gap"
             elseif benchmark.status == "meets_or_exceeds" then
-                effect = delta > 0 and "cap_buffer" or "cap_risk"
+                if delta > 0 then
+                    effect = "cap_buffer"
+                elseif projected and target and projected >= target then
+                    effect = "cap_buffer_reduced"
+                else
+                    effect = "cap_risk"
+                end
             elseif benchmark.status == "context_required" then
                 effect = delta > 0 and "context_help" or "context_risk"
             end
@@ -5015,6 +5077,9 @@ function GEAR_ENGINE.BuildBenchmarkImpacts(role, gains, losses)
                     delta = RoundedStatNumber(delta),
                     unit = benchmark.unit,
                     effect = effect,
+                    observed = observed,
+                    projected = projected,
+                    target = target,
                 }
             end
         end
@@ -5523,7 +5588,7 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
     end
 
     return {
-        version = 9,
+        version = 10,
         generatedAt = Now(),
         roleKey = role.key,
         roleLabel = role.label,
@@ -5988,6 +6053,10 @@ function GEAR_ENGINE.AppendGearRecommendationsJson(lines, indent, engine, comma)
             { name = "label", value = "label" },
             { name = "status", value = "status" },
             { name = "delta", value = "delta" },
+            { name = "unit", value = "unit" },
+            { name = "observed", value = "observed" },
+            { name = "projected", value = "projected" },
+            { name = "target", value = "target" },
             { name = "effect", value = "effect" },
         }, false)
         AppendIndented(lines, indent + 4, "}" .. (index < #(engine.upgrades or {}) and "," or ""))
@@ -7750,17 +7819,19 @@ end
 
 function Addon:CreateGearAdviceRow(parent, index)
     local row = CreateFrame("Frame", nil, parent)
-    SetFrameSize(row, 490, 72)
-    row:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, -((index - 1) * 74))
+    SetFrameSize(row, 490, GEAR_ENGINE.ADVICE_ROW_HEIGHT)
+    row:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, -((index - 1) * GEAR_ENGINE.ADVICE_ROW_STEP))
 
     local slot = row:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    slot:SetPoint("LEFT", 4, 0)
-    slot:SetWidth(72)
+    slot:SetPoint("TOPLEFT", 4, -10)
+    slot:SetWidth(70)
+    slot:SetHeight(22)
     slot:SetJustifyH("LEFT")
+    slot:SetJustifyV("TOP")
 
     local currentButton = CreateFrame("Button", nil, row)
     SetFrameSize(currentButton, 34, 34)
-    currentButton:SetPoint("LEFT", 78, 0)
+    currentButton:SetPoint("TOPLEFT", 78, -10)
     local currentIcon = currentButton:CreateTexture(nil, "ARTWORK")
     currentIcon:SetPoint("TOPLEFT", 0, 0)
     currentIcon:SetPoint("BOTTOMRIGHT", 0, 0)
@@ -7778,17 +7849,24 @@ function Addon:CreateGearAdviceRow(parent, index)
 
     local name = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     name:SetPoint("TOPLEFT", candidateButton, "TOPRIGHT", 8, -1)
-    name:SetPoint("RIGHT", row, "RIGHT", -70, 0)
+    name:SetPoint("RIGHT", row, "RIGHT", -116, 0)
+    name:SetHeight(18)
     name:SetJustifyH("LEFT")
+    name:SetJustifyV("TOP")
 
     local reason = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    reason:SetPoint("TOPLEFT", candidateButton, "TOPRIGHT", 8, -20)
+    reason:SetPoint("TOPLEFT", candidateButton, "TOPRIGHT", 8, -24)
     reason:SetPoint("RIGHT", row, "RIGHT", -8, 0)
+    reason:SetHeight(78)
     reason:SetJustifyH("LEFT")
+    reason:SetJustifyV("TOP")
 
     local gain = row:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     gain:SetPoint("TOPRIGHT", row, "TOPRIGHT", -8, -2)
+    gain:SetWidth(104)
+    gain:SetHeight(34)
     gain:SetJustifyH("RIGHT")
+    gain:SetJustifyV("TOP")
 
     currentButton:SetScript("OnEnter", function(self)
         GEAR_ENGINE.ShowRecommendationTooltip(self, self.item)
@@ -7917,10 +7995,10 @@ function Addon:RefreshGearAdvice(profile, engine)
         row.name:SetText(ItemColoredName(upgrade.candidate))
         row.gain:SetText("|cff33ff99+" .. CompactNumber(upgrade.scoreGain, 2) .. "|r\n"
             .. GEAR_ENGINE.RecommendationVerdictLabel(upgrade.verdict, locale))
-        row.reason:SetText(LForLocale(locale, "advice_gains", GEAR_ENGINE.DeltaText(upgrade.statGains, locale))
-            .. "; " .. LForLocale(locale, "advice_losses", GEAR_ENGINE.DeltaText(upgrade.statLosses, locale))
-            .. "\n" .. LForLocale(locale, "advice_impact", GEAR_ENGINE.BenchmarkImpactText(upgrade.benchmarkImpacts, locale))
-            .. "; " .. LForLocale(locale, "advice_evidence", LForLocale(locale, "advice_evidence_" .. tostring(upgrade.evidence or "low"))))
+        row.reason:SetText(LForLocale(locale, "advice_gains", GEAR_ENGINE.DeltaText(upgrade.statGains, locale, 2))
+            .. "\n" .. LForLocale(locale, "advice_losses", GEAR_ENGINE.DeltaText(upgrade.statLosses, locale, 2))
+            .. "\n" .. LForLocale(locale, "advice_impact", GEAR_ENGINE.BenchmarkImpactText(upgrade.benchmarkImpacts, locale, 1))
+            .. " · " .. LForLocale(locale, "advice_evidence", LForLocale(locale, "advice_evidence_" .. tostring(upgrade.evidence or "low"))))
         row:Show()
     end
 
@@ -7928,10 +8006,10 @@ function Addon:RefreshGearAdvice(profile, engine)
     self:RefreshGearComparison(profile, engine, selectedIndex > 0 and selectedIndex or nil)
 
     if self.exportFrame.adviceRowsContent.SetHeight then
-        self.exportFrame.adviceRowsContent:SetHeight(math.max(220, (#upgrades * 74) + 8))
+        self.exportFrame.adviceRowsContent:SetHeight(math.max(220, (#upgrades * GEAR_ENGINE.ADVICE_ROW_STEP) + 8))
     end
     if self.exportFrame.adviceContent.SetHeight then
-        self.exportFrame.adviceContent:SetHeight(math.max(616, (#upgrades * 74) + 408))
+        self.exportFrame.adviceContent:SetHeight(math.max(616, (#upgrades * GEAR_ENGINE.ADVICE_ROW_STEP) + 408))
     end
     return #upgrades
 end
