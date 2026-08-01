@@ -545,6 +545,18 @@ GEAR_ENGINE.BENCHMARK_STAT_TOKENS = {
     avoidance_table = { "ITEM_MOD_DODGE_RATING_SHORT", "ITEM_MOD_PARRY_RATING_SHORT", "ITEM_MOD_BLOCK_RATING_SHORT" },
 }
 
+GEAR_ENGINE.ROLE_STAT_ALIASES = {
+    ITEM_MOD_HIT_MELEE_RATING_SHORT = { "ITEM_MOD_HIT_RATING_SHORT" },
+    ITEM_MOD_HIT_RANGED_RATING_SHORT = { "ITEM_MOD_HIT_RATING_SHORT" },
+    ITEM_MOD_HIT_SPELL_RATING_SHORT = { "ITEM_MOD_HIT_RATING_SHORT" },
+    ITEM_MOD_CRIT_MELEE_RATING_SHORT = { "ITEM_MOD_CRIT_RATING_SHORT" },
+    ITEM_MOD_CRIT_RANGED_RATING_SHORT = { "ITEM_MOD_CRIT_RATING_SHORT" },
+    ITEM_MOD_CRIT_SPELL_RATING_SHORT = { "ITEM_MOD_CRIT_RATING_SHORT" },
+    ITEM_MOD_HASTE_MELEE_RATING_SHORT = { "ITEM_MOD_HASTE_RATING_SHORT" },
+    ITEM_MOD_HASTE_RANGED_RATING_SHORT = { "ITEM_MOD_HASTE_RATING_SHORT" },
+    ITEM_MOD_HASTE_SPELL_RATING_SHORT = { "ITEM_MOD_HASTE_RATING_SHORT" },
+}
+
 local RACE_STRATEGY_NOTES = {
     HUMAN = { "Weapon and spirit racials can affect melee threat/DPS and mana-adjacent evaluations." },
     NIGHTELF = { "Quickness-style avoidance and Shadowmeld utility can matter for mitigation and solo context." },
@@ -4118,7 +4130,7 @@ local function RoleGearHighlights(role, chartStats, equippedItems)
     local seen = {}
     for index = 1, #(role.statTokens or {}) do
         local token = GEAR_ENGINE.NormalizeStatToken(role.statTokens[index])
-        local stat = scopedTotals and scopedTotals[token] or ChartStatTotal(chartStats, token)
+        local stat = GEAR_ENGINE.RoleHighlightStat(scopedTotals, chartStats, token)
         if stat and not seen[token] then
             seen[token] = true
             highlights[#highlights + 1] = {
@@ -4130,6 +4142,25 @@ local function RoleGearHighlights(role, chartStats, equippedItems)
     end
 
     return highlights
+end
+
+function GEAR_ENGINE.RoleHighlightStat(scopedTotals, chartStats, token)
+    local tokens = { token }
+    for index = 1, #(GEAR_ENGINE.ROLE_STAT_ALIASES[token] or {}) do
+        tokens[#tokens + 1] = GEAR_ENGINE.ROLE_STAT_ALIASES[token][index]
+    end
+
+    local total = 0
+    local found = false
+    for index = 1, #tokens do
+        local stat = scopedTotals and scopedTotals[tokens[index]] or ChartStatTotal(chartStats, tokens[index])
+        if stat and tonumber(stat.value) then
+            total = total + tonumber(stat.value)
+            found = true
+        end
+    end
+
+    return found and { token = token, label = StatLabel(token), value = total } or nil
 end
 
 local function TalentPointsForTabs(talents, tabIndexes)
@@ -4501,6 +4532,7 @@ local function BuildStrategyBook(profile, chartStats)
             models = role.models or {},
             priorities = role.priorities or {},
             statTokens = role.statTokens or {},
+            baseWeights = role.baseWeights or {},
             caps = role.caps or {},
             modes = role.modes or {},
             setGoal = role.setGoal,
@@ -4603,6 +4635,34 @@ function GEAR_ENGINE.LoadoutCompatible(profile, candidateItem)
     return true, nil
 end
 
+function GEAR_ENGINE.IsWeaponItem(item)
+    return item and (tonumber(item.classID) == 2
+        or tostring(item.equipSlot or ""):find("WEAPON", 1, true) ~= nil) or false
+end
+
+function GEAR_ENGINE.CandidateSlotKeys(profile, item)
+    local slotKey = GEAR_ENGINE.EquipmentSlotKey(item)
+    local slots = slotKey and { slotKey } or {}
+    local offHand = GEAR_ENGINE.EquippedItemForSlot(profile, "OFFHAND")
+    if slotKey == "MAINHAND" and item and item.equipSlot == "INVTYPE_WEAPON"
+        and offHand and GEAR_ENGINE.IsWeaponItem(offHand) then
+        slots[#slots + 1] = "OFFHAND"
+    end
+    return slots
+end
+
+function GEAR_ENGINE.ItemForSlot(item, slotKey)
+    if not item or GEAR_ENGINE.EquipmentSlotKey(item) == slotKey then
+        return item
+    end
+    local copy = {}
+    for key, value in pairs(item) do
+        copy[key] = value
+    end
+    copy.slotKey = slotKey
+    return copy
+end
+
 function GEAR_ENGINE.MaximumWeight(weights, tokens)
     local best
 
@@ -4666,10 +4726,16 @@ end
 function GEAR_ENGINE.BuildRoleStatWeights(role, modeKey)
     local weights = {}
 
+    for token, weight in pairs(role and role.baseWeights or {}) do
+        weights[GEAR_ENGINE.NormalizeStatToken(token)] = tonumber(weight) or 0
+    end
+
     for index = 1, #(role and role.statTokens or {}) do
         local token = role.statTokens[index]
-        local priority = math.max(0.65, 1.8 - ((index - 1) * 0.15))
-        weights[token] = priority * (GEAR_ENGINE.STAT_SCORE_SCALES[token] or 1)
+        if weights[token] == nil then
+            local priority = math.max(0.65, 1.8 - ((index - 1) * 0.15))
+            weights[token] = priority * (GEAR_ENGINE.STAT_SCORE_SCALES[token] or 1)
+        end
     end
 
     for index = 1, #(role and role.benchmarks or {}) do
@@ -5386,18 +5452,39 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
             local roleFit = GEAR_ENGINE.ItemRoleFit(item, role)
             if roleFit.suitable then
                 candidateCount = candidateCount + 1
-                local current = currentBySlot[slotKey]
-                local recommendation = GEAR_ENGINE.CompareItems(profile, current and current.item or nil, item, strategyBook, role.key, weights, mode and mode.key)
-                if not recommendation.loadoutCompatible then
-                    loadoutRejectedCount = loadoutRejectedCount + 1
-                elseif not recommendation.comparable then
-                    unscorableRejectedCount = unscorableRejectedCount + 1
-                elseif recommendation.scoreGain >= 2 and #recommendation.matchedStats > 0 then
-                    if recommendation.blockedByHardGate then
-                        gateRejectedCount = gateRejectedCount + 1
-                    elseif not bestBySlot[slotKey] or recommendation.candidateScore > bestBySlot[slotKey].candidateScore then
-                        bestBySlot[slotKey] = recommendation
+                local candidateBest
+                local rejectedByGate = false
+                local rejectedByLoadout = false
+                local rejectedAsUnscorable = false
+                local candidateSlots = GEAR_ENGINE.CandidateSlotKeys(profile, item)
+                for slotIndex = 1, #candidateSlots do
+                    local comparisonSlot = candidateSlots[slotIndex]
+                    local comparisonItem = GEAR_ENGINE.ItemForSlot(item, comparisonSlot)
+                    local current = currentBySlot[comparisonSlot]
+                    local recommendation = GEAR_ENGINE.CompareItems(profile, current and current.item or nil, comparisonItem, strategyBook, role.key, weights, mode and mode.key)
+                    if not recommendation.loadoutCompatible then
+                        rejectedByLoadout = true
+                    elseif not recommendation.comparable then
+                        rejectedAsUnscorable = true
+                    elseif recommendation.scoreGain >= 2 and #recommendation.matchedStats > 0 then
+                        if recommendation.blockedByHardGate then
+                            rejectedByGate = true
+                        elseif not candidateBest or recommendation.scoreGain > candidateBest.scoreGain then
+                            candidateBest = recommendation
+                        end
                     end
+                end
+                if candidateBest then
+                    local recommendationSlot = candidateBest.slotKey
+                    if not bestBySlot[recommendationSlot] or candidateBest.scoreGain > bestBySlot[recommendationSlot].scoreGain then
+                        bestBySlot[recommendationSlot] = candidateBest
+                    end
+                elseif rejectedByGate then
+                    gateRejectedCount = gateRejectedCount + 1
+                elseif rejectedAsUnscorable then
+                    unscorableRejectedCount = unscorableRejectedCount + 1
+                elseif rejectedByLoadout then
+                    loadoutRejectedCount = loadoutRejectedCount + 1
                 end
             else
                 roleRejectedCount = roleRejectedCount + 1
@@ -5430,7 +5517,7 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
     end
 
     return {
-        version = 8,
+        version = 9,
         generatedAt = Now(),
         roleKey = role.key,
         roleLabel = role.label,
@@ -9060,10 +9147,14 @@ if _G.TBCGearExporterTestMode then
         BuildRoleBenchmarks = BuildRoleBenchmarks,
         StrategyClassRoles = StrategyClassRoles,
         BuildStrategyBook = BuildStrategyBook,
+        RoleHighlightStat = GEAR_ENGINE.RoleHighlightStat,
         EquipmentSlotKey = GEAR_ENGINE.EquipmentSlotKey,
         EquipmentSlotLabel = GEAR_ENGINE.EquipmentSlotLabel,
         EquippedItemForSlot = GEAR_ENGINE.EquippedItemForSlot,
         IsTwoHandedItem = GEAR_ENGINE.IsTwoHandedItem,
+        IsWeaponItem = GEAR_ENGINE.IsWeaponItem,
+        CandidateSlotKeys = GEAR_ENGINE.CandidateSlotKeys,
+        ItemForSlot = GEAR_ENGINE.ItemForSlot,
         LoadoutCompatible = GEAR_ENGINE.LoadoutCompatible,
         MaximumWeight = GEAR_ENGINE.MaximumWeight,
         StatWeightForToken = GEAR_ENGINE.StatWeightForToken,
