@@ -1,27 +1,27 @@
 # Phase 2 Strategy Database
 
-TBC Gear Exporter v0.4.7 includes a versioned Phase 2 / Tier 5 strategy database used by the in-game P2 Guide, gear comparison engine, and AI/JSON exports.
+TBC Gear Exporter v0.4.8 includes Phase 2 / Tier 5 strategy database version 6, used by the in-game P2 Guide, candidate ranking, and AI/JSON exports.
 
 ## Database Scale
 
 - 9 playable TBC classes.
 - 28 PvE specializations: 3 tanks, 5 healers, 11 melee/ranged physical DPS roles, and 9 caster DPS roles.
 - 3 switchable analysis modes for every role.
-- 29 simulation reference presets with 475 non-empty target item slots.
+- 29 WoWSims reference gear presets with 475 non-empty target item slots.
 - 17-slot target-set tracking against current equipment plus saved bags and bank.
 - English, simplified Chinese, and traditional Chinese role, mode, cap, and route labels.
-- Database version 5, including explicit pinned Hunter EP weights, dual-wield-aware one-hand comparisons, Feral Bear dodge/threat corrections, and distinct threat-mode survival tradeoffs.
+- Database version 6, including an explicit score-model contract for every role, exact pinned P2 static EP tables for Balance, Retribution, and Arcane, a clearly downgraded shared P1 Hunter estimate, and no definitive upgrade verdicts.
 
-The source of truth is [`TBCGearExporter/Phase2StrategyDB.lua`](../TBCGearExporter/Phase2StrategyDB.lua). Every role records its talent-tree rule, archetype, analysis models, priorities, stat tokens, caps, three modes, set/route goal, reference talent string where available, presets, evidence level, and guide URL.
+The source of truth is [`TBCGearExporter/Phase2StrategyDB.lua`](../TBCGearExporter/Phase2StrategyDB.lua). Every role records its score-model kind and limitations in addition to its talent-tree rule, archetype, priorities, stat tokens, caps, modes, route goal, reference talent string where available, presets, route evidence, and guide URL. The exact support boundary and all 28 role maturity levels are in [the engine contract](engine-contract.md).
 
 ## Evidence Policy
 
-| Evidence | Meaning |
+| Route evidence | Meaning |
 | --- | --- |
-| Simulation preset + class guide | A WoWSims P2/T5 gear preset is available and the role also links to a Phase 2 class guide. |
-| Class guide | The role uses curated stat/cap logic and a class guide, but no mature healer or niche-spec preset is presented as simulated certainty. |
+| WoWSims reference gear route + class guide | A P2/T5 item-ID route is available for target tracking. This does not calibrate candidate scoring. |
+| Class guide route | No WoWSims target route is attached; the guide supplies route context only. |
 
-The addon deliberately labels evidence instead of calling every weighted score a definitive BiS result. It never silently invents set-bonus values, proc rates, encounter timelines, rotations, gems, or enchants.
+Route evidence, score-model provenance, and item-data completeness are independent. The addon no longer calls any current weighted result a definitive upgrade. It never silently invents set-bonus values, proc rates, encounter timelines, rotations, gems, or enchants.
 
 ## Strategy Modes
 
@@ -35,36 +35,36 @@ Mode selection changes the role weights used by every item comparison. The same 
 
 ## Class And Route Matrix
 
-| Class | Specialization | Important P2 gate or model | Route goal | Evidence |
+| Class | Specialization | Important P2 gate or model | Route goal | Route evidence |
 | --- | --- | --- | --- | --- |
-| Druid | Balance | Adjusted spell hit; caster output and mana | Nordrassil Regalia 4-piece | Simulation + guide |
-| Druid | Feral Bear | Crit immunity; survival/threat; encounter resistance | Survival, Balanced, Offensive, Warden, or Hydross set by encounter | Simulation + guide |
-| Druid | Feral Cat | 6%/9% hit routes; expertise; finisher value | Compare T4 2-piece with T5 alternatives | Simulation + guide |
-| Druid | Restoration | Healing throughput versus fight-length mana | Nordrassil Raiment plus longevity variant | Guide |
-| Warrior | Arms | 9% special hit; expertise; raid debuff value | Destroyer Battlegear and Blood Frenzy utility | Simulation + guide |
-| Warrior | Fury | 9% special hit; expertise; dual-wield budget | Destroyer Battlegear with optimized hit plan | Simulation + guide |
-| Warrior | Protection | 5.6% combined crit reduction; contextual 102.4 table; threat | Destroyer Armor plus Hydross resistance set | Simulation + guide |
-| Paladin | Holy | Healing, intellect, crit, mp5; fight length | Crystalforge only when set value beats healing off-pieces | Guide |
-| Paladin | Protection | 5.6% combined crit reduction; contextual 102.4 table; spell threat | Keep Justicar 2-piece for single-target threat; do not force weak T5 bonuses | Simulation + guide |
-| Paladin | Retribution | 9% special hit; expertise; weapon damage | Crystalforge Battlegear with weapon-first upgrades | Simulation + guide |
-| Priest | Discipline | Throughput, intellect/mp5, raid support | Avatar pieces versus high-healing off-pieces | Guide |
-| Priest | Holy | Throughput, spirit/mp5, fight length | Separate Avatar throughput and longevity sets | Guide |
-| Priest | Shadow | 6% spell hit after 5/5 Shadow Focus | Avatar Regalia 4-piece and mana-support uptime | Simulation + guide |
-| Shaman | Elemental | 7% raid-adjusted spell hit assumption | Cataclysm Regalia and Totem of Wrath support | Simulation + guide |
-| Shaman | Enhancement | Hit/expertise; weapon pairing; group buffs | Cataclysm Harness with Windfury/Unleashed Rage value | Simulation + guide |
-| Shaman | Restoration | Chain Heal throughput versus mana longevity | Cataclysm Raiment with encounter-length variants | Guide |
-| Hunter | Beast Mastery | 6%/9% hit route; pet and weapon scaling | Rift Stalker with party-hit-aware 2H/DW route | Simulation + guide |
-| Hunter | Marksmanship | Ranged hit and raid-support value | Rift Stalker with support-aware off-pieces | Guide |
-| Hunter | Survival | Ranged hit and Expose Weakness agility | Rift Stalker with maximum sustainable agility | Simulation + guide |
-| Rogue | Assassination | Special hit, expertise, weapon/poison plan | Deathmantle only when build and poison plan support it | Guide |
-| Rogue | Combat | Special/poison hit, expertise, weapon specialization | Deathmantle with weapon-matched upgrades | Simulation + guide |
-| Rogue | Subtlety | Special hit and utility-build tradeoffs | Combat P2 set as a starting point; validate separately | Guide |
-| Mage | Arcane | 6% arcane hit after 5/5 Arcane Focus; mana cycle | Tirisfal Regalia and Serpent-Coil Braid route | Simulation + guide |
-| Mage | Fire | 13% fire hit after 3/3 Elemental Precision | Tirisfal versus fire-damage off-pieces | Guide |
-| Mage | Frost | 13% frost hit after 3/3 Elemental Precision | Tirisfal versus frost-damage off-pieces | Guide |
-| Warlock | Affliction | Adjusted spell hit; DoT/debuff uptime | Corruptor Raiment with uptime requirements | Simulation reference + guide |
-| Warlock | Demonology | Spell hit; pet scaling and survival | Corruptor with pet-survival alternatives | Simulation reference + guide |
-| Warlock | Destruction | Spell hit; shadow/fire output variants | Corruptor with separate school variants | Simulation + guide |
+| Druid | Balance | Adjusted spell hit; caster output and mana | Nordrassil Regalia 4-piece | WoWSims route + guide |
+| Druid | Feral Bear | Crit immunity; survival/threat; encounter resistance | Survival, Balanced, Offensive, Warden, or Hydross set by encounter | WoWSims route + guide |
+| Druid | Feral Cat | 6%/9% hit routes; expertise; finisher value | Compare T4 2-piece with T5 alternatives | WoWSims route + guide |
+| Druid | Restoration | Healing throughput versus fight-length mana | Nordrassil Raiment plus longevity variant | Guide route |
+| Warrior | Arms | 9% special hit; expertise; raid debuff value | Destroyer Battlegear and Blood Frenzy utility | WoWSims route + guide |
+| Warrior | Fury | 9% special hit; expertise; dual-wield budget | Destroyer Battlegear with optimized hit plan | WoWSims route + guide |
+| Warrior | Protection | 5.6% combined crit reduction; contextual 102.4 table; threat | Destroyer Armor plus Hydross resistance set | WoWSims route + guide |
+| Paladin | Holy | Healing, intellect, crit, mp5; fight length | Crystalforge only when set value beats healing off-pieces | Guide route |
+| Paladin | Protection | 5.6% combined crit reduction; contextual 102.4 table; spell threat | Keep Justicar 2-piece for single-target threat; do not force weak T5 bonuses | WoWSims route + guide |
+| Paladin | Retribution | 9% special hit; expertise; weapon damage | Crystalforge Battlegear with weapon-first upgrades | WoWSims route + guide |
+| Priest | Discipline | Throughput, intellect/mp5, raid support | Avatar pieces versus high-healing off-pieces | Guide route |
+| Priest | Holy | Throughput, spirit/mp5, fight length | Separate Avatar throughput and longevity sets | Guide route |
+| Priest | Shadow | 6% spell hit after 5/5 Shadow Focus | Avatar Regalia 4-piece and mana-support uptime | WoWSims route + guide |
+| Shaman | Elemental | 7% raid-adjusted spell hit assumption | Cataclysm Regalia and Totem of Wrath support | WoWSims route + guide |
+| Shaman | Enhancement | Hit/expertise; weapon pairing; group buffs | Cataclysm Harness with Windfury/Unleashed Rage value | WoWSims route + guide |
+| Shaman | Restoration | Chain Heal throughput versus mana longevity | Cataclysm Raiment with encounter-length variants | Guide route |
+| Hunter | Beast Mastery | 6%/9% hit route; pet and weapon scaling | Rift Stalker with party-hit-aware 2H/DW route | WoWSims route + guide |
+| Hunter | Marksmanship | Ranged hit and raid-support value | Rift Stalker with support-aware off-pieces | Guide route |
+| Hunter | Survival | Ranged hit and Expose Weakness agility | Rift Stalker with maximum sustainable agility | WoWSims route + guide |
+| Rogue | Assassination | Special hit, expertise, weapon/poison plan | Deathmantle only when build and poison plan support it | Guide route |
+| Rogue | Combat | Special/poison hit, expertise, weapon specialization | Deathmantle with weapon-matched upgrades | WoWSims route + guide |
+| Rogue | Subtlety | Special hit and utility-build tradeoffs | Combat P2 set as a starting point; validate separately | Guide route |
+| Mage | Arcane | 6% arcane hit after 5/5 Arcane Focus; mana cycle | Tirisfal Regalia and Serpent-Coil Braid route | WoWSims route + guide |
+| Mage | Fire | 13% fire hit after 3/3 Elemental Precision | Tirisfal versus fire-damage off-pieces | Guide route |
+| Mage | Frost | 13% frost hit after 3/3 Elemental Precision | Tirisfal versus frost-damage off-pieces | Guide route |
+| Warlock | Affliction | Adjusted spell hit; DoT/debuff uptime | Corruptor Raiment with uptime requirements | WoWSims route + guide |
+| Warlock | Demonology | Spell hit; pet scaling and survival | Corruptor with pet-survival alternatives | WoWSims route + guide |
+| Warlock | Destruction | Spell hit; shadow/fire output variants | Corruptor with separate school variants | WoWSims route + guide |
 
 ## Tank Rules
 
@@ -89,14 +89,15 @@ Mode selection changes the role weights used by every item comparison. The same 
 1. Cap Recovery prioritizes the role's adjusted hit/expertise target; Maximum Output prioritizes power, crit, and haste after required caps.
 2. Talent and raid assumptions are attached to the cap. For example, Arcane Focus, Elemental Precision, Shadow Focus, Totem of Wrath, Misery, Improved Faerie Fire, and Draenei party hit can change the amount needed from gear.
 3. Weapon DPS, speed, set bonuses, school-specific effects, pet survival, and proc behavior remain explicit comparison caveats when the item API does not expose enough information.
-4. Hunter visible-stat comparisons use the pinned WoWSims preset normalized to 1 agility: generic attack power 0.46, ranged attack power 0.40, hit 0.12, crit 0.92, haste 0.788, and ranged weapon DPS 1.75. Open hit caps and selected modes still apply their documented multipliers.
+4. Hunter visible-stat comparisons use the pinned WoWSims **P1** BM/SV EP table normalized to 1 agility: generic attack power 0.46, ranged attack power 0.40, hit 0.12, crit 0.92, haste 0.788, and ranged weapon DPS 1.75. Reusing it for P2 and Marksmanship is explicitly labeled a cross-phase/shared estimate.
 5. A generic one-hand weapon is compared with both current weapons only when the character is already dual wielding weapons. Shields, held-in-off-hand items, explicit main-hand weapons, and two-hand setups do not create a false off-hand route.
 
 ## Sources And Reproducibility
 
 - [WoWSims TBC](https://github.com/wowsims/tbc-new), pinned to commit `3fc6a414979d62186f75d51ab6f6dd5d44f35b9c`, supplies the adapted P2/T5 item-ID presets and reference talent strings where available.
-- [Pinned WoWSims Hunter preset source](https://github.com/wowsims/tbc-new/blob/3fc6a414979d62186f75d51ab6f6dd5d44f35b9c/ui/hunter/dps/presets.ts) supplies the Hunter EP values used by database version 4.
-- [Pinned WoWSims TBC combat-rating constants](https://github.com/wowsims/tbc/blob/9e7504dca2e5253fb9ddff566c66c00e11679376/sim/core/constants.go) supply the level-70 rating conversions used by database version 5.
+- [Pinned WoWSims Balance source](https://github.com/wowsims/tbc-new/blob/3fc6a414979d62186f75d51ab6f6dd5d44f35b9c/ui/druid/balance/presets.ts), [Arcane source](https://github.com/wowsims/tbc-new/blob/3fc6a414979d62186f75d51ab6f6dd5d44f35b9c/ui/mage/dps/presets.ts), and [Retribution source](https://github.com/wowsims/tbc-new/blob/3fc6a414979d62186f75d51ab6f6dd5d44f35b9c/ui/paladin/retribution/presets.ts) supply the exact P2 static EP tables imported by database version 6.
+- [Pinned WoWSims Hunter source](https://github.com/wowsims/tbc-new/blob/3fc6a414979d62186f75d51ab6f6dd5d44f35b9c/ui/hunter/dps/presets.ts) identifies the reused Hunter values as P1 BM/SV EP presets.
+- [Pinned WoWSims TBC combat-rating constants](https://github.com/wowsims/tbc/blob/9e7504dca2e5253fb9ddff566c66c00e11679376/sim/core/constants.go) supply the level-70 rating conversions retained by database version 6.
 - [Wowhead Phase 2 specialization guide index](https://www.wowhead.com/tbc/news/best-in-slot-guides-for-every-class-specialization-updated-for-phase-2-tbc-381617) supplies role-specific acquisition, alternative, set-bonus, and healer context.
 - [Wowhead Hunter stat priority](https://www.wowhead.com/tbc/guide/classes/hunter/dps-stat-priority-attributes-pve) supplies the TBC agility, hit, crit, and ranged attack-power context used to interpret the simulator weights.
 - [Wowhead Feral tank stat priority](https://www.wowhead.com/tbc/guide/classes/druid/feral/tank-stat-priority-attributes-pve) supplies the defense/resilience equivalence and 39.4 resilience per 1% critical-hit reduction reference.

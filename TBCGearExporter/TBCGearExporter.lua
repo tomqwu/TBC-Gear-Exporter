@@ -224,8 +224,8 @@ local AI_OUTPUT_REQUESTS = {
     "Summarize likely class/spec roles represented by the saved items.",
     "Use current_talents when available to anchor the main-spec recommendation, while still calling out useful offspec items.",
     "Use chart_stats for high-level totals by source, category, quality, equip slot, item level, and stat totals before drilling into individual items.",
-    "For each plausible role, rank strong keepers, weak slots, and upgrade priorities. Validate every proposed swap with gear_recommendations.upgrades[].stat_gains, stat_losses, evidence, and both item links.",
-    "Use gear_recommendations.phase2_strategy to select the requested strategy mode, resolve caps before throughput, compare the saved target-set progress, and separate simulation presets from guide-only evidence.",
+    "For each plausible role, rank strong keepers, weak slots, and upgrade priorities. Validate every proposed swap with gear_recommendations.score_model, upgrades[].stat_gains, stat_losses, data_completeness, and both item links.",
+    "Treat ordered_stat_heuristic and cross_phase_shared_ep results only as ranked candidates, never definitive upgrades. A WoWSims reference gear route is not proof that candidate scoring was simulated.",
     "For tank roles, compare mitigation/progression and threat/farm modes separately; never collapse both views into one ranking.",
     "Separate mitigation, threat, DPS, healing, caster, and utility value when relevant.",
     "Flag duplicates, offspec pieces, consumables, materials, or items that are probably safe to vendor, bank, disenchant, or keep.",
@@ -281,8 +281,8 @@ local AI_OUTPUT_REQUESTS_ZHCN = {
     "总结这些已保存物品最可能对应的职业天赋/职责。",
     "如果 current_talents 可用，请用当前天赋锚定主天赋建议，同时指出有价值的副天赋物品。",
     "在逐件分析前，请先使用 character_stats、chart_stats 和 strategy_book 按当前天赋、职业、种族、队伍/团队环境、命中、暴击、防御、免伤、仇恨、治疗、续航和输出价值做整体对比。",
-    "针对每个可能职责，列出值得保留的强力装备、薄弱部位和升级优先级；每条换装建议必须核对 gear_recommendations.upgrades[] 中的 stat_gains、stat_losses、evidence 和新旧物品链接。",
-    "使用 gear_recommendations.phase2_strategy 选择当前策略模式，先处理属性硬门槛，再比较目标套装收集进度，并明确区分模拟器预设与仅攻略证据。",
+    "针对每个可能职责，列出值得保留的强力装备、薄弱部位和升级优先级；每条换装建议必须核对 gear_recommendations.score_model、upgrades[] 中的 stat_gains、stat_losses、data_completeness 和新旧物品链接。",
+    "ordered_stat_heuristic 与 cross_phase_shared_ep 只能作为候选排序，不能写成确定性升级；WoWSims 参考装备路线不等于候选装备经过模拟。",
     "坦克职责必须分别比较减伤/开荒与仇恨/Farm模式，不要把两种视角合并成同一份排名。",
     "在相关时分别分析减伤、仇恨、输出、治疗、法系和功能性价值。",
     "标记重复物品、副天赋装备、消耗品、材料，或可能适合出售、存银行、分解、保留的物品。",
@@ -308,8 +308,8 @@ local AI_OUTPUT_REQUESTS_ZHTW = {
     "總結這些已儲存物品最可能對應的職業天賦/職責。",
     "如果 current_talents 可用，請用目前天賦錨定主天賦建議，同時指出有價值的副天賦物品。",
     "在逐件分析前，請先使用 character_stats、chart_stats 和 strategy_book 按目前天賦、職業、種族、隊伍/團隊環境、命中、致命、防禦、減傷、仇恨、治療、續航和輸出價值做整體比較。",
-    "針對每個可能職責，列出值得保留的強力裝備、薄弱部位和升級優先順序；每條換裝建議必須核對 gear_recommendations.upgrades[] 中的 stat_gains、stat_losses、evidence 和新舊物品連結。",
-    "使用 gear_recommendations.phase2_strategy 選擇目前策略模式，先處理屬性硬門檻，再比較目標套裝收集進度，並明確區分模擬器預設與僅攻略證據。",
+    "針對每個可能職責，列出值得保留的強力裝備、薄弱部位和升級優先順序；每條換裝建議必須核對 gear_recommendations.score_model、upgrades[] 中的 stat_gains、stat_losses、data_completeness 和新舊物品連結。",
+    "ordered_stat_heuristic 與 cross_phase_shared_ep 只能作為候選排序，不能寫成確定性升級；WoWSims 參考裝備路線不等於候選裝備經過模擬。",
     "坦克職責必須分別比較減傷/開荒與仇恨/Farm模式，不要把兩種視角合併成同一份排名。",
     "在相關時分別分析減傷、仇恨、輸出、治療、法系和功能性價值。",
     "標記重複物品、副天賦裝備、消耗品、材料，或可能適合出售、存銀行、分解、保留的物品。",
@@ -1203,11 +1203,11 @@ local UI_STRINGS = {
         advice_gains = "Gains: %s",
         advice_losses = "Gives up: %s",
         advice_impact = "Benchmark impact: %s",
-        advice_evidence = "%s evidence",
+        advice_evidence = "Item data: %s",
         advice_evidence_high = "High",
         advice_evidence_medium = "Medium",
         advice_evidence_low = "Low",
-        advice_caveat = "Heuristic score uses visible item stats. Confirm set bonuses, sockets, enchants and proc effects in the tooltip.",
+        advice_caveat = "Ranking uses visible item stats only. Set bonuses, sockets, enchants, procs, rotations, and encounters are not modeled.",
         phase2_title = "Phase 2 Strategy Engine",
         phase2_summary = "%s · %s · database v%s · patch %s",
         phase2_mode_hint = "Choose analysis mode",
@@ -1334,11 +1334,11 @@ local UI_STRINGS = {
         advice_gains = "获得：%s",
         advice_losses = "失去：%s",
         advice_impact = "基准影响：%s",
-        advice_evidence = "%s证据",
+        advice_evidence = "物品数据：%s",
         advice_evidence_high = "高",
         advice_evidence_medium = "中",
         advice_evidence_low = "低",
-        advice_caveat = "启发式评分只使用可见物品属性；套装、宝石、附魔和触发效果请结合提示框确认。",
+        advice_caveat = "排序只使用可见物品属性；尚未建模套装、宝石、附魔、触发、循环与具体战斗。",
         phase2_title = "P2 配装策略引擎",
         phase2_summary = "%s · %s · 数据库 v%s · 客户端 %s",
         phase2_mode_hint = "选择分析模式",
@@ -1465,11 +1465,11 @@ local UI_STRINGS = {
         advice_gains = "獲得：%s",
         advice_losses = "失去：%s",
         advice_impact = "基準影響：%s",
-        advice_evidence = "%s證據",
+        advice_evidence = "物品資料：%s",
         advice_evidence_high = "高",
         advice_evidence_medium = "中",
         advice_evidence_low = "低",
-        advice_caveat = "啟發式評分只使用可見物品屬性；套裝、寶石、附魔和觸發效果請結合提示框確認。",
+        advice_caveat = "排序只使用可見物品屬性；尚未建模套裝、寶石、附魔、觸發、循環與具體戰鬥。",
         phase2_title = "P2 配裝策略引擎",
         phase2_summary = "%s · %s · 資料庫 v%s · 客戶端 %s",
         phase2_mode_hint = "選擇分析模式",
@@ -1547,13 +1547,16 @@ GEAR_ENGINE.REPORT_TERMS = {
         models = "Models", current_highlights = "Current gear highlights", gear_recommendations = "Gear Recommendations",
         phase2_strategy = "Phase 2 Strategy", mode = "Strategy mode", available_modes = "Available views", set_goal = "Set / route goal", target_preset = "Reference gear set",
         target_progress = "Saved progress", missing_targets = "Next target items", caps = "Caps and gates", research_evidence = "Research evidence",
-        sources = "Sources", no_preset = "No simulator preset; use the class guide and the current stat model.",
+        sources = "Sources", no_preset = "No WoWSims reference gear route; use the class guide and treat ranking as an estimate.",
         priority_stats = "Priority stats", benchmark_gaps = "Key benchmark checks", caveat = "Limit",
-        slot = "Slot", current = "Current", suggested = "Candidate", score = "Score", evidence = "Evidence", verdict = "Decision",
+        score_model = "Score model", item_data = "Item data completeness",
+        model_phase_ep = "source-backed static P2 EP", model_cross_phase_shared_ep = "cross-phase/shared EP estimate", model_ordered_stat_heuristic = "ordered-stat heuristic",
+        model_not_definitive = "ranked estimate only; definitive upgrade labels disabled",
+        slot = "Slot", current = "Current", suggested = "Candidate", score = "Score", evidence = "Item data", verdict = "Decision",
         gains = "Gains", losses = "Gives up", high = "High", medium = "Medium", low = "Low",
-        verdict_upgrade = "Clear upgrade", verdict_minor = "Small improvement", verdict_tradeoff = "Tradeoff", verdict_review = "Manual check", verdict_incompatible = "Different slot", verdict_loadout_mismatch = "Illegal weapon loadout", verdict_unscorable = "Effects not quantifiable", verdict_role_mismatch = "Wrong stats for role",
-        verdict_summary = "%d clear · %d small · %d tradeoff · %d manual",
-        talent_map = "Talent mapping", talent_map_summary = "%d/%d selected mapped · %d aligned points · key effects: %s", no_key_effects = "none",
+        verdict_upgrade = "Clear upgrade", verdict_minor = "Small improvement", verdict_estimate = "Estimated candidate", verdict_tradeoff = "Tradeoff", verdict_review = "Manual check", verdict_incompatible = "Different slot", verdict_loadout_mismatch = "Illegal weapon loadout", verdict_unscorable = "Effects not quantifiable", verdict_role_mismatch = "Wrong stats for role",
+        verdict_summary = "%d clear · %d small · %d estimated · %d tradeoff · %d manual",
+        talent_map = "Talent mapping", talent_map_summary = "%d/%d selected have modeled effects · %d aligned points · key effects: %s", no_key_effects = "none",
         benchmark_impact = "Benchmark impact", impact_helps_gap = "moves toward target", impact_worsens_gap = "moves away from target",
         impact_cap_buffer = "adds buffer above target", impact_cap_buffer_reduced = "reduces buffer but remains above target", impact_cap_risk = "falls below target after equipping",
         impact_context_help = "improves the visible subtotal", impact_context_risk = "reduces the visible subtotal",
@@ -1582,13 +1585,16 @@ GEAR_ENGINE.REPORT_TERMS = {
         models = "分析模型", current_highlights = "当前装备属性重点", gear_recommendations = "换装建议",
         phase2_strategy = "P2 配装攻略", mode = "策略模式", available_modes = "可切换视角", set_goal = "套装 / 路线目标", target_preset = "参考目标套装",
         target_progress = "本地收集进度", missing_targets = "下一批目标物品", caps = "属性阈值与硬门槛", research_evidence = "研究证据",
-        sources = "资料来源", no_preset = "该专精暂无成熟模拟器预设；使用职业攻略与当前属性模型。",
+        sources = "资料来源", no_preset = "该专精没有 WoWSims 参考装备路线；请结合职业攻略，并把排序视为估算。",
         priority_stats = "优先属性", benchmark_gaps = "关键基准检查", caveat = "分析限制",
-        slot = "栏位", current = "当前装备", suggested = "候选装备", score = "评分变化", evidence = "证据", verdict = "结论",
+        score_model = "评分模型", item_data = "物品数据完整度",
+        model_phase_ep = "有明确来源的 P2 静态 EP", model_cross_phase_shared_ep = "跨阶段 / 共用 EP 估算", model_ordered_stat_heuristic = "属性顺序启发式",
+        model_not_definitive = "仅作候选排序；已禁用确定性升级结论",
+        slot = "栏位", current = "当前装备", suggested = "候选装备", score = "评分变化", evidence = "物品数据", verdict = "结论",
         gains = "获得", losses = "失去", high = "高", medium = "中", low = "低",
-        verdict_upgrade = "明确升级", verdict_minor = "小幅提升", verdict_tradeoff = "有取舍", verdict_review = "需手动核对", verdict_incompatible = "栏位不同", verdict_loadout_mismatch = "武器组合不合法", verdict_unscorable = "效果无法量化", verdict_role_mismatch = "属性方向不符",
-        verdict_summary = "明确 %d · 小幅 %d · 有取舍 %d · 需核对 %d",
-        talent_map = "天赋映射", talent_map_summary = "已映射 %d/%d 个已点天赋 · 本职责 %d 点 · 关键效果：%s", no_key_effects = "无",
+        verdict_upgrade = "明确升级", verdict_minor = "小幅提升", verdict_estimate = "估算候选", verdict_tradeoff = "有取舍", verdict_review = "需手动核对", verdict_incompatible = "栏位不同", verdict_loadout_mismatch = "武器组合不合法", verdict_unscorable = "效果无法量化", verdict_role_mismatch = "属性方向不符",
+        verdict_summary = "明确 %d · 小幅 %d · 估算 %d · 有取舍 %d · 需核对 %d",
+        talent_map = "天赋建模", talent_map_summary = "%d/%d 个已点天赋有计算规则 · 本职责 %d 点 · 关键效果：%s", no_key_effects = "无",
         benchmark_impact = "基准影响", impact_helps_gap = "向目标靠近", impact_worsens_gap = "离目标更远",
         impact_cap_buffer = "增加达标余量", impact_cap_buffer_reduced = "达标余量减少，但换装后仍达标", impact_cap_risk = "换装后将低于目标",
         impact_context_help = "提高可见常驻小计", impact_context_risk = "降低可见常驻小计",
@@ -1617,13 +1623,16 @@ GEAR_ENGINE.REPORT_TERMS = {
         models = "分析模型", current_highlights = "目前裝備屬性重點", gear_recommendations = "換裝建議",
         phase2_strategy = "P2 配裝攻略", mode = "策略模式", available_modes = "可切換視角", set_goal = "套裝 / 路線目標", target_preset = "參考目標套裝",
         target_progress = "本地收集進度", missing_targets = "下一批目標物品", caps = "屬性門檻與硬條件", research_evidence = "研究證據",
-        sources = "資料來源", no_preset = "該專精暫無成熟模擬器預設；使用職業攻略與目前屬性模型。",
+        sources = "資料來源", no_preset = "該專精沒有 WoWSims 參考裝備路線；請結合職業攻略，並把排序視為估算。",
         priority_stats = "優先屬性", benchmark_gaps = "關鍵基準檢查", caveat = "分析限制",
-        slot = "欄位", current = "目前裝備", suggested = "候選裝備", score = "評分變化", evidence = "證據", verdict = "結論",
+        score_model = "評分模型", item_data = "物品資料完整度",
+        model_phase_ep = "有明確來源的 P2 靜態 EP", model_cross_phase_shared_ep = "跨階段 / 共用 EP 估算", model_ordered_stat_heuristic = "屬性順序啟發式",
+        model_not_definitive = "僅作候選排序；已停用確定性升級結論",
+        slot = "欄位", current = "目前裝備", suggested = "候選裝備", score = "評分變化", evidence = "物品資料", verdict = "結論",
         gains = "獲得", losses = "失去", high = "高", medium = "中", low = "低",
-        verdict_upgrade = "明確升級", verdict_minor = "小幅提升", verdict_tradeoff = "有取捨", verdict_review = "需手動核對", verdict_incompatible = "欄位不同", verdict_loadout_mismatch = "武器組合不合法", verdict_unscorable = "效果無法量化", verdict_role_mismatch = "屬性方向不符",
-        verdict_summary = "明確 %d · 小幅 %d · 有取捨 %d · 需核對 %d",
-        talent_map = "天賦映射", talent_map_summary = "已映射 %d/%d 個已點天賦 · 本職責 %d 點 · 關鍵效果：%s", no_key_effects = "無",
+        verdict_upgrade = "明確升級", verdict_minor = "小幅提升", verdict_estimate = "估算候選", verdict_tradeoff = "有取捨", verdict_review = "需手動核對", verdict_incompatible = "欄位不同", verdict_loadout_mismatch = "武器組合不合法", verdict_unscorable = "效果無法量化", verdict_role_mismatch = "屬性方向不符",
+        verdict_summary = "明確 %d · 小幅 %d · 估算 %d · 有取捨 %d · 需核對 %d",
+        talent_map = "天賦建模", talent_map_summary = "%d/%d 個已點天賦有計算規則 · 本職責 %d 點 · 關鍵效果：%s", no_key_effects = "無",
         benchmark_impact = "基準影響", impact_helps_gap = "向目標靠近", impact_worsens_gap = "離目標更遠",
         impact_cap_buffer = "增加達標餘量", impact_cap_buffer_reduced = "達標餘量減少，但換裝後仍達標", impact_cap_risk = "換裝後將低於目標",
         impact_context_help = "提高可見常駐小計", impact_context_risk = "降低可見常駐小計",
@@ -2293,6 +2302,21 @@ function GEAR_ENGINE.EvidenceLabel(evidence, locale)
     return terms[evidence or "low"] or terms.low
 end
 
+function GEAR_ENGINE.ScoreModelLabel(scoreModel, locale)
+    local terms = GEAR_ENGINE.ReportTerms(locale)
+    local kind = scoreModel and scoreModel.kind or "ordered_stat_heuristic"
+    return terms["model_" .. tostring(kind)] or tostring(kind)
+end
+
+function GEAR_ENGINE.ScoreModelText(scoreModel, locale)
+    local terms = GEAR_ENGINE.ReportTerms(locale)
+    local text = GEAR_ENGINE.ScoreModelLabel(scoreModel, locale)
+    if not scoreModel or not scoreModel.supportsDefinitiveVerdicts then
+        text = text .. " · " .. terms.model_not_definitive
+    end
+    return text
+end
+
 function GEAR_ENGINE.RecommendationVerdictLabel(verdict, locale)
     local terms = GEAR_ENGINE.ReportTerms(locale)
     return terms["verdict_" .. tostring(verdict or "review")] or terms.verdict_review
@@ -2301,7 +2325,7 @@ end
 function GEAR_ENGINE.VerdictSummary(engine, locale)
     local terms = GEAR_ENGINE.ReportTerms(locale)
     local counts = engine and engine.verdictCounts or GEAR_ENGINE.VerdictCounts(engine and engine.upgrades)
-    return string.format(terms.verdict_summary, counts.upgrade or 0, counts.minor or 0, counts.tradeoff or 0, counts.review or 0)
+    return string.format(terms.verdict_summary, counts.upgrade or 0, counts.minor or 0, counts.estimate or 0, counts.tradeoff or 0, counts.review or 0)
 end
 
 function GEAR_ENGINE.BenchmarkImpactText(impacts, locale, maxImpacts)
@@ -3611,7 +3635,7 @@ local function BuildAIPrompt(profile, scope, filter, itemCount)
             "当前天赋：" .. talentSummary .. "。",
             "请优先使用 current_talents.tree_points、current_talents.trees[].points_spent 和每个已点天赋的 points_spent/rank 来判断当前天赋点数。",
             "银行内容是最后一次保存的快照。背包/银行来源只代表库存位置，不代表物品已经装备。",
-            "请使用 character_stats、chart_stats、strategy_book、gear_recommendations、当前装备、物品属性、物品等级、品质、装备栏位、来源位置和 wowhead_url 字段。重点读取 strategy_book.roles[].talent_mapping、gear_recommendations.phase2_strategy、gear_recommendations.available_roles、verdict、benchmark_impacts 和关键基准；比较不同职责或减伤/仇恨/续航模式时必须切换对应权重。不要编造隐藏附魔、宝石、套装或触发效果。",
+            "请使用 character_stats、chart_stats、strategy_book、gear_recommendations、当前装备、物品属性、物品等级、品质、装备栏位、来源位置和 wowhead_url 字段。重点读取 score_model、talent_mapping、phase2_strategy、verdict、benchmark_impacts 与 data_completeness；ordered_stat_heuristic 和 cross_phase_shared_ep 只能视为候选排序。不要把参考装备路线说成已模拟，也不要编造隐藏附魔、宝石、套装或触发效果。",
             "请考虑该职业可能的天赋/职责，不要只假设一个专精。",
             "",
             "职业职责分析视角：",
@@ -3626,7 +3650,7 @@ local function BuildAIPrompt(profile, scope, filter, itemCount)
             "目前天賦：" .. talentSummary .. "。",
             "請優先使用 current_talents.tree_points、current_talents.trees[].points_spent 和每個已點天賦的 points_spent/rank 來判斷目前天賦點數。",
             "銀行內容是最後一次儲存的快照。背包/銀行來源只代表庫存位置，不代表物品已經裝備。",
-            "請使用 character_stats、chart_stats、strategy_book、gear_recommendations、目前裝備、物品屬性、物品等級、品質、裝備欄位、來源位置和 wowhead_url 欄位。重點讀取 strategy_book.roles[].talent_mapping、gear_recommendations.phase2_strategy、gear_recommendations.available_roles、verdict、benchmark_impacts 和關鍵基準；比較不同職責或減傷/仇恨/續航模式時必須切換對應權重。不要編造隱藏附魔、寶石、套裝或觸發效果。",
+            "請使用 character_stats、chart_stats、strategy_book、gear_recommendations、目前裝備、物品屬性、物品等級、品質、裝備欄位、來源位置和 wowhead_url 欄位。重點讀取 score_model、talent_mapping、phase2_strategy、verdict、benchmark_impacts 與 data_completeness；ordered_stat_heuristic 和 cross_phase_shared_ep 只能視為候選排序。不要把參考裝備路線說成已模擬，也不要編造隱藏附魔、寶石、套裝或觸發效果。",
             "請考慮該職業可能的天賦/職責，不要只假設一個專精。",
             "",
             "職業職責分析視角：",
@@ -3641,7 +3665,7 @@ local function BuildAIPrompt(profile, scope, filter, itemCount)
             "Current talents: " .. talentSummary .. ".",
             "Use current_talents.tree_points, current_talents.trees[].points_spent, and each selected talent points_spent/rank to anchor the current talent distribution.",
             "Bank contents are the last saved snapshot. Treat bag and bank source labels as inventory location, not proof that an item is equipped.",
-            "Use character_stats, chart_stats, strategy_book, gear_recommendations, current equipment, item stats, item level, quality, equip slot, source location, and wowhead_url fields. Read strategy_book.roles[].talent_mapping, gear_recommendations.phase2_strategy, and gear_recommendations.available_roles; switch role and mitigation/threat/longevity weights when comparing models. Check caps, verdict, benchmark_impacts, and evidence first; do not invent hidden enchants, gems, set bonuses, or proc effects.",
+            "Use character_stats, chart_stats, strategy_book, gear_recommendations, current equipment, item stats, item level, quality, equip slot, source location, and wowhead_url fields. Read score_model, talent_mapping, phase2_strategy, verdict, benchmark_impacts, and data_completeness first. Treat ordered_stat_heuristic and cross_phase_shared_ep as candidate ranking only; never describe a reference gear route as a simulated comparison or invent hidden enchants, gems, set bonuses, or proc effects.",
             "Consider plausible class talents/specs instead of assuming one role.",
             "",
             "Class role lenses:",
@@ -4276,9 +4300,10 @@ end
 
 local function BuildTalentRoleMap(classToken, talents, role)
     local result = {
-        version = 1,
+        version = 2,
         selectedCount = 0,
         selectedPoints = 0,
+        representedCount = 0,
         mappedCount = 0,
         alignedCount = 0,
         alignedPoints = 0,
@@ -4306,18 +4331,20 @@ local function BuildTalentRoleMap(classToken, talents, role)
                     rank = rank,
                     maxRank = tonumber(talent and talent.maxRank) or rank,
                     aligned = aligned,
+                    modeled = rule ~= nil,
                     effectKey = rule and rule.key or nil,
                     tags = rule and rule.tags or {},
                 }
                 result.selected[#result.selected + 1] = entry
                 result.selectedCount = result.selectedCount + 1
                 result.selectedPoints = result.selectedPoints + rank
-                result.mappedCount = result.mappedCount + 1
+                result.representedCount = result.representedCount + 1
                 if aligned then
                     result.alignedCount = result.alignedCount + 1
                     result.alignedPoints = result.alignedPoints + rank
                 end
                 if rule then
+                    result.mappedCount = result.mappedCount + 1
                     local effect = {
                         key = rule.key,
                         name = talent and talent.name,
@@ -4349,6 +4376,7 @@ local function BuildTalentRoleMap(classToken, talents, role)
     end)
     result.affinityScore = result.alignedPoints + (#result.effects * 3)
     result.coverage = result.selectedCount > 0 and RoundedStatNumber(result.mappedCount / result.selectedCount) or 0
+    result.representationCoverage = result.selectedCount > 0 and RoundedStatNumber(result.representedCount / result.selectedCount) or 0
     return result
 end
 
@@ -4554,6 +4582,7 @@ local function BuildStrategyBook(profile, chartStats)
             priorities = role.priorities or {},
             statTokens = role.statTokens or {},
             baseWeights = role.baseWeights or {},
+            scoreModel = role.scoreModel,
             caps = role.caps or {},
             modes = role.modes or {},
             setGoal = role.setGoal,
@@ -4561,7 +4590,8 @@ local function BuildStrategyBook(profile, chartStats)
             talentString = role.talentString,
             presets = role.presets or {},
             guideUrl = role.guideUrl,
-            researchEvidence = role.evidence or "sim_and_guide",
+            routeEvidence = role.routeEvidence or role.evidence or "guide",
+            researchEvidence = role.routeEvidence or role.evidence or "guide",
             talentMap = talentMap,
             observed = observed,
             benchmarks = BuildRoleBenchmarks(role, observed),
@@ -4587,7 +4617,7 @@ local function BuildStrategyBook(profile, chartStats)
     end)
 
     return {
-        version = 5,
+        version = 6,
         generatedAt = Now(),
         classToken = classToken,
         raceToken = race and race.english or "UNKNOWN",
@@ -4825,7 +4855,7 @@ end
 
 function GEAR_ENGINE.ItemRoleScore(item, role, weights)
     weights = weights or GEAR_ENGINE.BuildRoleStatWeights(role)
-    local score = ((tonumber(item and item.itemLevel) or 0) * 0.08) + ((tonumber(item and item.quality) or 0) * 1.5)
+    local score = 0
     local matched = {}
 
     for index = 1, #(item and item.stats or {}) do
@@ -5087,7 +5117,7 @@ function GEAR_ENGINE.BuildBenchmarkImpacts(role, gains, losses)
     return impacts
 end
 
-function GEAR_ENGINE.RecommendationVerdict(evidence, scoreGain, impacts)
+function GEAR_ENGINE.RecommendationVerdict(evidence, scoreGain, impacts, scoreModel)
     if evidence == "low" then
         return "review"
     end
@@ -5096,6 +5126,9 @@ function GEAR_ENGINE.RecommendationVerdict(evidence, scoreGain, impacts)
         if effect == "worsens_gap" or effect == "cap_risk" or effect == "context_risk" then
             return "tradeoff"
         end
+    end
+    if not scoreModel or not scoreModel.supportsDefinitiveVerdicts then
+        return "estimate"
     end
     if (tonumber(scoreGain) or 0) < 8 then
         return "minor"
@@ -5129,7 +5162,7 @@ function GEAR_ENGINE.NoUpgradeText(engine, locale)
 end
 
 function GEAR_ENGINE.VerdictCounts(upgrades)
-    local counts = { upgrade = 0, minor = 0, tradeoff = 0, review = 0 }
+    local counts = { upgrade = 0, minor = 0, estimate = 0, tradeoff = 0, review = 0 }
     for index = 1, #(upgrades or {}) do
         local verdict = upgrades[index] and upgrades[index].verdict or "review"
         counts[verdict] = (counts[verdict] or 0) + 1
@@ -5405,7 +5438,9 @@ function GEAR_ENGINE.BuildPhase2Strategy(profile, candidateItems, role, modeKey)
         setGoalLabels = role and role.setGoalLabels,
         talentString = role and role.talentString,
         guideUrl = role and role.guideUrl,
-        evidence = role and role.researchEvidence,
+        routeEvidence = role and (role.routeEvidence or role.researchEvidence),
+        evidence = role and (role.routeEvidence or role.researchEvidence),
+        scoreModel = role and role.scoreModel,
         presetProgress = GEAR_ENGINE.BuildPhase2PresetProgress(profile, candidateItems, role, mode and mode.key),
         sources = P2_STRATEGY_DB.sources,
     }
@@ -5433,6 +5468,8 @@ function GEAR_ENGINE.AvailableStrategyRoles(strategyBook)
             talentPoints = role.talentPoints or 0,
             talentAffinity = role.talentMap and role.talentMap.affinityScore or 0,
             keyEffectCount = #(role.talentMap and role.talentMap.effects or {}),
+            scoreModel = role.scoreModel,
+            scoreModelKind = role.scoreModel and role.scoreModel.kind or "ordered_stat_heuristic",
         }
     end
     return roles
@@ -5460,7 +5497,7 @@ function GEAR_ENGINE.CompareItems(profile, currentItem, candidateItem, strategyB
         or (not loadoutCompatible and "loadout_mismatch")
         or (not roleFit.suitable and "role_mismatch")
         or (not comparable and "unscorable")
-        or GEAR_ENGINE.RecommendationVerdict(evidence, scoreGain, benchmarkImpacts)
+        or GEAR_ENGINE.RecommendationVerdict(evidence, scoreGain, benchmarkImpacts, role.scoreModel)
     local blockedByHardGate = GEAR_ENGINE.RecommendationWorsensUnmetBenchmark(benchmarkImpacts)
     return {
         slotKey = candidateSlot or currentSlot,
@@ -5479,7 +5516,9 @@ function GEAR_ENGINE.CompareItems(profile, currentItem, candidateItem, strategyB
         benchmarkImpacts = benchmarkImpacts,
         blockedByHardGate = blockedByHardGate,
         evidence = evidence,
+        dataCompleteness = evidence,
         verdict = verdict,
+        scoreModel = role.scoreModel,
         roleFit = roleFit,
         roleKey = role.key,
         roleLabel = role.label,
@@ -5588,12 +5627,13 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
     end
 
     return {
-        version = 10,
+        version = 11,
         generatedAt = Now(),
         roleKey = role.key,
         roleLabel = role.label,
         roleLabels = role.labels,
         roleConfidence = role.confidence or 0,
+        scoreModel = role.scoreModel,
         modeKey = mode and mode.key or "balanced",
         modeLabels = mode and mode.labels,
         availableModes = GEAR_ENGINE.AvailableStrategyModes(role),
@@ -5745,10 +5785,13 @@ local function AppendTalentRoleMapJson(lines, indent, talentMap, comma)
     AppendIndented(lines, indent + 2, JsonField("version", talentMap.version or 1, true))
     AppendIndented(lines, indent + 2, JsonField("selected_count", talentMap.selectedCount or 0, true))
     AppendIndented(lines, indent + 2, JsonField("selected_points", talentMap.selectedPoints or 0, true))
+    AppendIndented(lines, indent + 2, JsonField("represented_count", talentMap.representedCount or 0, true))
     AppendIndented(lines, indent + 2, JsonField("mapped_count", talentMap.mappedCount or 0, true))
+    AppendIndented(lines, indent + 2, JsonField("modeled_count", talentMap.mappedCount or 0, true))
     AppendIndented(lines, indent + 2, JsonField("aligned_count", talentMap.alignedCount or 0, true))
     AppendIndented(lines, indent + 2, JsonField("aligned_points", talentMap.alignedPoints or 0, true))
     AppendIndented(lines, indent + 2, JsonField("coverage", talentMap.coverage or 0, true))
+    AppendIndented(lines, indent + 2, JsonField("representation_coverage", talentMap.representationCoverage or 0, true))
     AppendIndented(lines, indent + 2, JsonField("affinity_score", talentMap.affinityScore or 0, true))
     AppendJsonObjectArray(lines, indent + 2, "selected_talents", talentMap.selected, {
         { name = "tree_index", value = "treeIndex" },
@@ -5759,6 +5802,7 @@ local function AppendTalentRoleMapJson(lines, indent, talentMap, comma)
         { name = "rank", value = "rank" },
         { name = "max_rank", value = "maxRank" },
         { name = "aligned", value = "aligned" },
+        { name = "modeled", value = "modeled" },
         { name = "effect_key", value = "effectKey" },
     }, true)
     AppendJsonObjectArray(lines, indent + 2, "key_effects", talentMap.effects, {
@@ -5772,6 +5816,20 @@ local function AppendTalentRoleMapJson(lines, indent, talentMap, comma)
         { name = "token", value = "token" },
         { name = "multiplier", value = "multiplier" },
     }, false)
+    AppendIndented(lines, indent, "}" .. (comma and "," or ""))
+end
+
+function GEAR_ENGINE.AppendScoreModelJson(lines, indent, key, scoreModel, comma)
+    scoreModel = scoreModel or {}
+    AppendIndented(lines, indent, JsonString(key or "score_model") .. ": {")
+    AppendIndented(lines, indent + 2, JsonField("version", scoreModel.version or 1, true))
+    AppendIndented(lines, indent + 2, JsonField("kind", scoreModel.kind or "ordered_stat_heuristic", true))
+    AppendIndented(lines, indent + 2, JsonField("source_key", scoreModel.sourceKey or "local_heuristic", true))
+    AppendIndented(lines, indent + 2, JsonField("source_path", scoreModel.sourcePath, true))
+    AppendIndented(lines, indent + 2, JsonField("source_phase", scoreModel.sourcePhase, true))
+    AppendIndented(lines, indent + 2, JsonField("source_spec", scoreModel.sourceSpec, true))
+    AppendIndented(lines, indent + 2, JsonField("supports_definitive_verdicts", scoreModel.supportsDefinitiveVerdicts and true or false, true))
+    AppendJsonStringArray(lines, indent + 2, "limitations", scoreModel.limitations, false)
     AppendIndented(lines, indent, "}" .. (comma and "," or ""))
 end
 
@@ -5811,7 +5869,9 @@ local function AppendStrategyBookJson(lines, indent, strategyBook, comma)
         AppendIndented(lines, indent + 6, JsonField("set_goal_zh_cn", role.setGoalLabels and role.setGoalLabels.zhCN, true))
         AppendIndented(lines, indent + 6, JsonField("talent_string", role.talentString, true))
         AppendIndented(lines, indent + 6, JsonField("guide_url", role.guideUrl, true))
+        AppendIndented(lines, indent + 6, JsonField("route_evidence", role.routeEvidence or role.researchEvidence, true))
         AppendIndented(lines, indent + 6, JsonField("research_evidence", role.researchEvidence, true))
+        GEAR_ENGINE.AppendScoreModelJson(lines, indent + 6, "score_model", role.scoreModel, true)
         AppendIndented(lines, indent + 6, "\"modes\": [")
         for modeIndex = 1, #(role.modes or {}) do
             local mode = role.modes[modeIndex]
@@ -5899,8 +5959,10 @@ function GEAR_ENGINE.AppendPhase2StrategyJson(lines, indent, phase2, comma)
     AppendIndented(lines, indent + 2, JsonField("set_goal", phase2.setGoal, true))
     AppendIndented(lines, indent + 2, JsonField("set_goal_zh_cn", phase2.setGoalLabels and phase2.setGoalLabels.zhCN, true))
     AppendIndented(lines, indent + 2, JsonField("talent_string", phase2.talentString, true))
+    AppendIndented(lines, indent + 2, JsonField("route_evidence", phase2.routeEvidence or phase2.evidence, true))
     AppendIndented(lines, indent + 2, JsonField("evidence", phase2.evidence, true))
     AppendIndented(lines, indent + 2, JsonField("guide_url", phase2.guideUrl, true))
+    GEAR_ENGINE.AppendScoreModelJson(lines, indent + 2, "score_model", phase2.scoreModel, true)
     AppendJsonStringArray(lines, indent + 2, "mode_focus", phase2.modeFocus, true)
     AppendIndented(lines, indent + 2, "\"available_modes\": [")
     for index = 1, #(phase2.availableModes or {}) do
@@ -5972,6 +6034,7 @@ function GEAR_ENGINE.AppendGearRecommendationsJson(lines, indent, engine, comma)
     AppendIndented(lines, indent + 2, JsonField("role_key", engine.roleKey, true))
     AppendIndented(lines, indent + 2, JsonField("role_label", engine.roleLabel, true))
     AppendIndented(lines, indent + 2, JsonField("role_confidence", engine.roleConfidence, true))
+    GEAR_ENGINE.AppendScoreModelJson(lines, indent + 2, "score_model", engine.scoreModel, true)
     AppendIndented(lines, indent + 2, JsonField("mode_key", engine.modeKey, true))
     AppendIndented(lines, indent + 2, JsonField("mode_label_en", engine.modeLabels and engine.modeLabels.enUS, true))
     AppendIndented(lines, indent + 2, JsonField("mode_label_zh_cn", engine.modeLabels and engine.modeLabels.zhCN, true))
@@ -5989,6 +6052,7 @@ function GEAR_ENGINE.AppendGearRecommendationsJson(lines, indent, engine, comma)
         { name = "talent_points", value = "talentPoints" },
         { name = "talent_affinity", value = "talentAffinity" },
         { name = "key_effect_count", value = "keyEffectCount" },
+        { name = "score_model_kind", value = "scoreModelKind" },
     }, true)
     AppendTalentRoleMapJson(lines, indent + 2, engine.talentMap, true)
     GEAR_ENGINE.AppendPhase2StrategyJson(lines, indent + 2, engine.phase2, true)
@@ -5996,6 +6060,7 @@ function GEAR_ENGINE.AppendGearRecommendationsJson(lines, indent, engine, comma)
     AppendIndented(lines, indent + 2, "\"verdict_counts\": { "
         .. JsonField("upgrade", verdictCounts.upgrade or 0, true) .. " "
         .. JsonField("minor", verdictCounts.minor or 0, true) .. " "
+        .. JsonField("estimate", verdictCounts.estimate or 0, true) .. " "
         .. JsonField("tradeoff", verdictCounts.tradeoff or 0, true) .. " "
         .. JsonField("review", verdictCounts.review or 0, false) .. " },")
     AppendJsonObjectArray(lines, indent + 2, "priority_stats", engine.priorityStats, {
@@ -6026,6 +6091,7 @@ function GEAR_ENGINE.AppendGearRecommendationsJson(lines, indent, engine, comma)
         AppendIndented(lines, indent + 4, "{")
         AppendIndented(lines, indent + 6, JsonField("slot_key", upgrade.slotKey, true))
         AppendIndented(lines, indent + 6, JsonField("score_gain", upgrade.scoreGain, true))
+        AppendIndented(lines, indent + 6, JsonField("data_completeness", upgrade.dataCompleteness or upgrade.evidence, true))
         AppendIndented(lines, indent + 6, JsonField("evidence", upgrade.evidence, true))
         AppendIndented(lines, indent + 6, JsonField("verdict", upgrade.verdict, true))
         GEAR_ENGINE.AppendGearItemJson(lines, indent + 6, "current", upgrade.current, upgrade.currentScore, true)
@@ -6085,15 +6151,15 @@ function GEAR_ENGINE.AvailableModesText(engine, locale)
 end
 
 function GEAR_ENGINE.Phase2EvidenceLabel(engine, locale)
-    local evidence = engine and engine.phase2 and engine.phase2.evidence or "sim_and_guide"
+    local evidence = engine and engine.phase2 and (engine.phase2.routeEvidence or engine.phase2.evidence) or "guide"
     local promptLocale = PromptLocale(locale or ClientLocale())
     if promptLocale == "enUS" then
-        return evidence == "guide" and "guide-backed" or "simulation preset + class guide"
+        return evidence == "guide" and "class guide route" or "WoWSims reference gear route + class guide"
     end
     if promptLocale == "zhTW" then
-        return evidence == "guide" and "職業攻略" or "模擬器預設 + 職業攻略"
+        return evidence == "guide" and "職業攻略路線" or "WoWSims 參考裝備路線 + 職業攻略"
     end
-    return evidence == "guide" and "职业攻略" or "模拟器预设 + 职业攻略"
+    return evidence == "guide" and "职业攻略路线" or "WoWSims 参考装备路线 + 职业攻略"
 end
 
 function GEAR_ENGINE.Phase2CapText(engine, locale)
@@ -6170,6 +6236,7 @@ function GEAR_ENGINE.AppendGearRecommendationsMarkdown(lines, engine, locale)
     lines[#lines + 1] = "- " .. terms.target_preset .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.Phase2PresetText(engine, locale, 6))
     lines[#lines + 1] = "- " .. terms.research_evidence .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.Phase2EvidenceLabel(engine, locale))
         .. (engine.phase2 and engine.phase2.guideUrl and " ([Wowhead](" .. engine.phase2.guideUrl .. "))" or "")
+    lines[#lines + 1] = "- " .. terms.score_model .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.ScoreModelText(engine.scoreModel, locale))
     lines[#lines + 1] = "- " .. terms.verdict .. ": " .. GEAR_ENGINE.VerdictSummary(engine, locale)
     lines[#lines + 1] = "- " .. terms.talent_map .. ": " .. GEAR_ENGINE.TalentMapSummary(engine.talentMap, locale, 5)
     lines[#lines + 1] = "- " .. terms.priority_stats .. ": " .. GEAR_ENGINE.GearPriorityText(engine, locale)
@@ -6188,7 +6255,7 @@ function GEAR_ENGINE.AppendGearRecommendationsMarkdown(lines, engine, locale)
         lines[#lines + 1] = "- " .. terms.gains .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.DeltaText(upgrade.statGains, locale))
         lines[#lines + 1] = "- " .. terms.losses .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.DeltaText(upgrade.statLosses, locale))
         lines[#lines + 1] = "- " .. terms.benchmark_impact .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.BenchmarkImpactText(upgrade.benchmarkImpacts, locale))
-        lines[#lines + 1] = "- " .. terms.evidence .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.EvidenceLabel(upgrade.evidence, locale))
+        lines[#lines + 1] = "- " .. terms.item_data .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.EvidenceLabel(upgrade.dataCompleteness or upgrade.evidence, locale))
         lines[#lines + 1] = ""
     end
     if #(engine.upgrades or {}) == 0 then
@@ -6208,6 +6275,7 @@ function GEAR_ENGINE.AppendGearRecommendationsText(lines, engine, locale)
     lines[#lines + 1] = terms.target_preset .. ": " .. GEAR_ENGINE.Phase2PresetText(engine, locale, 6)
     lines[#lines + 1] = terms.research_evidence .. ": " .. GEAR_ENGINE.Phase2EvidenceLabel(engine, locale)
         .. (engine.phase2 and engine.phase2.guideUrl and " | " .. engine.phase2.guideUrl or "")
+    lines[#lines + 1] = terms.score_model .. ": " .. GEAR_ENGINE.ScoreModelText(engine.scoreModel, locale)
     lines[#lines + 1] = terms.verdict .. ": " .. GEAR_ENGINE.VerdictSummary(engine, locale)
     lines[#lines + 1] = terms.talent_map .. ": " .. GEAR_ENGINE.TalentMapSummary(engine.talentMap, locale, 5)
     lines[#lines + 1] = terms.priority_stats .. ": " .. GEAR_ENGINE.GearPriorityText(engine, locale)
@@ -6223,7 +6291,7 @@ function GEAR_ENGINE.AppendGearRecommendationsText(lines, engine, locale)
         lines[#lines + 1] = "   " .. terms.gains .. ": " .. GEAR_ENGINE.DeltaText(upgrade.statGains, locale)
         lines[#lines + 1] = "   " .. terms.losses .. ": " .. GEAR_ENGINE.DeltaText(upgrade.statLosses, locale)
         lines[#lines + 1] = "   " .. terms.benchmark_impact .. ": " .. GEAR_ENGINE.BenchmarkImpactText(upgrade.benchmarkImpacts, locale)
-        lines[#lines + 1] = "   " .. terms.evidence .. ": " .. GEAR_ENGINE.EvidenceLabel(upgrade.evidence, locale)
+        lines[#lines + 1] = "   " .. terms.item_data .. ": " .. GEAR_ENGINE.EvidenceLabel(upgrade.dataCompleteness or upgrade.evidence, locale)
     end
     if #(engine.upgrades or {}) == 0 then
         lines[#lines + 1] = GEAR_ENGINE.NoUpgradeText(engine, locale)
@@ -7943,7 +8011,7 @@ function Addon:RefreshGearComparison(profile, engine, index)
         .. "  >  " .. ItemColoredName(upgrade.candidate))
     self.exportFrame.compareVerdict:SetText(GEAR_ENGINE.RecommendationVerdictLabel(upgrade.verdict, locale)
         .. "  |cff33ff99+" .. CompactNumber(upgrade.scoreGain, 2) .. "|r  · "
-        .. LForLocale(locale, "advice_evidence", LForLocale(locale, "advice_evidence_" .. tostring(upgrade.evidence or "low"))))
+        .. LForLocale(locale, "advice_evidence", LForLocale(locale, "advice_evidence_" .. tostring(upgrade.dataCompleteness or upgrade.evidence or "low"))))
     self.exportFrame.compareDetails:SetText(LForLocale(locale, "advice_gains", GEAR_ENGINE.DeltaText(upgrade.statGains, locale))
         .. "\n" .. LForLocale(locale, "advice_losses", GEAR_ENGINE.DeltaText(upgrade.statLosses, locale))
         .. "\n" .. LForLocale(locale, "advice_impact", GEAR_ENGINE.BenchmarkImpactText(upgrade.benchmarkImpacts, locale)))
@@ -7965,7 +8033,8 @@ function Addon:RefreshGearAdvice(profile, engine)
         .. "\n" .. LForLocale(locale, "advice_verdicts", GEAR_ENGINE.VerdictSummary(engine, locale))
         .. "\n" .. LForLocale(locale, "advice_talent_map", GEAR_ENGINE.TalentMapSummary(engine.talentMap, locale, 4))
         .. "\n" .. LForLocale(locale, "advice_priorities", GEAR_ENGINE.GearPriorityText(engine, locale)))
-    self.exportFrame.adviceCaveat:SetText(engine.caveat or LForLocale(locale, "advice_caveat"))
+    self.exportFrame.adviceCaveat:SetText(GEAR_ENGINE.ReportTerms(locale).score_model .. ": " .. GEAR_ENGINE.ScoreModelText(engine.scoreModel, locale)
+        .. "\n" .. (engine.caveat or LForLocale(locale, "advice_caveat")))
 
     local rows = self.exportFrame.adviceRows or {}
     self.exportFrame.adviceRows = rows
@@ -7998,7 +8067,7 @@ function Addon:RefreshGearAdvice(profile, engine)
         row.reason:SetText(LForLocale(locale, "advice_gains", GEAR_ENGINE.DeltaText(upgrade.statGains, locale, 2))
             .. "\n" .. LForLocale(locale, "advice_losses", GEAR_ENGINE.DeltaText(upgrade.statLosses, locale, 2))
             .. "\n" .. LForLocale(locale, "advice_impact", GEAR_ENGINE.BenchmarkImpactText(upgrade.benchmarkImpacts, locale, 1))
-            .. " · " .. LForLocale(locale, "advice_evidence", LForLocale(locale, "advice_evidence_" .. tostring(upgrade.evidence or "low"))))
+            .. " · " .. LForLocale(locale, "advice_evidence", LForLocale(locale, "advice_evidence_" .. tostring(upgrade.dataCompleteness or upgrade.evidence or "low"))))
         row:Show()
     end
 
@@ -8009,7 +8078,7 @@ function Addon:RefreshGearAdvice(profile, engine)
         self.exportFrame.adviceRowsContent:SetHeight(math.max(220, (#upgrades * GEAR_ENGINE.ADVICE_ROW_STEP) + 8))
     end
     if self.exportFrame.adviceContent.SetHeight then
-        self.exportFrame.adviceContent:SetHeight(math.max(616, (#upgrades * GEAR_ENGINE.ADVICE_ROW_STEP) + 408))
+        self.exportFrame.adviceContent:SetHeight(math.max(634, (#upgrades * GEAR_ENGINE.ADVICE_ROW_STEP) + 426))
     end
     return #upgrades
 end
@@ -8185,6 +8254,7 @@ function Addon:RefreshPhase2Strategy(profile, engine)
         .. "\n" .. LForLocale(locale, "phase2_caps", GEAR_ENGINE.Phase2CapText(engine, locale))
         .. "\n" .. LForLocale(locale, "phase2_preset", GEAR_ENGINE.Phase2PresetText(engine, locale, 0))
         .. "\n" .. LForLocale(locale, "phase2_evidence", GEAR_ENGINE.Phase2EvidenceLabel(engine, locale))
+        .. "\n" .. GEAR_ENGINE.ReportTerms(locale).score_model .. ": " .. GEAR_ENGINE.ScoreModelText(engine.scoreModel, locale)
         .. "\n" .. LForLocale(locale, "phase2_talent", tostring(phase2.talentString or GEAR_ENGINE.ReportTerms(locale).none)))
 
     local rows = self.exportFrame.phase2TargetRows or {}
@@ -8216,7 +8286,7 @@ function Addon:RefreshPhase2Strategy(profile, engine)
         self.exportFrame.phase2TargetsContent:SetHeight(math.max(42, (#(progress.missing or {}) * 44) + 8))
     end
     if self.exportFrame.phase2Content.SetHeight then
-        self.exportFrame.phase2Content:SetHeight(math.max(390, (#(progress.missing or {}) * 44) + 258))
+        self.exportFrame.phase2Content:SetHeight(math.max(408, (#(progress.missing or {}) * 44) + 276))
     end
     return #(progress.missing or {})
 end
@@ -8618,14 +8688,14 @@ function Addon:CreateExportFrame()
     local adviceCaveat = adviceContent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     adviceCaveat:SetPoint("TOPLEFT", 4, -216)
     adviceCaveat:SetWidth(478)
-    adviceCaveat:SetHeight(38)
+    adviceCaveat:SetHeight(56)
     adviceCaveat:SetJustifyH("LEFT")
     adviceCaveat:SetJustifyV("TOP")
     adviceCaveat:SetText(L("advice_caveat"))
 
     local comparePanel = CreateFrame("Frame", nil, adviceContent, BackdropTemplate())
     SetFrameSize(comparePanel, 486, 118)
-    comparePanel:SetPoint("TOPLEFT", adviceContent, "TOPLEFT", 2, -262)
+    comparePanel:SetPoint("TOPLEFT", adviceContent, "TOPLEFT", 2, -280)
     if comparePanel.SetBackdrop then
         comparePanel:SetBackdrop({
             bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
@@ -8698,7 +8768,7 @@ function Addon:CreateExportFrame()
 
     local adviceRowsContent = CreateFrame("Frame", nil, adviceContent)
     SetFrameSize(adviceRowsContent, 490, 220)
-    adviceRowsContent:SetPoint("TOPLEFT", adviceContent, "TOPLEFT", 0, -392)
+    adviceRowsContent:SetPoint("TOPLEFT", adviceContent, "TOPLEFT", 0, -410)
 
     local adviceEmpty = adviceRowsContent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     adviceEmpty:SetPoint("TOPLEFT", 4, -4)
@@ -8780,7 +8850,7 @@ function Addon:CreateExportFrame()
 
     local phase2TargetsContent = CreateFrame("Frame", nil, phase2Content)
     SetFrameSize(phase2TargetsContent, 486, 42)
-    phase2TargetsContent:SetPoint("TOPLEFT", phase2Content, "TOPLEFT", 0, -228)
+    phase2TargetsContent:SetPoint("TOPLEFT", phase2Content, "TOPLEFT", 0, -246)
 
     local phase2TargetsEmpty = phase2TargetsContent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     phase2TargetsEmpty:SetPoint("TOPLEFT", 4, -4)
@@ -9226,6 +9296,8 @@ if _G.TBCGearExporterTestMode then
         FormatLocalizedStats = GEAR_ENGINE.FormatLocalizedStats,
         DeltaText = GEAR_ENGINE.DeltaText,
         EvidenceLabel = GEAR_ENGINE.EvidenceLabel,
+        ScoreModelLabel = GEAR_ENGINE.ScoreModelLabel,
+        ScoreModelText = GEAR_ENGINE.ScoreModelText,
         RecommendationVerdictLabel = GEAR_ENGINE.RecommendationVerdictLabel,
         VerdictSummary = GEAR_ENGINE.VerdictSummary,
         BenchmarkImpactText = GEAR_ENGINE.BenchmarkImpactText,

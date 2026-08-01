@@ -4,6 +4,18 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+## [0.4.8] - 2026-08-01
+
+- Add an enforceable score-model contract to all 28 role records and publish the audited maturity matrix in `docs/engine-contract.md`.
+- Separate reference-route evidence, score provenance, and visible item-data completeness in the GUI and every export format.
+- Disable definitive upgrade labels for every current model; visible-stat rankings now use the honest `Estimated candidate` verdict unless a cap risk or missing data requires a stronger warning.
+- Correct Hunter provenance: the shared EP table is labeled as a P1 BM/SV estimate rather than a P2 simulation, including its unsupported Marksmanship reuse.
+- Import the exact pinned WoWSims Phase 2 static EP tables for Balance Druid, Retribution Paladin, and Arcane Mage.
+- Split talent representation coverage from modeled-effect coverage so exported talents without calculation rules are no longer counted as modeled.
+- Remove arbitrary item-level and quality score bonuses; only normalized, role-relevant visible stats contribute to candidate ranking.
+- Expand the Gear Advice and P2 Guide layouts to show model maturity without overlapping the comparison and target sections.
+- Expand the suite to 91 tests with 99.17% executable-line coverage, including model-distribution, provenance, definitive-verdict, talent-coverage, and score-input gates.
+
 ## [0.4.7] - 2026-08-01
 
 - Convert level-70 hit, spell hit, expertise, defense, dodge, parry, block, and resilience rating changes into their real benchmark units using pinned WoWSims TBC constants.
