@@ -26,7 +26,7 @@ It scans current equipment, visible bags, bank containers, talents, and characte
 - Normalizes the TBC Anniversary stat-token variants used for armor, ratings, spell damage/healing, spell power, mana regen, and weapon DPS before role scoring.
 - Exports chart-ready totals by source, category, quality, equip slot, item level, and aggregate stat values.
 - Provides Phase 2 records for all 9 TBC classes and 28 PvE specializations, with localized roles, cap assumptions, three modes, routes, reference talents, and an explicit scoring-model contract. A role record is not presented as a validated simulator model.
-- Tracks 29 WoWSims P2/T5 reference sets and 475 target slots against current equipment plus saved bags and bank, with real missing-item icons, localized links, item levels, tooltips, and Wowhead URLs.
+- Tracks 32 P2/T5 reference sets and 526 target slots against current equipment plus saved bags and bank, with real missing-item icons, localized links, item levels, tooltips, and Wowhead URLs.
 - Exports every selected talent with rank, icon, and tree alignment, while reporting representation coverage separately from the smaller subset with actual calculation rules.
 - Compares compatible saved gear against current equipment and labels current results as estimated candidates, tradeoffs, or manual checks; no present role may claim a definitive upgrade. Each swap shows net gained/lost stats, benchmark impact, score-model provenance, and item-data completeness.
 - Opens to a localized Overview GUI page with compact inventory, talent, stat, quality, category, and role snapshots.
@@ -56,7 +56,7 @@ The prompt includes:
 
 This makes the export easy to paste into ChatGPT or another AI tool for gear review.
 
-The built-in engine currently ranks visible-stat candidates; it is not a full combat simulator or global loadout optimizer. Encounter timelines, rotations, hidden proc rates, set bonuses, enchants, gems, temporary buffs, and unmodeled talent formulas still require tooltip or external analysis. Route evidence, score-model provenance, and item-data completeness are labeled separately.
+The built-in engine ranks visible-stat candidates and separately evaluates a curated set of source-linked item effects and set thresholds; it is not a full combat simulator or global loadout optimizer. Encounter timelines, full rotations, unlisted proc rates or set bonuses, enchants, gems, temporary buffs, and unmodeled talent formulas still require tooltip or external analysis. Route evidence, score-model provenance, effect decisions, set impacts, and item-data completeness are labeled separately.
 
 ### Commands
 
