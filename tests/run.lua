@@ -1130,7 +1130,7 @@ end)
 
 test("Phase 2 database covers every TBC class and PvE specialization", function()
     local db = assert(_G.TBCGearExporterP2DB)
-    assertEquals(db.version, 2)
+    assertEquals(db.version, 3)
     assertEquals(db.phase, 2)
     assertEquals(db.patch, "2.5.6")
     assertEquals(#db.sources, 2)
@@ -1562,7 +1562,7 @@ test("chart stats aggregate inventory counts, levels, and stat totals", function
     assertEquals(chartStats.categoryCounts[1].name, "Gear")
     assertEquals(chartStats.qualityCounts[1].quality, "Rare")
     assertEquals(chartStats.qualityCounts[2].quality, "Custom A")
-    assertEquals(chartStats.equipSlotCounts[1].slot, "INVTYPE_HEAD")
+    assertEquals(chartStats.equipSlotCounts[1].slot, "HEAD")
     assertEquals(chartStats.statTotals[1].token, "ITEM_MOD_STAMINA_SHORT")
     assertEquals(chartStats.statTotals[1].value, 20)
     assertContains(private.ChartCountLine("Bags", chartStats.sourceCounts[1], "enUS"), "Bags: 2 item lines; 3 stacks")
@@ -2191,7 +2191,7 @@ test("strategy book ranks role models from talents gear race and raid context", 
     assertContains(analysisText, "野性熊坦")
     assertContains(analysisText, "坦克免伤")
     assertContains(analysisText, "达标")
-    assertContains(analysisText, "防御免暴基准")
+    assertContains(analysisText, "综合免暴基准")
     assertContains(analysisText, "耐力和战争践踏")
     assertContains(analysisText, "当前装备属性亮点")
     assertContains(analysisText, "+10 耐力")
@@ -2269,7 +2269,7 @@ test("talent strategy maps every selected talent and applies ranked key effects"
     local retribution = private.FindStrategyRole(strategy, "retribution_dps")
     local map = protection.talentMap
 
-    assertEquals(strategy.version, 4)
+    assertEquals(strategy.version, 5)
     assertEquals(strategy.roles[1].key, "protection_tank")
     assertEquals(map.selectedCount, 9)
     assertEquals(map.selectedPoints, 27)
@@ -2469,7 +2469,7 @@ test("item comparison switches role weights and rejects mismatched slots", funct
     assertEquals(private.FindStrategyRole(nil, "missing").key, "general_inventory")
 
     local damageEngine = private.BuildGearRecommendations(profile, { candidate }, strategy, "retribution_dps")
-    assertEquals(damageEngine.version, 7)
+    assertEquals(damageEngine.version, 8)
     assertEquals(damageEngine.roleKey, "retribution_dps")
     assertEquals(#damageEngine.availableRoles, 3)
     assertEquals(damageEngine.talentMap.effects[1].key, "crusade")
@@ -2547,7 +2547,7 @@ test("holy paladin role fit rejects physical crit bracers before upgrade scoring
     assertFalse(incidentalIntellectFit.suitable, "incidental intellect must not make physical gear healer-suitable")
 
     local engine = private.BuildGearRecommendations(profile, { physicalCandidate, healingCandidate }, strategy, "holy_healer")
-    assertEquals(engine.version, 7)
+    assertEquals(engine.version, 8)
     assertEquals(engine.candidateCount, 1)
     assertEquals(engine.roleRejectedCount, 1)
     assertEquals(#engine.upgrades, 1)
@@ -2744,7 +2744,7 @@ test("protection paladin strategy compares visible gains and losses without inve
     assertEquals(role.observed.gearStatHighlights[1].value, 20)
     assertFalse(role.observed.gearStatHighlights[1].value == 30, "candidate stamina must not leak into current gear highlights")
 
-    assertEquals(engine.version, 7)
+    assertEquals(engine.version, 8)
     assertEquals(#engine.upgrades, 1)
     assertEquals(engine.upgrades[1].evidence, "high")
     assertEquals(engine.upgrades[1].verdict, "upgrade")
@@ -3333,13 +3333,17 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(allExport, "\"category_counts\": [")
     assertContains(allExport, "\"quality_counts\": [")
     assertContains(allExport, "\"equip_slot_counts\": [")
-    assertContains(allExport, "\"slot\": \"INVTYPE_HEAD\"")
+    assertContains(allExport, "\"slot\": \"HEAD\"")
     assertContains(allExport, "\"stat_totals\": [")
     assertContains(allExport, "\"strategy_book\": {")
     assertContains(allExport, "\"phase_database\": {")
     assertContains(allExport, "\"gear_recommendations\": {")
+    assertContains(allExport, "\"crit_reduction\":")
+    assertContains(allExport, "\"crit_reduction_from_resilience\":")
+    assertContains(allExport, "\"loadout_rejected_count\":")
+    assertContains(allExport, "\"unscorable_rejected_count\":")
     assertContains(allExport, "\"phase2_strategy\": {")
-    assertContains(allExport, "\"database_version\": 2")
+    assertContains(allExport, "\"database_version\": 3")
     assertContains(allExport, "\"phase\": 2")
     assertContains(allExport, "\"mode_key\": \"balanced\"")
     assertContains(allExport, "\"mode_label_zh_cn\": \"均衡\"")
@@ -3416,7 +3420,7 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(markdownExport, "客户端语言: zhCN")
     assertContains(markdownExport, "## 属性分析")
     assertContains(markdownExport, "实测命中/暴击：近战命中 8.5%")
-    assertContains(markdownExport, "防御免暴基准")
+    assertContains(markdownExport, "综合免暴基准")
     assertContains(markdownExport, "## 候选物品")
     assertContains(markdownExport, "<details open>")
     assertContains(markdownExport, "<summary>装备 (2)</summary>")
@@ -3444,7 +3448,7 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(textExport, "参考目标套装: Feral Bear P2 Balanced")
     assertContains(textExport, "当前装备扫描:")
     assertContains(textExport, "实测命中/暴击：近战命中 8.5%")
-    assertContains(textExport, "基准：防御免暴基准 = 达标")
+    assertContains(textExport, "基准：综合免暴基准 = 达标")
     assertContains(textExport, "[装备]")
     assertContains(textExport, "- |cff0070ddDefender Helm|r")
     assertContains(textExport, "Rare (#0070DD)")
@@ -4137,6 +4141,211 @@ test("frame event script delegates to addon event handler", function()
     local rootFrame = addonRootFrame()
     rootFrame.scripts.OnEvent(rootFrame, "PLAYER_LOGIN")
     assertContains(mock.messages[#mock.messages], "已加载")
+end)
+
+test("combined crit immunity models defense resilience and Survival of the Fittest", function()
+    local thatdruidStats = {
+        defense = { effective = 350 },
+        ratings = { { key = "resilience", rating = 80, bonus = 0 } },
+    }
+    local bearTalents = {
+        effects = { { key = "survival_of_the_fittest", rank = 3, maxRank = 3 } },
+    }
+    local thatdruid = private.BuildCritImmunity(thatdruidStats, bearTalents)
+    assertEquals(thatdruid.total, 5.03)
+    assertEquals(thatdruid.target, 5.6)
+    assertEquals(thatdruid.gap, 0.57)
+    assertEquals(thatdruid.talentReduction, 3)
+    assertEquals(thatdruid.defenseReduction, 0)
+    assertEquals(thatdruid.resilienceReduction, 2.03)
+    assertEquals(thatdruid.resilienceRating, 80)
+    assertEquals(thatdruid.resilienceRatingSource, "live_rating")
+    assertEquals(thatdruid.survivalOfTheFittestRank, 3)
+    assertEquals(private.TalentEffectRank(bearTalents, "survival_of_the_fittest"), 3)
+    assertEquals(private.TalentEffectRank(nil, "survival_of_the_fittest"), 0)
+    assertEquals(private.RatingValue(thatdruidStats, "resilience"), 80)
+    assertEquals(private.RatingValue(thatdruidStats, "missing"), nil)
+
+    local warrior = private.BuildCritImmunity({ defense = { effective = 490 }, ratings = {} }, nil)
+    assertEquals(warrior.total, 5.6)
+    assertEquals(warrior.gap, 0)
+
+    local defenseBear = private.BuildCritImmunity({ defense = { effective = 415 }, ratings = {} }, bearTalents)
+    assertEquals(defenseBear.total, 5.6)
+    assertEquals(defenseBear.gap, 0)
+
+    local mixedBear = private.BuildCritImmunity({
+        defense = { effective = 365 },
+        ratings = { { key = "resilience", rating = 80 } },
+    }, bearTalents)
+    assertEquals(mixedBear.total, 5.63)
+    assertEquals(mixedBear.gap, 0)
+
+    local unknown = private.BuildCritImmunity({}, nil)
+    assertEquals(unknown.total, nil)
+    assertEquals(unknown.gap, nil)
+
+    local equippedFallback = private.BuildCritImmunity({ defense = { effective = 350 }, ratings = {
+        { key = "resilience", rating = 0 },
+    } }, bearTalents, { statTotals = {
+        { token = "ITEM_MOD_RESILIENCE_RATING_SHORT", value = 80 },
+    } })
+    assertEquals(equippedFallback.total, 5.03)
+    assertEquals(equippedFallback.resilienceRating, 80)
+    assertEquals(equippedFallback.resilienceRatingSource, "equipped_items")
+end)
+
+test("Thatdruid report uses the talent-aware combined crit benchmark", function()
+    local profile = {
+        player = "Thatdruid",
+        realm = "Nightslayer",
+        classEnglish = "DRUID",
+        classLocalized = "德鲁伊",
+        locale = "zhCN",
+        talents = {
+            available = true, primaryTabIndex = 2, primaryTab = "野性战斗", totalPoints = 61, pointsSpent = 61,
+            summary = "0/44/17", unspentPoints = 0,
+            tabs = {
+                { index = 1, name = "平衡", points = 0, talents = {} },
+                { index = 2, name = "野性战斗", points = 44, talents = {
+                    { index = 16, name = "适者生存", currentRank = 3, maxRank = 3 },
+                } },
+                { index = 3, name = "恢复", points = 17, talents = {} },
+            },
+        },
+        characterStats = {
+            defense = { effective = 350 }, armor = { effective = 6126 },
+            attributes = { { key = "stamina", effective = 776 } },
+            ratings = { { key = "resilience", rating = 80, bonus = 0 } },
+            chances = { dodge = 39.59, parry = 0, block = 0 }, spell = {}, attackPower = {},
+            race = { english = "NIGHTELF", localized = "暗夜精灵" },
+            group = { type = "solo", size = 1 },
+        },
+        equipped = { items = {} },
+    }
+    local strategy = private.BuildStrategyBook(profile, private.BuildChartStats({}))
+    local bear = private.FindStrategyRole(strategy, "bear_tank")
+    assertEquals(strategy.version, 5)
+    assertEquals(strategy.phaseDatabase.version, 3)
+    assertEquals(bear.observed.tank.critReduction, 5.03)
+    assertEquals(bear.observed.tank.critImmunity.gap, 0.57)
+    assertEquals(private.BenchmarkObservedValue("crit_immunity", bear.observed), 5.03)
+    assertEquals(private.BenchmarkStatus("crit_immunity", bear.observed).target, 5.6)
+    assertEquals(private.BenchmarkStatus("crit_immunity", bear.observed).status, "below")
+    assertEquals(bear.benchmarks[1].key, "crit_immunity")
+
+    local caps = private.BuildPhase2CapStatuses(bear)
+    assertEquals(caps[1].key, "crit_immunity")
+    assertEquals(caps[1].observed, 5.03)
+    assertEquals(caps[1].target, 5.6)
+
+    assertContains(private.CoreStatsText(profile.characterStats, bear, "zhCN"), "免暴减免 5.03/5.6%")
+    local analysis = private.BuildStatsAnalysisText(profile, private.BuildChartStats({}), strategy)
+    assertContains(analysis, "坦克视角：免暴减免 5.03/5.6%")
+    assertContains(analysis, "天赋 3% + 防御 0% + 韧性 2.03%")
+    assertContains(analysis, "距离目标还差 0.57%")
+    assertContains(analysis, "综合免暴基准")
+    assertFalse(analysis:find("350；目标 490", 1, true), "bear report must not use the warrior defense-only cap")
+end)
+
+test("crit benchmark item impacts convert rating into crit reduction percent", function()
+    assertEquals(private.RoundedStatNumber(private.BenchmarkDeltaValue("crit_immunity", "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT", 24)), 0.41)
+    assertEquals(private.BenchmarkDeltaValue("crit_immunity", "ITEM_MOD_RESILIENCE_RATING_SHORT", 39.4), 1)
+    assertEquals(private.BenchmarkDeltaValue("spell_hit", "ITEM_MOD_HIT_SPELL_RATING_SHORT", 7), 7)
+
+    local impacts = private.BuildBenchmarkImpacts({ benchmarks = {
+        { key = "crit_immunity", label = "Combined Crit", status = "below", unit = "% crit reduction" },
+    } }, {
+        { token = "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT", value = 24 },
+        { token = "ITEM_MOD_RESILIENCE_RATING_SHORT", value = 39.4 },
+    }, {})
+    assertEquals(#impacts, 1)
+    assertEquals(impacts[1].delta, 1.41)
+    assertEquals(impacts[1].unit, "% crit reduction")
+    assertContains(private.BenchmarkImpactText(impacts, "zhCN"), "综合免暴基准 +1.41%")
+end)
+
+test("weapon loadout rules reject offhands beside an equipped two-hander", function()
+    local twoHander = {
+        itemID = 32014, name = "Merciless Gladiator's Maul", category = "Gear", equipSlot = "INVTYPE_2HWEAPON",
+        classID = 2, subClassID = 10, itemLevel = 136, quality = 4, stats = { { token = "ITEM_MOD_STAMINA_SHORT", value = 55 } },
+    }
+    local offhand = {
+        itemID = 32961, name = "Merciless Gladiator's Reprieve", category = "Gear", equipSlot = "INVTYPE_HOLDABLE",
+        classID = 4, subClassID = 0, itemLevel = 136, quality = 4,
+        stats = { { token = "ITEM_MOD_STAMINA_SHORT", value = 27 }, { token = "ITEM_MOD_RESILIENCE_RATING_SHORT", value = 27 } },
+    }
+    local role = {
+        key = "bear_tank", label = "Feral Bear Tank", archetype = "tank", confidence = 100,
+        statTokens = { "ITEM_MOD_STAMINA_SHORT", "ITEM_MOD_RESILIENCE_RATING_SHORT" }, benchmarks = {},
+    }
+    local profile = { classEnglish = "DRUID", locale = "zhCN", equipped = { items = { twoHander } } }
+    local compatible, reason = private.LoadoutCompatible(profile, offhand)
+    assertFalse(compatible)
+    assertEquals(reason, "two_handed_main")
+    assertTrue(private.IsTwoHandedItem(twoHander))
+    assertFalse(private.IsTwoHandedItem(offhand))
+    assertTrue(private.EquippedItemForSlot(profile, "MAINHAND") == twoHander)
+    assertEquals(private.EquippedItemForSlot(profile, "OFFHAND"), nil)
+
+    local comparison = private.CompareItems(profile, nil, offhand, { roles = { role } }, role.key)
+    assertFalse(comparison.loadoutCompatible)
+    assertEquals(comparison.loadoutReason, "two_handed_main")
+    assertEquals(comparison.verdict, "loadout_mismatch")
+    assertEquals(private.RecommendationVerdictLabel(comparison.verdict, "zhCN"), "武器组合不合法")
+
+    local engine = private.BuildGearRecommendations(profile, { offhand }, { roles = { role } }, role.key)
+    assertEquals(engine.loadoutRejectedCount, 1)
+    assertEquals(engine.unscorableRejectedCount, 0)
+    assertEquals(#engine.upgrades, 0)
+    assertContains(private.NoUpgradeText(engine, "zhCN"), "当前武器组合冲突")
+
+    local oneHander = { category = "Gear", equipSlot = "INVTYPE_WEAPON", stats = {} }
+    local occupiedProfile = { equipped = { items = { oneHander, offhand } } }
+    local legal, occupiedReason = private.LoadoutCompatible(occupiedProfile, twoHander)
+    assertFalse(legal)
+    assertEquals(occupiedReason, "occupied_offhand")
+    assertTrue(private.LoadoutCompatible({ equipped = { items = { oneHander } } }, offhand))
+end)
+
+test("hidden trinket effects are excluded instead of scored as upgrades", function()
+    local badge = {
+        itemID = 32658, name = "Badge of Tenacity", category = "Gear", equipSlot = "INVTYPE_TRINKET",
+        classID = 4, subClassID = 0, itemLevel = 115, quality = 3, stats = {},
+    }
+    local shard = {
+        itemID = 29181, name = "Time-Lapse Shard", category = "Gear", equipSlot = "INVTYPE_TRINKET",
+        classID = 4, subClassID = 0, itemLevel = 105, quality = 4,
+        stats = { { token = "ITEM_MOD_STAMINA_SHORT", value = 27 }, { token = "ITEM_MOD_RESILIENCE_RATING_SHORT", value = 24 } },
+    }
+    local role = {
+        key = "bear_tank", label = "Feral Bear Tank", archetype = "tank", confidence = 100,
+        statTokens = { "ITEM_MOD_STAMINA_SHORT", "ITEM_MOD_RESILIENCE_RATING_SHORT" }, benchmarks = {},
+    }
+    local profile = { classEnglish = "DRUID", locale = "zhCN", equipped = { items = { badge } } }
+    local comparison = private.CompareItems(profile, badge, shard, { roles = { role } }, role.key)
+    assertFalse(comparison.comparable)
+    assertEquals(comparison.verdict, "unscorable")
+    assertEquals(private.RecommendationVerdictLabel(comparison.verdict, "zhCN"), "效果无法量化")
+
+    local engine = private.BuildGearRecommendations(profile, { shard }, { roles = { role } }, role.key)
+    assertEquals(engine.version, 8)
+    assertEquals(engine.unscorableRejectedCount, 1)
+    assertEquals(engine.loadoutRejectedCount, 0)
+    assertEquals(#engine.upgrades, 0)
+    assertContains(private.NoUpgradeText(engine, "zhCN"), "尚未解析")
+    assertContains(private.NoUpgradeText(engine, "enUS"), "unparsed")
+end)
+
+test("chart stats merge one-hand and two-hand weapons into one main-hand group", function()
+    local chart = private.BuildChartStats({
+        { category = "Gear", equipSlot = "INVTYPE_WEAPON", count = 1, stats = {} },
+        { category = "Gear", equipSlot = "INVTYPE_2HWEAPON", count = 1, stats = {} },
+    })
+    assertEquals(#chart.equipSlotCounts, 1)
+    assertEquals(chart.equipSlotCounts[1].slot, "MAINHAND")
+    assertEquals(chart.equipSlotCounts[1].itemCount, 2)
+    assertEquals(chart.equipSlotCounts[1].stackCount, 2)
 end)
 
 local failures = {}

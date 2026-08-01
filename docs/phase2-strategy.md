@@ -1,6 +1,6 @@
 # Phase 2 Strategy Database
 
-TBC Gear Exporter v0.4.0 includes a versioned Phase 2 / Tier 5 strategy database used by the in-game P2 Guide, gear comparison engine, and AI/JSON exports.
+TBC Gear Exporter v0.4.3 includes a versioned Phase 2 / Tier 5 strategy database used by the in-game P2 Guide, gear comparison engine, and AI/JSON exports.
 
 ## Database Scale
 
@@ -42,9 +42,9 @@ Mode selection changes the role weights used by every item comparison. The selec
 | Druid | Restoration | Healing throughput versus fight-length mana | Nordrassil Raiment plus longevity variant | Guide |
 | Warrior | Arms | 9% special hit; expertise; raid debuff value | Destroyer Battlegear and Blood Frenzy utility | Simulation + guide |
 | Warrior | Fury | 9% special hit; expertise; dual-wield budget | Destroyer Battlegear with optimized hit plan | Simulation + guide |
-| Warrior | Protection | 490 defense; contextual 102.4 table; threat | Destroyer Armor plus Hydross resistance set | Simulation + guide |
+| Warrior | Protection | 5.6% combined crit reduction; contextual 102.4 table; threat | Destroyer Armor plus Hydross resistance set | Simulation + guide |
 | Paladin | Holy | Healing, intellect, crit, mp5; fight length | Crystalforge only when set value beats healing off-pieces | Guide |
-| Paladin | Protection | 490 defense; contextual 102.4 table; spell threat | Keep Justicar 2-piece for single-target threat; do not force weak T5 bonuses | Simulation + guide |
+| Paladin | Protection | 5.6% combined crit reduction; contextual 102.4 table; spell threat | Keep Justicar 2-piece for single-target threat; do not force weak T5 bonuses | Simulation + guide |
 | Paladin | Retribution | 9% special hit; expertise; weapon damage | Crystalforge Battlegear with weapon-first upgrades | Simulation + guide |
 | Priest | Discipline | Throughput, intellect/mp5, raid support | Avatar pieces versus high-healing off-pieces | Guide |
 | Priest | Holy | Throughput, spirit/mp5, fight length | Separate Avatar throughput and longevity sets | Guide |
@@ -67,10 +67,12 @@ Mode selection changes the role weights used by every item comparison. The selec
 
 ## Tank Rules
 
-1. Resolve critical-hit immunity before treating a threat piece as a clean upgrade. The 490-defense display is a reference gate; resilience may replace part of defense, so the combined result still needs verification.
-2. Treat the 102.4% shield combat table as contextual. The standing paper doll does not include boss miss or temporary block effects such as Holy Shield or Shield Block.
-3. After gates, use Mitigation for progression/effective health, Balanced for general encounters, or Threat for farm and damage-limited pulls.
-4. Resistance presets are encounter sets, never default boss sets.
+1. Resolve critical-hit immunity before treating a threat piece as a clean upgrade. The engine targets 5.6% combined boss critical-hit reduction from defense skill above the level-70 base, resilience rating, and applicable talents.
+2. Defense skill contributes 0.04% critical-hit reduction per point above 350. At level 70, about 59.1 defense rating contributes 1%; 39.4 resilience rating contributes 1%.
+3. A Feral bear with 3/3 Survival of the Fittest receives 3% from talents and therefore needs the remaining 2.6% from defense and resilience. This corresponds to 415 defense skill with no resilience, or about 103 resilience with no defense rating.
+4. Treat the 102.4% shield combat table as contextual. The standing paper doll does not include boss miss or temporary block effects such as Holy Shield or Shield Block.
+5. After gates, use Mitigation for progression/effective health, Balanced for general encounters, or Threat for farm and damage-limited pulls.
+6. Resistance presets are encounter sets, never default boss sets.
 
 ## Healer Rules
 
@@ -88,6 +90,9 @@ Mode selection changes the role weights used by every item comparison. The selec
 
 - [WoWSims TBC](https://github.com/wowsims/tbc-new), pinned to commit `3fc6a414979d62186f75d51ab6f6dd5d44f35b9c`, supplies the adapted P2/T5 item-ID presets and reference talent strings where available.
 - [Wowhead Phase 2 specialization guide index](https://www.wowhead.com/tbc/news/best-in-slot-guides-for-every-class-specialization-updated-for-phase-2-tbc-381617) supplies role-specific acquisition, alternative, set-bonus, and healer context.
+- [Wowhead Feral tank stat priority](https://www.wowhead.com/tbc/guide/classes/druid/feral/tank-stat-priority-attributes-pve) supplies the defense/resilience equivalence and 39.4 resilience per 1% critical-hit reduction reference.
+- [Wowhead Feral tank talents](https://www.wowhead.com/tbc/guide/classes/druid/feral/tank-talent-builds-pve) supplies the 3% reduction from 3/3 Survival of the Fittest.
+- [Wowhead Feral tank gear set](https://www.wowhead.com/tbc/gear-set/pve-feral-tank-131518) supplies the 415 defense-skill and 103 resilience hard-cap references for a 3/3 Survival of the Fittest bear.
 - The bundled [`ThirdPartyNotices.txt`](../TBCGearExporter/ThirdPartyNotices.txt) includes the WoWSims MIT license and exact source revision.
 
 This database is designed to be auditable and replaceable. Future phases can add a new versioned database without changing saved inventory snapshots or the export contract.
