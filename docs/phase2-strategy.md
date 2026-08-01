@@ -1,16 +1,17 @@
 # Phase 2 Strategy Database
 
-TBC Gear Exporter v0.4.8 includes Phase 2 / Tier 5 strategy database version 6, used by the in-game P2 Guide, candidate ranking, and AI/JSON exports.
+TBC Gear Exporter v0.4.9 includes Phase 2 / Tier 5 strategy database version 7, used by the in-game P2 Guide, candidate ranking, and AI/JSON exports.
 
 ## Database Scale
 
 - 9 playable TBC classes.
 - 28 PvE specializations: 3 tanks, 5 healers, 11 melee/ranged physical DPS roles, and 9 caster DPS roles.
 - 3 switchable analysis modes for every role.
-- 29 WoWSims reference gear presets with 475 non-empty target item slots.
+- 32 reference gear presets with 526 non-empty target item slots: 29 WoWSims routes plus 3 Holy Paladin guide routes.
 - 17-slot target-set tracking against current equipment plus saved bags and bank.
+- 9 source-linked contextual item effects and 1 curated set with 2-piece and 4-piece thresholds.
 - English, simplified Chinese, and traditional Chinese role, mode, cap, and route labels.
-- Database version 6, including an explicit score-model contract for every role, exact pinned P2 static EP tables for Balance, Retribution, and Arcane, a clearly downgraded shared P1 Hunter estimate, and no definitive upgrade verdicts.
+- Database version 7, including the score-model contract for every role, exact pinned P2 static EP tables for Balance, Retribution, and Arcane, a clearly downgraded shared P1 Hunter estimate, and no definitive upgrade verdicts.
 
 The source of truth is [`TBCGearExporter/Phase2StrategyDB.lua`](../TBCGearExporter/Phase2StrategyDB.lua). Every role records its score-model kind and limitations in addition to its talent-tree rule, archetype, priorities, stat tokens, caps, modes, route goal, reference talent string where available, presets, route evidence, and guide URL. The exact support boundary and all 28 role maturity levels are in [the engine contract](engine-contract.md).
 
@@ -21,7 +22,7 @@ The source of truth is [`TBCGearExporter/Phase2StrategyDB.lua`](../TBCGearExport
 | WoWSims reference gear route + class guide | A P2/T5 item-ID route is available for target tracking. This does not calibrate candidate scoring. |
 | Class guide route | No WoWSims target route is attached; the guide supplies route context only. |
 
-Route evidence, score-model provenance, and item-data completeness are independent. The addon no longer calls any current weighted result a definitive upgrade. It never silently invents set-bonus values, proc rates, encounter timelines, rotations, gems, or enchants.
+Route evidence, score-model provenance, item-data completeness, curated effect decisions, and set impacts are independent. The addon does not call any current weighted result a definitive upgrade. It never silently invents unlisted set-bonus values, proc rates, encounter timelines, rotations, gems, or enchants.
 
 ## Strategy Modes
 
@@ -29,6 +30,7 @@ Route evidence, score-model provenance, and item-data completeness are independe
 | --- | --- | --- | --- |
 | Tank | Required gates, survival, threat | Mitigation / progression: effective health, armor, avoidance, crit immunity | Threat / farm: hit, expertise, weapon or spell threat, tempo |
 | Healer | Throughput and longevity | Burst throughput: healing, crit/haste, intellect | Mana longevity: mp5, spirit, intellect, fight length |
+| Holy Paladin | Mixed Flash of Light / Holy Light | Flash of Light: efficiency and sustained casting | Holy Light: burst and mana-cost management |
 | DPS | Caps, set value, output | Cap recovery: hit and expertise | Maximum output: primary power, crit, haste |
 
 Mode selection changes the role weights used by every item comparison. The same three localized controls appear on Gear Advice and the P2 Guide, and changing one immediately recalculates both pages and the export. Readable reports name the selected view and all available views; AI/JSON exports retain their keys and weights so external tools can reproduce the intended lens. Tank mitigation/progression and threat/farm remain separate rankings rather than being averaged together. Threat / farm deliberately lowers survival weights while raising offensive weights; unresolved hard gates still prevent unsafe suggestions.
@@ -44,7 +46,7 @@ Mode selection changes the role weights used by every item comparison. The same 
 | Warrior | Arms | 9% special hit; expertise; raid debuff value | Destroyer Battlegear and Blood Frenzy utility | WoWSims route + guide |
 | Warrior | Fury | 9% special hit; expertise; dual-wield budget | Destroyer Battlegear with optimized hit plan | WoWSims route + guide |
 | Warrior | Protection | 5.6% combined crit reduction; contextual 102.4 table; threat | Destroyer Armor plus Hydross resistance set | WoWSims route + guide |
-| Paladin | Holy | Healing, intellect, crit, mp5; fight length | Crystalforge only when set value beats healing off-pieces | Guide route |
+| Paladin | Holy | Healing, intellect, crit, mp5; spell cycle; known relic/trinket effects | Preserve Crystalforge 4-piece unless the replacement route is validated; choose libram by spell cycle | Three guide routes |
 | Paladin | Protection | 5.6% combined crit reduction; contextual 102.4 table; spell threat | Keep Justicar 2-piece for single-target threat; do not force weak T5 bonuses | WoWSims route + guide |
 | Paladin | Retribution | 9% special hit; expertise; weapon damage | Crystalforge Battlegear with weapon-first upgrades | WoWSims route + guide |
 | Priest | Discipline | Throughput, intellect/mp5, raid support | Avatar pieces versus high-healing off-pieces | Guide route |
@@ -83,6 +85,8 @@ Mode selection changes the role weights used by every item comparison. The same 
 1. Healer gearing is not reduced to a universal cap. Fight length, assignment, spell mix, downranking, raid composition, and mana support determine the throughput/longevity balance.
 2. Throughput mode raises visible healing and crit/haste value. Longevity mode raises mp5, spirit, and intellect value.
 3. Healer roles without a mature simulator preset are explicitly guide-backed. The engine still compares visible item stats but marks the evidence boundary.
+4. Holy Paladin uses separate Mixed Healing, Flash of Light, and Holy Light modes. Blessed Book of Nagrand, Libram of Souls Redeemed, and Libram of Absolute Truth are compared by their sourced spell-specific behavior, not converted into EP.
+5. The Crystalforge Raiment 2-piece and 4-piece thresholds are evaluated against the full equipped set. A visible-stat off-piece that breaks 4-piece is labeled a tradeoff; a swap that completes 4-piece is surfaced as a contextual decision.
 
 ## DPS Rules
 
@@ -95,10 +99,11 @@ Mode selection changes the role weights used by every item comparison. The same 
 ## Sources And Reproducibility
 
 - [WoWSims TBC](https://github.com/wowsims/tbc-new), pinned to commit `3fc6a414979d62186f75d51ab6f6dd5d44f35b9c`, supplies the adapted P2/T5 item-ID presets and reference talent strings where available.
-- [Pinned WoWSims Balance source](https://github.com/wowsims/tbc-new/blob/3fc6a414979d62186f75d51ab6f6dd5d44f35b9c/ui/druid/balance/presets.ts), [Arcane source](https://github.com/wowsims/tbc-new/blob/3fc6a414979d62186f75d51ab6f6dd5d44f35b9c/ui/mage/dps/presets.ts), and [Retribution source](https://github.com/wowsims/tbc-new/blob/3fc6a414979d62186f75d51ab6f6dd5d44f35b9c/ui/paladin/retribution/presets.ts) supply the exact P2 static EP tables imported by database version 6.
+- [Pinned WoWSims Balance source](https://github.com/wowsims/tbc-new/blob/3fc6a414979d62186f75d51ab6f6dd5d44f35b9c/ui/druid/balance/presets.ts), [Arcane source](https://github.com/wowsims/tbc-new/blob/3fc6a414979d62186f75d51ab6f6dd5d44f35b9c/ui/mage/dps/presets.ts), and [Retribution source](https://github.com/wowsims/tbc-new/blob/3fc6a414979d62186f75d51ab6f6dd5d44f35b9c/ui/paladin/retribution/presets.ts) supply the exact P2 static EP tables retained by database version 7.
 - [Pinned WoWSims Hunter source](https://github.com/wowsims/tbc-new/blob/3fc6a414979d62186f75d51ab6f6dd5d44f35b9c/ui/hunter/dps/presets.ts) identifies the reused Hunter values as P1 BM/SV EP presets.
-- [Pinned WoWSims TBC combat-rating constants](https://github.com/wowsims/tbc/blob/9e7504dca2e5253fb9ddff566c66c00e11679376/sim/core/constants.go) supply the level-70 rating conversions retained by database version 6.
+- [Pinned WoWSims TBC combat-rating constants](https://github.com/wowsims/tbc/blob/9e7504dca2e5253fb9ddff566c66c00e11679376/sim/core/constants.go) supply the level-70 rating conversions retained by database version 7.
 - [Wowhead Phase 2 specialization guide index](https://www.wowhead.com/tbc/news/best-in-slot-guides-for-every-class-specialization-updated-for-phase-2-tbc-381617) supplies role-specific acquisition, alternative, set-bonus, and healer context.
+- [Wowhead Holy Paladin Phase 2 gear guide](https://www.wowhead.com/tbc/guide/classes/paladin/holy/healer-bis-gear-pve-phase-2), [Crystalforge Raiment](https://www.wowhead.com/tbc/item-set=627/crystalforge-raiment), and the linked item pages in the database supply the three spell-cycle routes, set thresholds, and nine curated effect records.
 - [Wowhead Hunter stat priority](https://www.wowhead.com/tbc/guide/classes/hunter/dps-stat-priority-attributes-pve) supplies the TBC agility, hit, crit, and ranged attack-power context used to interpret the simulator weights.
 - [Wowhead Feral tank stat priority](https://www.wowhead.com/tbc/guide/classes/druid/feral/tank-stat-priority-attributes-pve) supplies the defense/resilience equivalence and 39.4 resilience per 1% critical-hit reduction reference.
 - [Wowhead Feral tank talents](https://www.wowhead.com/tbc/guide/classes/druid/feral/tank-talent-builds-pve) supplies the 3% reduction from 3/3 Survival of the Fittest.

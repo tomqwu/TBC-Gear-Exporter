@@ -1,5 +1,5 @@
 local DB = {
-    version = 6,
+    version = 7,
     phase = 2,
     phaseLabel = "TBC Anniversary Phase 2 (Tier 5)",
     patch = "2.5.6",
@@ -22,6 +22,8 @@ local DB = {
         },
     },
     presets = {},
+    itemEffects = {},
+    sets = {},
     classes = {},
 }
 
@@ -125,6 +127,18 @@ local function HealerModes()
         Mode("longevity", Labels("Mana longevity", "法力续航", "法力續航"), {
             [S.mp5] = 1.28, [S.spirit] = 1.22, [S.intellect] = 1.16, [S.spellCrit] = 1.06,
         }, { "fight_length", "regen", "mana_pool" }),
+    }
+end
+
+local function HolyPaladinModes()
+    return {
+        Mode("balanced", Labels("Mixed healing", "混合治疗", "混合治療"), {}, { "flash_of_light", "holy_light", "longevity" }),
+        Mode("flash_of_light", Labels("Flash of Light", "圣光闪现", "聖光閃現"), {
+            [S.healing] = 1.18, [S.intellect] = 1.08, [S.spellCrit] = 1.08, [S.mp5] = 1.12,
+        }, { "flash_of_light", "efficiency", "sustained_casting" }),
+        Mode("holy_light", Labels("Holy Light", "圣光术", "聖光術"), {
+            [S.healing] = 1.12, [S.spellCrit] = 1.18, [S.intellect] = 1.12, [S.mp5] = 1.18,
+        }, { "holy_light", "burst_throughput", "mana_cost" }),
     }
 end
 
@@ -232,18 +246,107 @@ local function Role(definition)
     return definition
 end
 
-local function Preset(key, label, roleKey, modeKey, itemIDs, sourcePath, notes)
+local function Preset(key, label, roleKey, modeKey, itemIDs, sourcePath, notes, source)
     DB.presets[key] = {
         key = key,
         label = label,
         roleKey = roleKey,
         modeKey = modeKey or "balanced",
         itemIDs = itemIDs,
-        source = "wowsims",
+        source = source or "wowsims",
         sourcePath = sourcePath,
         notes = notes,
     }
 end
+
+local function ItemEffect(itemID, definition)
+    definition.itemID = itemID
+    definition.sourceKey = definition.sourceKey or "wowhead"
+    definition.sourceUrl = definition.sourceUrl or ("https://www.wowhead.com/tbc/item=" .. tostring(itemID))
+    DB.itemEffects[itemID] = definition
+end
+
+local function SetDefinition(key, definition)
+    definition.key = key
+    definition.sourceKey = definition.sourceKey or "wowhead"
+    DB.sets[key] = definition
+end
+
+ItemEffect(25644, {
+    key = "blessed_book_of_nagrand",
+    kind = "spell_specific_healing",
+    roleKeys = { holy_healer = true },
+    modeAffinity = { balanced = 2, flash_of_light = 3, holy_light = 0 },
+    labels = Labels("Adds up to 79 healing to Flash of Light", "圣光闪现最多额外治疗 79 点", "聖光閃現最多額外治療 79 點"),
+})
+ItemEffect(28592, {
+    key = "libram_of_souls_redeemed",
+    kind = "blessing_synergy",
+    roleKeys = { holy_healer = true },
+    modeAffinity = { balanced = 3, flash_of_light = 2, holy_light = 2 },
+    labels = Labels("Blessing of Light grants 60 more Flash of Light and 120 more Holy Light healing", "光明祝福使圣光闪现额外获得 60、圣光术额外获得 120 治疗", "光明祝福使聖光閃現額外獲得 60、聖光術額外獲得 120 治療"),
+    requirements = { "Blessing of Light on the target" },
+})
+ItemEffect(30063, {
+    key = "libram_of_absolute_truth",
+    kind = "spell_mana_reduction",
+    roleKeys = { holy_healer = true },
+    modeAffinity = { balanced = 1, flash_of_light = 0, holy_light = 3 },
+    labels = Labels("Reduces Holy Light mana cost by 34", "圣光术法力消耗降低 34 点", "聖光術法力消耗降低 34 點"),
+})
+ItemEffect(29388, {
+    key = "libram_of_repentance",
+    kind = "tank_block_effect",
+    roleKeys = { protection_tank = true },
+    modeAffinity = { balanced = 3, mitigation = 3, threat = 1 },
+    labels = Labels("Increases Holy Shield block rating", "提高神圣之盾的格挡等级", "提高神聖之盾的格擋等級"),
+})
+ItemEffect(28590, {
+    key = "ribbon_of_sacrifice",
+    kind = "healing_cooldown",
+    archetypes = { healer = true },
+    modeAffinity = { balanced = 2, throughput = 3, longevity = 1, flash_of_light = 2, holy_light = 2 },
+    labels = Labels("Direct heals can stack up to 150 additional healing received on the target for 20 sec", "20 秒内直接治疗可使目标受到的额外治疗叠加至 150 点", "20 秒內直接治療可使目標受到的額外治療疊加至 150 點"),
+})
+ItemEffect(30841, {
+    key = "lower_city_prayerbook",
+    kind = "healing_mana_cooldown",
+    archetypes = { healer = true },
+    modeAffinity = { balanced = 2, throughput = 1, longevity = 3, flash_of_light = 3, holy_light = 2 },
+    labels = Labels("Heals cost 22 less mana for 15 sec on a 1 min cooldown", "使用后 15 秒内每次治疗少消耗 22 点法力，冷却 1 分钟", "使用後 15 秒內每次治療少消耗 22 點法力，冷卻 1 分鐘"),
+})
+ItemEffect(29376, {
+    key = "essence_of_the_martyr",
+    kind = "healing_throughput_cooldown",
+    archetypes = { healer = true },
+    modeAffinity = { balanced = 3, throughput = 3, longevity = 1, flash_of_light = 2, holy_light = 3 },
+    labels = Labels("Increases healing by up to 297 for 20 sec on a 2 min cooldown", "使用后 20 秒内治疗提高最多 297 点，冷却 2 分钟", "使用後 20 秒內治療提高最多 297 點，冷卻 2 分鐘"),
+})
+ItemEffect(28727, {
+    key = "pendant_of_the_violet_eye",
+    kind = "stacking_mana_regen_cooldown",
+    archetypes = { healer = true },
+    modeAffinity = { balanced = 3, throughput = 1, longevity = 3, flash_of_light = 3, holy_light = 3 },
+    labels = Labels("Spell casts grant stacking 21 mana per 5 sec regeneration for 20 sec", "使用后施法可叠加每 5 秒 21 点法力回复，持续 20 秒", "使用後施法可疊加每 5 秒 21 點法力回復，持續 20 秒"),
+})
+ItemEffect(30621, {
+    key = "prism_of_inner_calm",
+    kind = "harmful_crit_threat_reduction",
+    archetypes = { melee = true, ranged = true, caster = true },
+    modeAffinity = { balanced = 1, output = 1, threat = 3 },
+    labels = Labels("Reduces threat from harmful critical strikes", "降低伤害性暴击产生的威胁", "降低傷害性致命一擊產生的威脅"),
+})
+
+SetDefinition("crystalforge_raiment", {
+    labels = Labels("Crystalforge Raiment", "晶铸圣装", "晶鑄聖裝"),
+    roleKeys = { holy_healer = true },
+    itemIDs = { 30134, 30135, 30136, 30137, 30138 },
+    sourceUrl = "https://www.wowhead.com/tbc/item-set=627/crystalforge-raiment",
+    bonuses = {
+        { pieces = 2, labels = Labels("Judgements restore 50 mana to party members", "施放审判时为小队成员恢复 50 点法力", "施放審判時為小隊成員恢復 50 點法力") },
+        { pieces = 4, labels = Labels("Critical heals reduce the next Holy Light cast time by 0.50 sec; 1 min cooldown", "治疗暴击使下一次圣光术施法时间缩短 0.50 秒；冷却 1 分钟", "治療致命一擊使下一次聖光術施法時間縮短 0.50 秒；冷卻 1 分鐘") },
+    },
+})
 
 Preset("balance_p2", "Balance P2", "balance_caster", "balanced", { 30233, 30015, 30235, 28797, 30231, 29918, 30232, 30038, 24262, 30067, 28753, 29302, 29370, 27683, 29988, 0, 32387 }, "ui/druid/balance/gear_sets/p2_a.gear.json")
 Preset("bear_balanced", "Feral Bear P2 Balanced", "bear_tank", "balanced", { 30228, 30017, 30230, 28660, 30222, 32810, 29947, 30106, 30229, 32790, 30834, 29279, 28579, 32658, 32014, 0, 32387 }, "ui/druid/feralbear/gear_sets/p2_balanced.gear.json")
@@ -263,6 +366,9 @@ Preset("hunter_bm_2h_9", "Beast Mastery 2H 9% Hit", "beast_mastery", "cap", { 30
 Preset("hunter_sv_dw_6", "Survival DW 6% Hit", "survival_hunter", "output", { 30141, 30017, 30143, 29994, 30054, 29966, 28506, 30040, 29985, 30104, 29298, 28791, 29383, 28830, 29924, 29948, 30105 }, "ui/hunter/dps/gear_sets/phase_2/sv/dw_6p.gear.json")
 Preset("hunter_sv_2h_6", "Survival 2H 6% Hit", "survival_hunter", "output", { 30141, 30017, 30143, 29994, 30054, 29966, 28506, 30040, 29985, 30104, 29298, 28791, 29383, 28830, 29993, 0, 30105 }, "ui/hunter/dps/gear_sets/phase_2/sv/2h_6p.gear.json")
 Preset("mage_arcane_p2", "Arcane Mage P2", "arcane_mage", "balanced", { 30206, 30015, 30210, 29992, 30196, 29918, 29987, 30038, 30207, 30067, 29287, 29302, 30720, 29370, 29988, 0, 28783 }, "ui/mage/dps/gear_sets/p2Arcane.gear.json")
+Preset("paladin_holy_mixed_p2", "Holy Paladin P2 Mixed Healing", "holy_healer", "balanced", { 30136, 30018, 30138, 29989, 30134, 30047, 30135, 30030, 29991, 30027, 30110, 28790, 29376, 28727, 30108, 29923, 28592 }, "https://www.wowhead.com/tbc/guide/classes/paladin/holy/healer-bis-gear-pve-phase-2", "Guide route adjusted to preserve the source-backed Crystalforge Raiment 4-piece threshold.", "wowhead")
+Preset("paladin_holy_flash_p2", "Holy Paladin P2 Flash of Light", "holy_healer", "flash_of_light", { 30136, 30018, 30138, 29989, 30134, 30047, 30135, 30030, 29991, 30027, 30110, 28790, 29376, 28727, 30108, 29923, 25644 }, "https://www.wowhead.com/tbc/guide/classes/paladin/holy/healer-bis-gear-pve-phase-2", "Flash of Light route uses the spell-specific Blessed Book of Nagrand and preserves Crystalforge Raiment 4-piece.", "wowhead")
+Preset("paladin_holy_light_p2", "Holy Paladin P2 Holy Light", "holy_healer", "holy_light", { 30136, 30018, 30138, 29989, 30134, 30047, 30135, 30030, 29991, 30027, 30110, 28790, 29376, 28727, 30108, 29923, 30063 }, "https://www.wowhead.com/tbc/item=30063/libram-of-absolute-truth", "Holy Light route uses the mana-reduction libram and preserves Crystalforge Raiment 4-piece.", "wowhead")
 Preset("paladin_protection_p2", "Protection Paladin P2", "protection_tank", "balanced", { 30125, 30007, 29070, 29925, 29066, 32515, 30124, 30096, 30126, 32267, 30083, 28407, 29370, 28789, 30095, 28825, 27917 }, "ui/paladin/protection/gear_sets/p2.gear.json")
 Preset("paladin_retribution_p2", "Retribution Paladin P2", "retribution_dps", "balanced", { 32461, 30022, 30055, 30098, 30129, 28795, 29947, 30106, 30257, 30104, 30061, 30834, 29383, 28830, 28430, 0, 27484 }, "ui/paladin/retribution/gear_sets/p2.gear.json")
 Preset("shadow_priest_p2", "Shadow Priest P2", "shadow_dps", "balanced", { 30161, 30666, 30163, 29992, 30107, 24692, 28780, 30038, 29972, 21870, 30109, 29922, 38290, 29370, 28770, 29272, 29982 }, "ui/priest/dps/gear_sets/p2.gear.json")
@@ -289,7 +395,7 @@ DB.classes.WARRIOR = { roles = {
 } }
 
 DB.classes.PALADIN = { roles = {
-    Role({ key = "holy_healer", talentRuleKey = "holy_healer", label = "Holy Paladin", labels = Labels("Holy Paladin", "神圣圣骑士", "神聖聖騎士"), talentTabs = { 1 }, archetype = "healer", models = { "healing_throughput", "mana_longevity" }, priorities = { "bonus healing", "intellect", "spell crit", "mp5", "haste", "downrank efficiency" }, benchmarkKeys = {}, statTokens = { S.healing, S.intellect, S.spellCrit, S.mp5, S.spellHaste }, caps = {}, modes = HealerModes(), setGoal = "Crystalforge Raiment only when its set value beats healing off-pieces", presets = {}, guideUrl = "https://www.wowhead.com/tbc/guide/classes/paladin/holy/healer-bis-gear-pve-phase-2", evidence = "guide" }),
+    Role({ key = "holy_healer", talentRuleKey = "holy_healer", label = "Holy Paladin", labels = Labels("Holy Paladin", "神圣圣骑士", "神聖聖騎士"), talentTabs = { 1 }, archetype = "healer", models = { "healing_throughput", "mana_longevity", "spell_cycle", "set_thresholds" }, priorities = { "bonus healing", "intellect", "spell crit", "mp5", "haste", "spell cycle efficiency" }, benchmarkKeys = {}, statTokens = { S.healing, S.intellect, S.spellCrit, S.mp5, S.spellHaste }, caps = {}, modes = HolyPaladinModes(), setGoal = "Preserve Crystalforge Raiment 4-piece unless the full replacement route is validated; choose the libram by healing spell cycle", presets = { "paladin_holy_mixed_p2", "paladin_holy_flash_p2", "paladin_holy_light_p2" }, guideUrl = "https://www.wowhead.com/tbc/guide/classes/paladin/holy/healer-bis-gear-pve-phase-2", evidence = "guide" }),
     Role({ key = "protection_tank", talentRuleKey = "protection_tank", label = "Protection Paladin", labels = Labels("Protection Paladin", "防护圣骑士", "防護聖騎士"), talentTabs = { 2 }, archetype = "tank", models = { "tank_mitigation", "spell_threat" }, priorities = { "crit immunity", "102.4 combat table", "stamina", "spell power", "defense/avoidance", "spell hit", "mana sustain" }, benchmarkKeys = { "crit_immunity", "avoidance_table", "spell_hit" }, statTokens = { S.stamina, S.defense, S.resilience, S.armor, S.dodge, S.parry, S.block, S.blockValue, S.spellPower, S.spellHit, S.intellect, S.mp5 }, caps = { TANK_CAPS[1], TANK_CAPS[2], SPELL_CAPS[1] }, modes = TankModes({ [S.spellPower] = 1.32, [S.spellHit] = 1.30, [S.intellect] = 1.10 }), setGoal = "Keep Justicar Armor 2-piece for single-target threat; do not force weak Crystalforge bonuses", talentString = "-0530513050000142521051-052050003003", presets = { "paladin_protection_p2" }, guideUrl = "https://www.wowhead.com/tbc/guide/classes/paladin/tank-bis-gear-pve-phase-2" }),
     Role({ key = "retribution_dps", talentRuleKey = "retribution_dps", label = "Retribution Paladin", labels = Labels("Retribution Paladin", "惩戒圣骑士", "懲戒聖騎士"), talentTabs = { 3 }, archetype = "melee", models = { "melee_dps", "utility_dps" }, priorities = { "weapon damage", "hit", "expertise", "strength", "crit", "haste", "seal twisting" }, benchmarkKeys = { "melee_special_hit", "expertise_dodge" }, statTokens = { S.weaponDps, S.hit, S.expertise, S.strength, S.attackPower, S.crit, S.meleeHaste }, baseWeights = RETRIBUTION_P2_EP_WEIGHTS, scoreModel = ScoreModel("phase_ep", "ui/paladin/retribution/presets.ts", 2, "Retribution"), caps = MELEE_CAPS, modes = DpsModes({ S.weaponDps, S.strength }), setGoal = "Crystalforge Battlegear and weapon-first upgrade path", talentString = "5-053201-0523005120033125331051", presets = { "paladin_retribution_p2" }, guideUrl = "https://www.wowhead.com/tbc/guide/classes/paladin/retribution/dps-bis-gear-pve-phase-2" }),
 } }
@@ -338,7 +444,7 @@ local GOAL_LABELS = {
     ["WARRIOR.arms_warrior"] = Labels("Destroyer Battlegear and Blood Frenzy raid utility", "毁灭者战甲与血性狂乱团队增益", "毀滅者戰甲與血性狂亂團隊增益"),
     ["WARRIOR.fury_warrior"] = Labels("Destroyer Battlegear with optimized dual-wield hit budget", "毁灭者战甲，并优化双持命中预算", "毀滅者戰甲，並最佳化雙持命中預算"),
     ["WARRIOR.warrior_protection"] = Labels("Destroyer Armor with a separate Hydross resistance set", "毁灭者护甲，并单独准备海度斯抗性套装", "毀滅者護甲，並單獨準備海度斯抗性套裝"),
-    ["PALADIN.holy_healer"] = Labels("Crystalforge Raiment only when its set value beats healing off-pieces", "仅在套装收益胜过高治疗散件时使用晶铸圣装", "僅在套裝收益勝過高治療散件時使用晶鑄聖裝"),
+    ["PALADIN.holy_healer"] = Labels("Preserve Crystalforge Raiment 4-piece unless the full replacement route is validated; choose the libram by healing spell cycle", "除非已验证整套替换路线，否则保留晶铸圣装 4 件套；圣契按治疗循环选择", "除非已驗證整套替換路線，否則保留晶鑄聖裝 4 件套；聖契按治療循環選擇"),
     ["PALADIN.protection_tank"] = Labels("Keep Justicar Armor 2-piece for single-target threat; do not force weak Crystalforge bonuses", "保留公正两件套强化单体仇恨，不强凑较弱的晶铸套装效果", "保留公正兩件套強化單體仇恨，不強湊較弱的晶鑄套裝效果"),
     ["PALADIN.retribution_dps"] = Labels("Crystalforge Battlegear and weapon-first upgrade path", "晶铸战甲，并优先升级武器", "晶鑄戰甲，並優先升級武器"),
     ["PRIEST.discipline_priest"] = Labels("Avatar Raiment pieces versus high-healing off-pieces", "比较神使圣装部件与高治疗散件", "比較神使聖裝部件與高治療散件"),
@@ -377,6 +483,14 @@ function DB.GetPreset(key)
     return DB.presets[key]
 end
 
+function DB.GetItemEffect(itemID)
+    return DB.itemEffects[tonumber(itemID)]
+end
+
+function DB.GetSet(key)
+    return DB.sets[key]
+end
+
 function DB.GetRole(classToken, roleKey)
     for index = 1, #(DB.GetClassRoles(classToken) or {}) do
         local role = DB.GetClassRoles(classToken)[index]
@@ -398,6 +512,8 @@ function DB.Validate()
         simulatorRoutes = 0,
         guideRoutes = 0,
         definitiveModels = 0,
+        itemEffects = 0,
+        sets = 0,
     }
 
     for classToken, class in pairs(DB.classes) do
@@ -436,6 +552,21 @@ function DB.Validate()
             else
                 issues[#issues + 1] = classToken .. "." .. tostring(role.key) .. ": unknown route evidence " .. tostring(role.routeEvidence)
             end
+        end
+    end
+
+
+    for itemID, effect in pairs(DB.itemEffects) do
+        summary.itemEffects = summary.itemEffects + 1
+        if tonumber(itemID) ~= tonumber(effect.itemID) or not effect.key or not effect.kind or not effect.labels then
+            issues[#issues + 1] = "invalid item effect " .. tostring(itemID)
+        end
+    end
+
+    for key, set in pairs(DB.sets) do
+        summary.sets = summary.sets + 1
+        if set.key ~= key or #(set.itemIDs or {}) == 0 or #(set.bonuses or {}) == 0 then
+            issues[#issues + 1] = "invalid set definition " .. tostring(key)
         end
     end
 

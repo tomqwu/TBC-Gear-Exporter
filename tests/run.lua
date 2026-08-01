@@ -1151,7 +1151,7 @@ end)
 
 test("Phase 2 database covers every TBC class and PvE specialization", function()
     local db = assert(_G.TBCGearExporterP2DB)
-    assertEquals(db.version, 6)
+    assertEquals(db.version, 7)
     assertEquals(db.phase, 2)
     assertEquals(db.patch, "2.5.6")
     assertEquals(#db.sources, 2)
@@ -1194,8 +1194,8 @@ test("Phase 2 database covers every TBC class and PvE specialization", function(
 
     assertEquals(classCount, 9)
     assertEquals(roleCount, 28)
-    assertEquals(presetCount, 29)
-    assertEquals(targetCount, 475)
+    assertEquals(presetCount, 32)
+    assertEquals(targetCount, 526)
     assertEquals(#db.GetClassRoles("DRUID"), 4)
     assertEquals(db.GetRole("PALADIN", "protection_tank").archetype, "tank")
     assertEquals(db.GetRole("MAGE", "missing"), nil)
@@ -1215,6 +1215,8 @@ test("Phase 2 database validates score models separately from gear routes", func
     assertEquals(summary.simulatorRoutes, 18)
     assertEquals(summary.guideRoutes, 10)
     assertEquals(summary.definitiveModels, 0)
+    assertEquals(summary.itemEffects, 9)
+    assertEquals(summary.sets, 1)
 end)
 
 test("pinned Phase 2 EP imports preserve source values and provenance", function()
@@ -1521,7 +1523,7 @@ test("Yamede dual wield evaluates generic one-hand candidates against both weapo
     assertEquals(private.EquipmentSlotKey(spiteblade), "MAINHAND")
 
     local engine = private.BuildGearRecommendations(profile, { spiteblade }, strategy, role.key, "balanced")
-    assertEquals(engine.version, 11)
+    assertEquals(engine.version, 12)
     assertEquals(engine.candidateCount, 1)
     assertEquals(#engine.upgrades, 1)
     local upgrade = engine.upgrades[1]
@@ -2738,7 +2740,7 @@ test("item comparison switches role weights and rejects mismatched slots", funct
     assertEquals(private.FindStrategyRole(nil, "missing").key, "general_inventory")
 
     local damageEngine = private.BuildGearRecommendations(profile, { candidate }, strategy, "retribution_dps")
-    assertEquals(damageEngine.version, 11)
+    assertEquals(damageEngine.version, 12)
     assertEquals(damageEngine.roleKey, "retribution_dps")
     assertEquals(#damageEngine.availableRoles, 3)
     assertEquals(damageEngine.talentMap.effects[1].key, "crusade")
@@ -2816,7 +2818,7 @@ test("holy paladin role fit rejects physical crit bracers before upgrade scoring
     assertFalse(incidentalIntellectFit.suitable, "incidental intellect must not make physical gear healer-suitable")
 
     local engine = private.BuildGearRecommendations(profile, { physicalCandidate, healingCandidate }, strategy, "holy_healer")
-    assertEquals(engine.version, 11)
+    assertEquals(engine.version, 12)
     assertEquals(engine.candidateCount, 1)
     assertEquals(engine.roleRejectedCount, 1)
     assertEquals(#engine.upgrades, 1)
@@ -2863,7 +2865,7 @@ test("gear strategy engine compares current slots with compatible saved candidat
     assertTrue(#engine.priorityStats <= 6)
     assertTrue(#engine.benchmarkGaps >= 2)
     assertEquals(#engine.upgrades, 2)
-    assertContains(engine.caveat, "排序只使用可见物品属性")
+    assertContains(engine.caveat, "可见属性、已收录物品效果与套装阈值分开判断")
     assertEquals(engine.phase2.phase, 2)
     assertEquals(engine.phase2.modeKey, "balanced")
     assertEquals(#engine.phase2.availableModes, 3)
@@ -3013,7 +3015,7 @@ test("protection paladin strategy compares visible gains and losses without inve
     assertEquals(role.observed.gearStatHighlights[1].value, 20)
     assertFalse(role.observed.gearStatHighlights[1].value == 30, "candidate stamina must not leak into current gear highlights")
 
-    assertEquals(engine.version, 11)
+    assertEquals(engine.version, 12)
     assertEquals(#engine.upgrades, 1)
     assertEquals(engine.upgrades[1].evidence, "high")
     assertEquals(engine.upgrades[1].verdict, "estimate")
@@ -3635,7 +3637,7 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(allExport, "\"loadout_rejected_count\":")
     assertContains(allExport, "\"unscorable_rejected_count\":")
     assertContains(allExport, "\"phase2_strategy\": {")
-    assertContains(allExport, "\"database_version\": 6")
+    assertContains(allExport, "\"database_version\": 7")
     assertContains(allExport, "\"phase\": 2")
     assertContains(allExport, "\"mode_key\": \"balanced\"")
     assertContains(allExport, "\"mode_label_zh_cn\": \"均衡\"")
@@ -3645,7 +3647,7 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(allExport, "3fc6a414979d62186f75d51ab6f6dd5d44f35b9c")
     assertContains(allExport, "\"equipped_gear\": [")
     assertContains(allExport, "Worn Leather Cap")
-    assertContains(allExport, "\"caveat\": \"排序只使用可见物品属性")
+    assertContains(allExport, "\"caveat\": \"可见属性、已收录物品效果与套装阈值分开判断")
     assertContains(allExport, "\"label\": \"Feral Bear Tank\"")
     assertContains(allExport, "\"confidence\": 100")
     assertContains(allExport, "\"tank_mitigation\"")
@@ -3936,7 +3938,7 @@ test("RefreshExport no-ops without frame and updates edit box with frame", funct
     assertContains(Addon.exportFrame.compareVerdict.text, "物品数据")
     assertTrue(Addon.exportFrame.adviceContent.height >= 634)
     local _, adviceBreaks = Addon.exportFrame.adviceSummary.text:gsub("\n", "\n")
-    assertEquals(adviceBreaks, 3)
+    assertEquals(adviceBreaks, 4)
     assertEquals(#Addon.exportFrame.adviceRows, 2)
     assertEquals(Addon.exportFrame.adviceRows[1].height, 116)
     assertEquals(Addon.exportFrame.adviceRows[1].reason.height, 78)
@@ -4062,21 +4064,22 @@ test("CreateExportFrame wires UI controls and scripts", function()
     assertTrue(exportFrame.adviceSummary ~= nil)
     assertTrue(exportFrame.adviceCaveat ~= nil)
     assertEquals(exportFrame.adviceSummary.width, 478)
-    assertEquals(exportFrame.adviceSummary.height, 88)
+    assertEquals(exportFrame.adviceSummary.height, 108)
     assertEquals(exportFrame.adviceSummary.justifyV, "TOP")
     assertEquals(exportFrame.adviceCaveat.width, 478)
-    assertEquals(exportFrame.adviceCaveat.height, 56)
+    assertEquals(exportFrame.adviceCaveat.height, 64)
     assertEquals(exportFrame.adviceCaveat.justifyV, "TOP")
     assertTrue(exportFrame.comparePanel ~= nil)
     assertTrue(exportFrame.comparePanel.backdrop ~= nil)
-    assertEquals(exportFrame.comparePanel.points[1][5], -280)
+    assertEquals(exportFrame.comparePanel.height, 142)
+    assertEquals(exportFrame.comparePanel.points[1][5], -310)
     assertTrue(exportFrame.compareCurrentButton ~= nil)
     assertTrue(exportFrame.compareCandidateButton ~= nil)
     assertTrue(exportFrame.compareNames ~= nil)
     assertTrue(exportFrame.compareVerdict ~= nil)
     assertTrue(exportFrame.compareDetails ~= nil)
     assertTrue(exportFrame.adviceRowsContent ~= nil)
-    assertEquals(exportFrame.adviceRowsContent.points[1][5], -410)
+    assertEquals(exportFrame.adviceRowsContent.points[1][5], -462)
     assertTrue(exportFrame.itemListContent ~= nil)
     assertTrue(exportFrame.analysisContent ~= nil)
     assertTrue(exportFrame.analysisText ~= nil)
@@ -4549,7 +4552,7 @@ test("Thatdruid report uses the talent-aware combined crit benchmark", function(
     local strategy = private.BuildStrategyBook(profile, private.BuildChartStats({}))
     local bear = private.FindStrategyRole(strategy, "bear_tank")
     assertEquals(strategy.version, 6)
-    assertEquals(strategy.phaseDatabase.version, 6)
+    assertEquals(strategy.phaseDatabase.version, 7)
     assertEquals(bear.observed.tank.critReduction, 5.03)
     assertEquals(bear.observed.tank.critImmunity.gap, 0.57)
     assertEquals(private.BenchmarkObservedValue("crit_immunity", bear.observed), 5.03)
@@ -4701,6 +4704,265 @@ test("weapon loadout rules reject offhands beside an equipped two-hander", funct
     assertTrue(private.LoadoutCompatible({ equipped = { items = { oneHander } } }, offhand))
 end)
 
+local function HolyGear(itemID, name, equipSlot, stats)
+    return {
+        itemID = itemID,
+        name = name,
+        category = "Gear",
+        equipSlot = equipSlot,
+        classID = 4,
+        subClassID = equipSlot == "INVTYPE_RELIC" and 8 or 4,
+        itemLevel = 120,
+        quality = 4,
+        source = "equipped",
+        stats = stats or {},
+    }
+end
+
+local function HolyPaladinProfile(equipped)
+    return {
+        classEnglish = "PALADIN",
+        classLocalized = "圣骑士",
+        locale = "zhCN",
+        talents = {
+            available = true,
+            primaryTabIndex = 1,
+            primaryTab = "神圣",
+            totalPoints = 61,
+            pointsSpent = 61,
+            summary = "45/11/5",
+            tabs = {
+                { index = 1, name = "神圣", points = 45, talents = {} },
+                { index = 2, name = "防护", points = 11, talents = {} },
+                { index = 3, name = "惩戒", points = 5, talents = {} },
+            },
+        },
+        characterStats = private.BuildCharacterStatsSnapshot(),
+        equipped = { items = equipped or {} },
+    }
+end
+
+local function CrystalforgeFourPiece(relic)
+    return {
+        HolyGear(30136, "Crystalforge Greathelm", "INVTYPE_HEAD", { { token = "ITEM_MOD_SPELL_HEALING_DONE_SHORT", value = 80 } }),
+        HolyGear(30138, "Crystalforge Pauldrons", "INVTYPE_SHOULDER", { { token = "ITEM_MOD_SPELL_HEALING_DONE_SHORT", value = 70 } }),
+        HolyGear(30134, "Crystalforge Chestguard", "INVTYPE_CHEST", { { token = "ITEM_MOD_SPELL_HEALING_DONE_SHORT", value = 90 } }),
+        HolyGear(30135, "Crystalforge Gloves", "INVTYPE_HAND", { { token = "ITEM_MOD_SPELL_HEALING_DONE_SHORT", value = 50 } }),
+        relic or HolyGear(25644, "Blessed Book of Nagrand", "INVTYPE_RELIC"),
+    }
+end
+
+test("effect database defines Holy Paladin spell cycles, effects, sets, and sourced routes", function()
+    local db = assert(_G.TBCGearExporterP2DB)
+    local holy = assert(db.GetRole("PALADIN", "holy_healer"))
+    assertEquals(holy.modes[1].key, "balanced")
+    assertEquals(holy.modes[2].key, "flash_of_light")
+    assertEquals(holy.modes[3].key, "holy_light")
+    assertEquals(holy.presets[1], "paladin_holy_mixed_p2")
+    assertEquals(holy.presets[2], "paladin_holy_flash_p2")
+    assertEquals(holy.presets[3], "paladin_holy_light_p2")
+    assertContains(holy.setGoalLabels.zhCN, "保留晶铸圣装 4 件套")
+
+    local absolute = assert(db.GetItemEffect(30063))
+    assertEquals(absolute.kind, "spell_mana_reduction")
+    assertEquals(absolute.modeAffinity.flash_of_light, 0)
+    assertEquals(absolute.modeAffinity.holy_light, 3)
+    assertContains(absolute.sourceUrl, "item=30063")
+    assertEquals(db.GetItemEffect(999999), nil)
+
+    local set = assert(db.GetSet("crystalforge_raiment"))
+    assertEquals(#set.itemIDs, 5)
+    assertEquals(set.bonuses[2].pieces, 4)
+    assertContains(set.bonuses[2].labels.zhCN, "0.50 秒")
+    assertEquals(db.GetSet("missing"), nil)
+
+    local preset = assert(db.GetPreset("paladin_holy_light_p2"))
+    assertEquals(preset.source, "wowhead")
+    assertEquals(preset.itemIDs[7], 30135)
+    assertEquals(preset.itemIDs[17], 30063)
+end)
+
+test("known effects are role-gated and compare by the selected healing cycle", function()
+    local db = assert(_G.TBCGearExporterP2DB)
+    local role = assert(db.GetRole("PALADIN", "holy_healer"))
+    local current = HolyGear(25644, "Blessed Book of Nagrand", "INVTYPE_RELIC")
+    local absolute = HolyGear(30063, "Libram of Absolute Truth", "INVTYPE_RELIC")
+    local souls = HolyGear(28592, "Libram of Souls Redeemed", "INVTYPE_RELIC")
+    local repentance = HolyGear(29388, "Libram of Repentance", "INVTYPE_RELIC")
+    local prism = HolyGear(30621, "Prism of Inner Calm", "INVTYPE_TRINKET")
+    local profile = HolyPaladinProfile(CrystalforgeFourPiece(current))
+    local strategy = { roles = { role } }
+
+    assertEquals(private.ItemID({ item_id = 30063 }), 30063)
+    assertEquals(private.ItemID(nil), nil)
+    assertEquals(private.KnownItemEffect(absolute).key, "libram_of_absolute_truth")
+    assertTrue(private.DefinitionAppliesToRole(private.KnownItemEffect(absolute), role))
+    assertTrue(private.DefinitionAppliesToRole(private.KnownItemEffect(HolyGear(28590, "Ribbon", "INVTYPE_TRINKET")), role))
+    assertTrue(private.DefinitionAppliesToRole({}, role))
+    assertFalse(private.DefinitionAppliesToRole(nil, role))
+    assertFalse(private.DefinitionAppliesToRole(private.KnownItemEffect(repentance), role))
+    assertEquals(private.ItemRoleFit(absolute, role).reason, "known_effect_present")
+    assertEquals(private.ItemRoleFit(repentance, role).reason, "known_effect_role_mismatch")
+    assertEquals(private.ItemRoleFit(prism, role).reason, "known_effect_role_mismatch")
+
+    local holyLight = private.CompareItems(profile, current, absolute, strategy, role.key, nil, "holy_light")
+    assertTrue(holyLight.comparable)
+    assertFalse(holyLight.visibleComparable)
+    assertEquals(holyLight.decisionKind, "effect_choice")
+    assertEquals(holyLight.effectDecision.currentAffinity, 0)
+    assertEquals(holyLight.effectDecision.candidateAffinity, 3)
+    assertTrue(holyLight.effectDecision.preferCandidate)
+    assertEquals(holyLight.evidence, "medium")
+    assertEquals(holyLight.verdict, "review")
+    assertEquals(private.DecisionMetricText(holyLight, "zhCN"), "循环选择")
+    assertContains(private.EffectDecisionText(holyLight, "zhCN"), "圣光术法力消耗降低 34 点")
+
+    local flash = private.CompareItems(profile, current, absolute, strategy, role.key, nil, "flash_of_light")
+    assertTrue(flash.effectDecision.preferCurrent)
+    assertFalse(flash.effectDecision.preferCandidate)
+    assertTrue(private.BuildEffectDecision(current, souls, role, "balanced").preferCandidate)
+    assertTrue(private.BuildEffectDecision(current, current, role, "flash_of_light").equivalent)
+    assertTrue(private.BuildEffectDecision(nil, absolute, role, "holy_light").preferCandidate)
+
+    local holyEngine = private.BuildGearRecommendations(profile, { absolute }, strategy, role.key, "holy_light")
+    assertEquals(holyEngine.version, 12)
+    assertEquals(#holyEngine.upgrades, 1)
+    assertEquals(holyEngine.upgrades[1].candidate.itemID, 30063)
+    assertEquals(holyEngine.effectDecisionCount, 1)
+    assertEquals(private.RecommendationSelectionPriority(holyEngine.upgrades[1]), 20000)
+    local flashEngine = private.BuildGearRecommendations(profile, { absolute }, strategy, role.key, "flash_of_light")
+    assertEquals(#flashEngine.upgrades, 0)
+    local rejected = private.BuildGearRecommendations(profile, { repentance, prism }, strategy, role.key, "balanced")
+    assertEquals(rejected.candidateCount, 0)
+    assertEquals(rejected.roleRejectedCount, 2)
+end)
+
+test("set thresholds turn off-piece gains into tradeoffs and surface four-piece completion", function()
+    local role = assert(_G.TBCGearExporterP2DB.GetRole("PALADIN", "holy_healer"))
+    local strategy = { roles = { role } }
+    local fourPiece = CrystalforgeFourPiece()
+    local profile = HolyPaladinProfile(fourPiece)
+    local offPiece = HolyGear(30112, "Glorious Gauntlets of Crestfall", "INVTYPE_HAND", {
+        { token = "ITEM_MOD_SPELL_HEALING_DONE_SHORT", value = 140 },
+        { token = "ITEM_MOD_INTELLECT_SHORT", value = 30 },
+    })
+    offPiece.source = "bags"
+    local comparison = private.CompareItems(profile, fourPiece[4], offPiece, strategy, role.key, nil, "balanced")
+    assertTrue(comparison.scoreGain > 2)
+    assertTrue(comparison.breaksActiveSetBonus)
+    assertFalse(comparison.gainsSetBonus)
+    assertEquals(comparison.setImpacts[1].pieces, 4)
+    assertEquals(comparison.setImpacts[1].before, 4)
+    assertEquals(comparison.setImpacts[1].after, 3)
+    assertEquals(comparison.setImpacts[1].effect, "breaks_active_bonus")
+    assertEquals(comparison.verdict, "tradeoff")
+    assertContains(private.SetImpactText(comparison, "zhCN"), "晶铸圣装 4pc 失去")
+    assertTrue(private.HasSetImpact(comparison.setImpacts, "breaks_active_bonus"))
+    assertFalse(private.HasSetImpact(comparison.setImpacts, "gains_bonus"))
+
+    local engine = private.BuildGearRecommendations(profile, { offPiece }, strategy, role.key, "balanced")
+    assertEquals(#engine.upgrades, 1)
+    assertEquals(engine.upgrades[1].verdict, "tradeoff")
+    assertEquals(engine.setDecisionCount, 1)
+    local impactLines = {}
+    private.AppendSetImpactsJson(impactLines, 0, comparison.setImpacts, true)
+    local impactJson = table.concat(impactLines, "\n")
+    assertContains(impactJson, "\"set_key\": \"crystalforge_raiment\"")
+    assertContains(impactJson, "\"effect\": \"breaks_active_bonus\"")
+    assertContains(impactJson, "\"before\": 4")
+    assertContains(impactJson, "\"after\": 3")
+    assertEquals(impactLines[#impactLines], "],")
+
+    local offPieceCurrent = HolyGear(99910, "Strong Off-piece Gloves", "INVTYPE_HAND", {
+        { token = "ITEM_MOD_SPELL_HEALING_DONE_SHORT", value = 180 },
+    })
+    local threePiece = { fourPiece[1], fourPiece[2], fourPiece[3], offPieceCurrent, fourPiece[5] }
+    local completionProfile = HolyPaladinProfile(threePiece)
+    local setGloves = HolyGear(30135, "Crystalforge Gloves", "INVTYPE_HAND", {
+        { token = "ITEM_MOD_SPELL_HEALING_DONE_SHORT", value = 50 },
+    })
+    setGloves.source = "bank"
+    local completion = private.CompareItems(completionProfile, offPieceCurrent, setGloves, strategy, role.key, nil, "balanced")
+    assertTrue(completion.gainsSetBonus)
+    assertTrue(completion.scoreGain < 0)
+    assertEquals(completion.decisionKind, "set_threshold")
+    assertEquals(completion.verdict, "review")
+    local completionEngine = private.BuildGearRecommendations(completionProfile, { setGloves }, strategy, role.key, "balanced")
+    assertEquals(#completionEngine.upgrades, 1)
+    assertEquals(completionEngine.upgrades[1].candidate.itemID, 30135)
+    assertTrue(private.RecommendationSelectionPriority(completionEngine.upgrades[1]) > 9000)
+
+    assertEquals(#private.BuildSetImpacts(profile, fourPiece[4], fourPiece[4], role), 0)
+    local count, members = private.SetItemCount(fourPiece, _G.TBCGearExporterP2DB.GetSet("crystalforge_raiment"))
+    assertEquals(count, 4)
+    assertTrue(members[30135])
+end)
+
+test("guide route gaps and machine exports preserve evidence without inventing EP", function()
+    local role = assert(_G.TBCGearExporterP2DB.GetRole("PALADIN", "holy_healer"))
+    local current = HolyGear(25644, "Blessed Book of Nagrand", "INVTYPE_RELIC")
+    local absolute = HolyGear(30063, "Libram of Absolute Truth", "INVTYPE_RELIC")
+    absolute.source = "bags"
+    local profile = HolyPaladinProfile(CrystalforgeFourPiece(current))
+    local engine = private.BuildGearRecommendations(profile, { absolute }, { roles = { role } }, role.key, "holy_light")
+    local wristGap
+    for index = 1, #engine.routeGaps do
+        if engine.routeGaps[index].target.itemID == 30047 then wristGap = engine.routeGaps[index] end
+    end
+    assertTrue(wristGap ~= nil)
+    assertEquals(wristGap.slotKey, "WRIST")
+    assertEquals(wristGap.evidence, "wowhead")
+    assertContains(private.RouteGapsText(engine, "zhCN", 3), "Item #")
+    assertEquals(private.RouteGapsText({ routeGaps = {} }, "zhCN"), "所选攻略路线没有缺失物品")
+
+    local normalized = private.BuildRouteGaps({ presetProgress = { source = "guide", missing = {
+        { itemID = 1, slotKey = "FINGER1", name = "Ring" },
+        { itemID = 2, slotKey = "TRINKET2", name = "Trinket" },
+    } } }, { FINGER = { item = { itemID = 9 } }, TRINKET = { item = { itemID = 8 } } })
+    assertEquals(normalized[1].slotKey, "FINGER")
+    assertEquals(normalized[1].current.itemID, 9)
+    assertEquals(normalized[2].slotKey, "TRINKET")
+    assertEquals(normalized[2].current.itemID, 8)
+
+    local lines = {}
+    private.AppendGearRecommendationsJson(lines, 0, engine, false)
+    local json = table.concat(lines, "\n")
+    assertContains(json, "\"version\": 12")
+    assertContains(json, "\"effect_decision_count\": 1")
+    assertContains(json, "\"route_gaps\": [")
+    assertContains(json, "\"known_effect\": {")
+    assertContains(json, "\"key\": \"libram_of_absolute_truth\"")
+    assertContains(json, "\"decision_kind\": \"effect_choice\"")
+    assertContains(json, "\"effect_decision\": {")
+    assertContains(json, "\"candidate_affinity\": 3")
+    assertContains(json, "\"set_impacts\": [")
+    assertFalse(json:find("candidate_ep", 1, true), "contextual effects must not be emitted as fake EP")
+
+    local nullLines = {}
+    private.AppendKnownEffectJson(nullLines, 0, "known_effect", nil, true)
+    private.AppendEffectDecisionJson(nullLines, 0, nil, false)
+    assertEquals(nullLines[1], "\"known_effect\": null,")
+    assertEquals(nullLines[2], "\"effect_decision\": null")
+end)
+
+test("Holy Light effect decisions render clearly in the Chinese advice GUI", function()
+    resetRuntimeState(Addon)
+    Addon:CreateExportFrame()
+    local role = assert(_G.TBCGearExporterP2DB.GetRole("PALADIN", "holy_healer"))
+    local current = HolyGear(25644, "Blessed Book of Nagrand", "INVTYPE_RELIC")
+    local absolute = HolyGear(30063, "Libram of Absolute Truth", "INVTYPE_RELIC")
+    local profile = HolyPaladinProfile(CrystalforgeFourPiece(current))
+    local engine = private.BuildGearRecommendations(profile, { absolute }, { roles = { role } }, role.key, "holy_light")
+    assertEquals(Addon:RefreshGearAdvice(profile, engine), 1)
+    assertContains(Addon.exportFrame.adviceSummary.text, "攻略路线缺口")
+    assertContains(Addon.exportFrame.adviceRows[1].gain.text, "循环选择")
+    assertContains(Addon.exportFrame.adviceRows[1].reason.text, "效果选择")
+    assertContains(Addon.exportFrame.adviceRows[1].reason.text, "圣光术法力消耗降低 34 点")
+    assertContains(Addon.exportFrame.compareVerdict.text, "循环选择")
+    assertContains(Addon.exportFrame.compareDetails.text, "效果选择")
+    assertTrue(Addon.exportFrame.adviceContent.height >= 686)
+end)
+
 test("hidden trinket effects are excluded instead of scored as upgrades", function()
     local badge = {
         itemID = 32658, name = "Badge of Tenacity", category = "Gear", equipSlot = "INVTYPE_TRINKET",
@@ -4722,7 +4984,7 @@ test("hidden trinket effects are excluded instead of scored as upgrades", functi
     assertEquals(private.RecommendationVerdictLabel(comparison.verdict, "zhCN"), "效果无法量化")
 
     local engine = private.BuildGearRecommendations(profile, { shard }, { roles = { role } }, role.key)
-    assertEquals(engine.version, 11)
+    assertEquals(engine.version, 12)
     assertEquals(engine.unscorableRejectedCount, 1)
     assertEquals(engine.loadoutRejectedCount, 0)
     assertEquals(#engine.upgrades, 0)

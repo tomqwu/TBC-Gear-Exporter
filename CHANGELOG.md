@@ -4,6 +4,15 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+## [0.4.9] - 2026-08-01
+
+- Add a source-linked item-effect layer for nine key TBC healer relics/trinkets and role-gate known tank/DPS effects before recommendation scoring.
+- Give Holy Paladin separate Mixed Healing, Flash of Light, and Holy Light views with three P2 guide routes and spell-cycle-aware libram choices.
+- Protect the Crystalforge Raiment 2/4-piece thresholds: breaking an active bonus is a tradeoff, while completing a threshold is surfaced even when visible stats decline.
+- Export `known_effect`, `effect_decision`, `set_impacts`, and `route_gaps` in AI/JSON, plus localized explanations in Markdown, text, and Gear Advice.
+- Show guide-route gaps in Gear Advice and expand the summary/comparison layout to prevent the Chinese text overlap visible in long recommendations.
+- Expand the database to 32 reference sets and 526 target slots, the engine to version 12, and the suite to 96 tests with 99.05% executable-line coverage.
+
 ## [0.4.8] - 2026-08-01
 
 - Add an enforceable score-model contract to all 28 role records and publish the audited maturity matrix in `docs/engine-contract.md`.

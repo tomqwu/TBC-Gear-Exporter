@@ -14,7 +14,7 @@ local ClientLocale
 local PromptLocale
 
 local GEAR_ENGINE = {}
-local P2_STRATEGY_DB = _G.TBCGearExporterP2DB or { classes = {}, presets = {}, sources = {}, slotOrder = {} }
+local P2_STRATEGY_DB = _G.TBCGearExporterP2DB or { classes = {}, presets = {}, itemEffects = {}, sets = {}, sources = {}, slotOrder = {} }
 
 GEAR_ENGINE.EQUIPMENT_SLOTS = {
     { id = 1, key = "HEAD" },
@@ -1192,6 +1192,11 @@ local UI_STRINGS = {
         advice_priorities = "Priority stats: %s",
         advice_benchmarks = "Key checks: %s",
         advice_no_gaps = "No unresolved benchmark check",
+        advice_routes = "Guide route gaps: %s",
+        advice_no_routes = "No missing items in the selected guide route",
+        advice_effect_choice = "Effect choice: %s",
+        advice_set_impact = "Set impact: %s",
+        advice_cycle_choice = "Cycle choice",
         advice_no_upgrades = "No saved bag or bank item is strong enough to compare for this role.",
         advice_no_safe_upgrades = "No safe upgrade is recommended; %d candidate(s) would move an unmet benchmark farther from its target.",
         advice_no_scorable_upgrades = "No reliable upgrade is recommended; %d comparison(s) include unparsed use, proc, set, gem, or enchant effects.",
@@ -1207,7 +1212,7 @@ local UI_STRINGS = {
         advice_evidence_high = "High",
         advice_evidence_medium = "Medium",
         advice_evidence_low = "Low",
-        advice_caveat = "Ranking uses visible item stats only. Set bonuses, sockets, enchants, procs, rotations, and encounters are not modeled.",
+        advice_caveat = "Visible stats are ranked separately from curated item effects and set thresholds. Sockets, enchants, unknown procs, and encounter behavior still require review.",
         phase2_title = "Phase 2 Strategy Engine",
         phase2_summary = "%s · %s · database v%s · patch %s",
         phase2_mode_hint = "Choose analysis mode",
@@ -1323,6 +1328,11 @@ local UI_STRINGS = {
         advice_priorities = "优先属性：%s",
         advice_benchmarks = "关键检查：%s",
         advice_no_gaps = "当前没有待处理的基准检查",
+        advice_routes = "攻略路线缺口：%s",
+        advice_no_routes = "所选攻略路线没有缺失物品",
+        advice_effect_choice = "效果选择：%s",
+        advice_set_impact = "套装影响：%s",
+        advice_cycle_choice = "循环选择",
         advice_no_upgrades = "背包和银行中没有值得为此职责进一步比较的候选装备。",
         advice_no_safe_upgrades = "没有可安全推荐的升级；%d 件候选会让尚未达标的属性离目标更远。",
         advice_no_scorable_upgrades = "没有可可靠推荐的升级；%d 项比较包含尚未解析的使用、触发、套装、宝石或附魔效果。",
@@ -1338,7 +1348,7 @@ local UI_STRINGS = {
         advice_evidence_high = "高",
         advice_evidence_medium = "中",
         advice_evidence_low = "低",
-        advice_caveat = "排序只使用可见物品属性；尚未建模套装、宝石、附魔、触发、循环与具体战斗。",
+        advice_caveat = "可见属性、已收录物品效果与套装阈值分开判断；宝石、附魔、未知触发及具体战斗仍需核对。",
         phase2_title = "P2 配装策略引擎",
         phase2_summary = "%s · %s · 数据库 v%s · 客户端 %s",
         phase2_mode_hint = "选择分析模式",
@@ -1454,6 +1464,11 @@ local UI_STRINGS = {
         advice_priorities = "優先屬性：%s",
         advice_benchmarks = "關鍵檢查：%s",
         advice_no_gaps = "目前沒有待處理的基準檢查",
+        advice_routes = "攻略路線缺口：%s",
+        advice_no_routes = "所選攻略路線沒有缺少物品",
+        advice_effect_choice = "效果選擇：%s",
+        advice_set_impact = "套裝影響：%s",
+        advice_cycle_choice = "循環選擇",
         advice_no_upgrades = "背包和銀行中沒有值得為此職責進一步比較的候選裝備。",
         advice_no_safe_upgrades = "沒有可安全推薦的升級；%d 件候選會讓尚未達標的屬性離目標更遠。",
         advice_no_scorable_upgrades = "沒有可可靠推薦的升級；%d 項比較包含尚未解析的使用、觸發、套裝、寶石或附魔效果。",
@@ -1469,7 +1484,7 @@ local UI_STRINGS = {
         advice_evidence_high = "高",
         advice_evidence_medium = "中",
         advice_evidence_low = "低",
-        advice_caveat = "排序只使用可見物品屬性；尚未建模套裝、寶石、附魔、觸發、循環與具體戰鬥。",
+        advice_caveat = "可見屬性、已收錄物品效果與套裝門檻分開判斷；寶石、附魔、未知觸發及具體戰鬥仍需核對。",
         phase2_title = "P2 配裝策略引擎",
         phase2_summary = "%s · %s · 資料庫 v%s · 客戶端 %s",
         phase2_mode_hint = "選擇分析模式",
@@ -1548,7 +1563,8 @@ GEAR_ENGINE.REPORT_TERMS = {
         phase2_strategy = "Phase 2 Strategy", mode = "Strategy mode", available_modes = "Available views", set_goal = "Set / route goal", target_preset = "Reference gear set",
         target_progress = "Saved progress", missing_targets = "Next target items", caps = "Caps and gates", research_evidence = "Research evidence",
         sources = "Sources", no_preset = "No WoWSims reference gear route; use the class guide and treat ranking as an estimate.",
-        priority_stats = "Priority stats", benchmark_gaps = "Key benchmark checks", caveat = "Limit",
+        priority_stats = "Priority stats", benchmark_gaps = "Key benchmark checks", route_priorities = "Guide route gaps", caveat = "Limit",
+        effect_choice = "Effect choice", set_impact = "Set impact",
         score_model = "Score model", item_data = "Item data completeness",
         model_phase_ep = "source-backed static P2 EP", model_cross_phase_shared_ep = "cross-phase/shared EP estimate", model_ordered_stat_heuristic = "ordered-stat heuristic",
         model_not_definitive = "ranked estimate only; definitive upgrade labels disabled",
@@ -1586,7 +1602,8 @@ GEAR_ENGINE.REPORT_TERMS = {
         phase2_strategy = "P2 配装攻略", mode = "策略模式", available_modes = "可切换视角", set_goal = "套装 / 路线目标", target_preset = "参考目标套装",
         target_progress = "本地收集进度", missing_targets = "下一批目标物品", caps = "属性阈值与硬门槛", research_evidence = "研究证据",
         sources = "资料来源", no_preset = "该专精没有 WoWSims 参考装备路线；请结合职业攻略，并把排序视为估算。",
-        priority_stats = "优先属性", benchmark_gaps = "关键基准检查", caveat = "分析限制",
+        priority_stats = "优先属性", benchmark_gaps = "关键基准检查", route_priorities = "攻略路线缺口", caveat = "分析限制",
+        effect_choice = "效果选择", set_impact = "套装影响",
         score_model = "评分模型", item_data = "物品数据完整度",
         model_phase_ep = "有明确来源的 P2 静态 EP", model_cross_phase_shared_ep = "跨阶段 / 共用 EP 估算", model_ordered_stat_heuristic = "属性顺序启发式",
         model_not_definitive = "仅作候选排序；已禁用确定性升级结论",
@@ -1624,7 +1641,8 @@ GEAR_ENGINE.REPORT_TERMS = {
         phase2_strategy = "P2 配裝攻略", mode = "策略模式", available_modes = "可切換視角", set_goal = "套裝 / 路線目標", target_preset = "參考目標套裝",
         target_progress = "本地收集進度", missing_targets = "下一批目標物品", caps = "屬性門檻與硬條件", research_evidence = "研究證據",
         sources = "資料來源", no_preset = "該專精沒有 WoWSims 參考裝備路線；請結合職業攻略，並把排序視為估算。",
-        priority_stats = "優先屬性", benchmark_gaps = "關鍵基準檢查", caveat = "分析限制",
+        priority_stats = "優先屬性", benchmark_gaps = "關鍵基準檢查", route_priorities = "攻略路線缺口", caveat = "分析限制",
+        effect_choice = "效果選擇", set_impact = "套裝影響",
         score_model = "評分模型", item_data = "物品資料完整度",
         model_phase_ep = "有明確來源的 P2 靜態 EP", model_cross_phase_shared_ep = "跨階段 / 共用 EP 估算", model_ordered_stat_heuristic = "屬性順序啟發式",
         model_not_definitive = "僅作候選排序；已停用確定性升級結論",
@@ -3635,7 +3653,7 @@ local function BuildAIPrompt(profile, scope, filter, itemCount)
             "当前天赋：" .. talentSummary .. "。",
             "请优先使用 current_talents.tree_points、current_talents.trees[].points_spent 和每个已点天赋的 points_spent/rank 来判断当前天赋点数。",
             "银行内容是最后一次保存的快照。背包/银行来源只代表库存位置，不代表物品已经装备。",
-            "请使用 character_stats、chart_stats、strategy_book、gear_recommendations、当前装备、物品属性、物品等级、品质、装备栏位、来源位置和 wowhead_url 字段。重点读取 score_model、talent_mapping、phase2_strategy、verdict、benchmark_impacts 与 data_completeness；ordered_stat_heuristic 和 cross_phase_shared_ep 只能视为候选排序。不要把参考装备路线说成已模拟，也不要编造隐藏附魔、宝石、套装或触发效果。",
+            "请使用 character_stats、chart_stats、strategy_book、gear_recommendations、当前装备、物品属性、物品等级、品质、装备栏位、来源位置和 wowhead_url 字段。重点读取 score_model、talent_mapping、phase2_strategy、known_effect、effect_decision、set_impacts、route_gaps、verdict、benchmark_impacts 与 data_completeness；已收录效果用于情境选择，不等同 EP。ordered_stat_heuristic 和 cross_phase_shared_ep 只能视为候选排序。不要把参考装备路线说成已模拟，也不要编造未收录的附魔、宝石、套装或触发效果。",
             "请考虑该职业可能的天赋/职责，不要只假设一个专精。",
             "",
             "职业职责分析视角：",
@@ -3650,7 +3668,7 @@ local function BuildAIPrompt(profile, scope, filter, itemCount)
             "目前天賦：" .. talentSummary .. "。",
             "請優先使用 current_talents.tree_points、current_talents.trees[].points_spent 和每個已點天賦的 points_spent/rank 來判斷目前天賦點數。",
             "銀行內容是最後一次儲存的快照。背包/銀行來源只代表庫存位置，不代表物品已經裝備。",
-            "請使用 character_stats、chart_stats、strategy_book、gear_recommendations、目前裝備、物品屬性、物品等級、品質、裝備欄位、來源位置和 wowhead_url 欄位。重點讀取 score_model、talent_mapping、phase2_strategy、verdict、benchmark_impacts 與 data_completeness；ordered_stat_heuristic 和 cross_phase_shared_ep 只能視為候選排序。不要把參考裝備路線說成已模擬，也不要編造隱藏附魔、寶石、套裝或觸發效果。",
+            "請使用 character_stats、chart_stats、strategy_book、gear_recommendations、目前裝備、物品屬性、物品等級、品質、裝備欄位、來源位置和 wowhead_url 欄位。重點讀取 score_model、talent_mapping、phase2_strategy、known_effect、effect_decision、set_impacts、route_gaps、verdict、benchmark_impacts 與 data_completeness；已收錄效果用於情境選擇，不等同 EP。ordered_stat_heuristic 和 cross_phase_shared_ep 只能視為候選排序。不要把參考裝備路線說成已模擬，也不要編造未收錄的附魔、寶石、套裝或觸發效果。",
             "請考慮該職業可能的天賦/職責，不要只假設一個專精。",
             "",
             "職業職責分析視角：",
@@ -3665,7 +3683,7 @@ local function BuildAIPrompt(profile, scope, filter, itemCount)
             "Current talents: " .. talentSummary .. ".",
             "Use current_talents.tree_points, current_talents.trees[].points_spent, and each selected talent points_spent/rank to anchor the current talent distribution.",
             "Bank contents are the last saved snapshot. Treat bag and bank source labels as inventory location, not proof that an item is equipped.",
-            "Use character_stats, chart_stats, strategy_book, gear_recommendations, current equipment, item stats, item level, quality, equip slot, source location, and wowhead_url fields. Read score_model, talent_mapping, phase2_strategy, verdict, benchmark_impacts, and data_completeness first. Treat ordered_stat_heuristic and cross_phase_shared_ep as candidate ranking only; never describe a reference gear route as a simulated comparison or invent hidden enchants, gems, set bonuses, or proc effects.",
+            "Use character_stats, chart_stats, strategy_book, gear_recommendations, current equipment, item stats, item level, quality, equip slot, source location, and wowhead_url fields. Read score_model, talent_mapping, phase2_strategy, known_effect, effect_decision, set_impacts, route_gaps, verdict, benchmark_impacts, and data_completeness first. Curated effects support contextual choices and are not EP values. Treat ordered_stat_heuristic and cross_phase_shared_ep as candidate ranking only; never describe a reference gear route as a simulated comparison or invent unlisted enchants, gems, set bonuses, or proc effects.",
             "Consider plausible class talents/specs instead of assuming one role.",
             "",
             "Class role lenses:",
@@ -4921,7 +4939,14 @@ function GEAR_ENGINE.ItemRoleFit(item, role)
         end
     end
 
-    if fit.positiveStatCount == 0 then
+    local knownEffect = GEAR_ENGINE.KnownItemEffect(item)
+    if knownEffect and not GEAR_ENGINE.DefinitionAppliesToRole(knownEffect, role) then
+        fit.reason = "known_effect_role_mismatch"
+    elseif fit.positiveStatCount == 0 and knownEffect then
+        fit.suitable = true
+        fit.reason = "known_effect_present"
+        fit.knownEffect = knownEffect
+    elseif fit.positiveStatCount == 0 then
         fit.suitable = true
         fit.reason = "hidden_effects_require_review"
     elseif fit.primarySignalCount > 0 or (fit.secondarySignalCount > 0 and fit.conflictSignalCount == 0) then
@@ -4932,6 +4957,128 @@ function GEAR_ENGINE.ItemRoleFit(item, role)
     end
 
     return fit
+end
+
+function GEAR_ENGINE.ItemID(item)
+    return tonumber(item and (item.itemID or item.item_id))
+end
+
+function GEAR_ENGINE.KnownItemEffect(item)
+    local itemID = GEAR_ENGINE.ItemID(item)
+    if not itemID then
+        return nil
+    end
+    if type(P2_STRATEGY_DB.GetItemEffect) == "function" then
+        return P2_STRATEGY_DB.GetItemEffect(itemID)
+    end
+    return P2_STRATEGY_DB.itemEffects and P2_STRATEGY_DB.itemEffects[itemID]
+end
+
+function GEAR_ENGINE.DefinitionAppliesToRole(definition, role)
+    if not definition then
+        return false
+    end
+    if definition.roleKeys and definition.roleKeys[role and role.key] then
+        return true
+    end
+    if definition.archetypes and definition.archetypes[role and role.archetype] then
+        return true
+    end
+    return not definition.roleKeys and not definition.archetypes
+end
+
+function GEAR_ENGINE.BuildEffectDecision(currentItem, candidateItem, role, modeKey)
+    local currentEffect = GEAR_ENGINE.KnownItemEffect(currentItem)
+    local candidateEffect = GEAR_ENGINE.KnownItemEffect(candidateItem)
+    local currentApplies = GEAR_ENGINE.DefinitionAppliesToRole(currentEffect, role)
+    local candidateApplies = GEAR_ENGINE.DefinitionAppliesToRole(candidateEffect, role)
+    local currentAffinity = currentApplies and tonumber(currentEffect.modeAffinity and currentEffect.modeAffinity[modeKey]) or nil
+    local candidateAffinity = candidateApplies and tonumber(candidateEffect.modeAffinity and candidateEffect.modeAffinity[modeKey]) or nil
+    local canCompare = candidateApplies and candidateAffinity ~= nil
+        and (not currentItem or (currentApplies and currentAffinity ~= nil))
+    return {
+        modeKey = modeKey,
+        currentEffect = currentEffect,
+        candidateEffect = candidateEffect,
+        currentAffinity = currentAffinity,
+        candidateAffinity = candidateAffinity,
+        canCompare = canCompare,
+        preferCandidate = canCompare and (not currentItem or candidateAffinity > currentAffinity) or false,
+        preferCurrent = canCompare and currentItem and currentAffinity > candidateAffinity or false,
+        equivalent = canCompare and currentItem and currentAffinity == candidateAffinity or false,
+    }
+end
+
+function GEAR_ENGINE.SetItemCount(items, definition)
+    local members = {}
+    for index = 1, #(definition and definition.itemIDs or {}) do
+        members[tonumber(definition.itemIDs[index])] = true
+    end
+    local count = 0
+    for index = 1, #(items or {}) do
+        if members[GEAR_ENGINE.ItemID(items[index])] then
+            count = count + 1
+        end
+    end
+    return count, members
+end
+
+function GEAR_ENGINE.BuildSetImpacts(profile, currentItem, candidateItem, role)
+    local impacts = {}
+    for setKey, definition in pairs(P2_STRATEGY_DB.sets or {}) do
+        if GEAR_ENGINE.DefinitionAppliesToRole(definition, role) then
+            local before, members = GEAR_ENGINE.SetItemCount(profile and profile.equipped and profile.equipped.items, definition)
+            local after = before
+            local currentID = GEAR_ENGINE.ItemID(currentItem)
+            local candidateID = GEAR_ENGINE.ItemID(candidateItem)
+            if currentID ~= candidateID then
+                if members[currentID] then
+                    after = after - 1
+                end
+                if members[candidateID] then
+                    after = after + 1
+                end
+            end
+            for index = 1, #(definition.bonuses or {}) do
+                local bonus = definition.bonuses[index]
+                local effect
+                if before >= bonus.pieces and after < bonus.pieces then
+                    effect = "breaks_active_bonus"
+                elseif before < bonus.pieces and after >= bonus.pieces then
+                    effect = "gains_bonus"
+                end
+                if effect then
+                    impacts[#impacts + 1] = {
+                        setKey = setKey,
+                        setLabels = definition.labels,
+                        pieces = bonus.pieces,
+                        labels = bonus.labels,
+                        before = before,
+                        after = after,
+                        effect = effect,
+                        sourceKey = definition.sourceKey,
+                        sourceUrl = definition.sourceUrl,
+                    }
+                end
+            end
+        end
+    end
+    table.sort(impacts, function(left, right)
+        if left.effect ~= right.effect then
+            return left.effect == "breaks_active_bonus"
+        end
+        return (left.pieces or 0) > (right.pieces or 0)
+    end)
+    return impacts
+end
+
+function GEAR_ENGINE.HasSetImpact(impacts, effect)
+    for index = 1, #(impacts or {}) do
+        if impacts[index] and impacts[index].effect == effect then
+            return true
+        end
+    end
+    return false
 end
 
 function GEAR_ENGINE.ItemRelevantStatMap(item, weights, role)
@@ -5490,13 +5637,23 @@ function GEAR_ENGINE.CompareItems(profile, currentItem, candidateItem, strategyB
     local candidateSlot = GEAR_ENGINE.EquipmentSlotKey(candidateItem)
     local slotCompatible = not currentItem or currentSlot == candidateSlot
     local loadoutCompatible, loadoutReason = GEAR_ENGINE.LoadoutCompatible(profile, candidateItem)
-    local comparable = #(candidateItem and candidateItem.stats or {}) > 0
+    local visibleComparable = #(candidateItem and candidateItem.stats or {}) > 0
         and (not currentItem or #(currentItem and currentItem.stats or {}) > 0)
     local roleFit = GEAR_ENGINE.ItemRoleFit(candidateItem, role)
+    local effectDecision = GEAR_ENGINE.BuildEffectDecision(currentItem, candidateItem, role, mode and mode.key or "balanced")
+    local setImpacts = GEAR_ENGINE.BuildSetImpacts(profile, currentItem, candidateItem, role)
+    local breaksActiveSetBonus = GEAR_ENGINE.HasSetImpact(setImpacts, "breaks_active_bonus")
+    local gainsSetBonus = GEAR_ENGINE.HasSetImpact(setImpacts, "gains_bonus")
+    local comparable = visibleComparable or effectDecision.canCompare or #setImpacts > 0
+    if not visibleComparable and (effectDecision.canCompare or #setImpacts > 0) then
+        evidence = "medium"
+    end
     local verdict = not slotCompatible and "incompatible"
         or (not loadoutCompatible and "loadout_mismatch")
         or (not roleFit.suitable and "role_mismatch")
         or (not comparable and "unscorable")
+        or (breaksActiveSetBonus and "tradeoff")
+        or ((effectDecision.preferCandidate or gainsSetBonus) and "review")
         or GEAR_ENGINE.RecommendationVerdict(evidence, scoreGain, benchmarkImpacts, role.scoreModel)
     local blockedByHardGate = GEAR_ENGINE.RecommendationWorsensUnmetBenchmark(benchmarkImpacts)
     return {
@@ -5505,6 +5662,8 @@ function GEAR_ENGINE.CompareItems(profile, currentItem, candidateItem, strategyB
         loadoutCompatible = loadoutCompatible,
         loadoutReason = loadoutReason,
         comparable = comparable,
+        visibleComparable = visibleComparable,
+        decisionKind = effectDecision.preferCandidate and "effect_choice" or (gainsSetBonus and "set_threshold" or "visible_stats"),
         current = currentItem,
         candidate = candidateItem,
         currentScore = currentScore,
@@ -5514,6 +5673,10 @@ function GEAR_ENGINE.CompareItems(profile, currentItem, candidateItem, strategyB
         statGains = statGains,
         statLosses = statLosses,
         benchmarkImpacts = benchmarkImpacts,
+        effectDecision = effectDecision,
+        setImpacts = setImpacts,
+        breaksActiveSetBonus = breaksActiveSetBonus,
+        gainsSetBonus = gainsSetBonus,
         blockedByHardGate = blockedByHardGate,
         evidence = evidence,
         dataCompleteness = evidence,
@@ -5527,6 +5690,35 @@ function GEAR_ENGINE.CompareItems(profile, currentItem, candidateItem, strategyB
         modeLabels = mode and mode.labels,
         talentMap = role.talentMap,
     }
+end
+
+function GEAR_ENGINE.RecommendationSelectionPriority(recommendation)
+    local priority = tonumber(recommendation and recommendation.scoreGain) or 0
+    if recommendation and recommendation.effectDecision and recommendation.effectDecision.preferCandidate then
+        priority = priority + 20000
+    end
+    if recommendation and recommendation.gainsSetBonus then
+        priority = priority + 10000
+    end
+    return priority
+end
+
+function GEAR_ENGINE.BuildRouteGaps(phase2, currentBySlot)
+    local gaps = {}
+    local progress = phase2 and phase2.presetProgress
+    for index = 1, #(progress and progress.missing or {}) do
+        local target = progress.missing[index]
+        local slotKey = tostring(target.slotKey or ""):gsub("%d+$", "")
+        gaps[#gaps + 1] = {
+            slotKey = slotKey,
+            current = currentBySlot[slotKey] and currentBySlot[slotKey].item or nil,
+            target = target,
+            evidence = progress.source or (phase2 and phase2.routeEvidence) or "guide",
+            sourcePath = progress.sourcePath,
+            notes = progress.notes,
+        }
+    end
+    return gaps
 end
 
 function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyBook, roleKey, modeKey)
@@ -5576,17 +5768,19 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
                         rejectedByLoadout = true
                     elseif not recommendation.comparable then
                         rejectedAsUnscorable = true
-                    elseif recommendation.scoreGain >= 2 and #recommendation.matchedStats > 0 then
+                    elseif (recommendation.scoreGain >= 2 and #recommendation.matchedStats > 0)
+                        or recommendation.effectDecision.preferCandidate or recommendation.gainsSetBonus then
                         if recommendation.blockedByHardGate then
                             rejectedByGate = true
-                        elseif not candidateBest or recommendation.scoreGain > candidateBest.scoreGain then
+                        elseif not candidateBest or GEAR_ENGINE.RecommendationSelectionPriority(recommendation) > GEAR_ENGINE.RecommendationSelectionPriority(candidateBest) then
                             candidateBest = recommendation
                         end
                     end
                 end
                 if candidateBest then
                     local recommendationSlot = candidateBest.slotKey
-                    if not bestBySlot[recommendationSlot] or candidateBest.scoreGain > bestBySlot[recommendationSlot].scoreGain then
+                    if not bestBySlot[recommendationSlot]
+                        or GEAR_ENGINE.RecommendationSelectionPriority(candidateBest) > GEAR_ENGINE.RecommendationSelectionPriority(bestBySlot[recommendationSlot]) then
                         bestBySlot[recommendationSlot] = candidateBest
                     end
                 elseif rejectedByGate then
@@ -5612,8 +5806,10 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
     end
 
     table.sort(upgrades, function(left, right)
-        if left.scoreGain ~= right.scoreGain then
-            return left.scoreGain > right.scoreGain
+        local leftPriority = GEAR_ENGINE.RecommendationSelectionPriority(left)
+        local rightPriority = GEAR_ENGINE.RecommendationSelectionPriority(right)
+        if leftPriority ~= rightPriority then
+            return leftPriority > rightPriority
         end
         return (slotRank[left.slotKey] or 99) < (slotRank[right.slotKey] or 99)
     end)
@@ -5626,8 +5822,21 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
         end
     end
 
+    local phase2 = GEAR_ENGINE.BuildPhase2Strategy(profile, candidateItems, role, mode and mode.key)
+    local routeGaps = GEAR_ENGINE.BuildRouteGaps(phase2, currentBySlot)
+    local effectDecisionCount = 0
+    local setDecisionCount = 0
+    for index = 1, #upgrades do
+        if upgrades[index].decisionKind == "effect_choice" then
+            effectDecisionCount = effectDecisionCount + 1
+        end
+        if #(upgrades[index].setImpacts or {}) > 0 then
+            setDecisionCount = setDecisionCount + 1
+        end
+    end
+
     return {
-        version = 11,
+        version = 12,
         generatedAt = Now(),
         roleKey = role.key,
         roleLabel = role.label,
@@ -5648,10 +5857,13 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
         unscorableRejectedCount = unscorableRejectedCount,
         priorityStats = GEAR_ENGINE.PriorityStats(role, weights),
         benchmarkGaps = benchmarkGaps,
+        routeGaps = routeGaps,
+        effectDecisionCount = effectDecisionCount,
+        setDecisionCount = setDecisionCount,
         upgrades = upgrades,
         verdictCounts = GEAR_ENGINE.VerdictCounts(upgrades),
         equipped = equippedItems,
-        phase2 = GEAR_ENGINE.BuildPhase2Strategy(profile, candidateItems, role, mode and mode.key),
+        phase2 = phase2,
         caveat = LForLocale(profile and profile.locale or ClientLocale(), "advice_caveat"),
     }
 end
@@ -5913,6 +6125,33 @@ local function AppendStrategyBookJson(lines, indent, strategyBook, comma)
     AppendIndented(lines, indent, "}" .. (comma and "," or ""))
 end
 
+function GEAR_ENGINE.AppendKnownEffectJson(lines, indent, key, effect, comma)
+    if not effect then
+        AppendIndented(lines, indent, JsonString(key) .. ": null" .. (comma and "," or ""))
+        return
+    end
+    AppendIndented(lines, indent, JsonString(key) .. ": {")
+    AppendIndented(lines, indent + 2, JsonField("key", effect.key, true))
+    AppendIndented(lines, indent + 2, JsonField("kind", effect.kind, true))
+    AppendIndented(lines, indent + 2, JsonField("summary_en", effect.labels and effect.labels.enUS, true))
+    AppendIndented(lines, indent + 2, JsonField("summary_zh_cn", effect.labels and effect.labels.zhCN, true))
+    AppendIndented(lines, indent + 2, JsonField("summary_zh_tw", effect.labels and effect.labels.zhTW, true))
+    AppendIndented(lines, indent + 2, JsonField("source_key", effect.sourceKey, true))
+    AppendIndented(lines, indent + 2, JsonField("source_url", effect.sourceUrl, true))
+    AppendIndented(lines, indent + 2, "\"mode_affinity\": {")
+    local affinities = {}
+    for modeKey, value in pairs(effect.modeAffinity or {}) do
+        affinities[#affinities + 1] = { key = modeKey, value = value }
+    end
+    table.sort(affinities, function(left, right) return left.key < right.key end)
+    for index = 1, #affinities do
+        AppendIndented(lines, indent + 4, JsonField(affinities[index].key, affinities[index].value, index < #affinities))
+    end
+    AppendIndented(lines, indent + 2, "},")
+    AppendJsonStringArray(lines, indent + 2, "requirements", effect.requirements, false)
+    AppendIndented(lines, indent, "}" .. (comma and "," or ""))
+end
+
 function GEAR_ENGINE.AppendGearItemJson(lines, indent, key, item, score, comma)
     if not item then
         AppendIndented(lines, indent, JsonString(key) .. ": null" .. (comma and "," or ""))
@@ -5933,6 +6172,7 @@ function GEAR_ENGINE.AppendGearItemJson(lines, indent, key, item, score, comma)
     AppendIndented(lines, indent + 2, JsonField("location", item.location, true))
     AppendIndented(lines, indent + 2, JsonField("score", score, true))
     AppendIndented(lines, indent + 2, JsonField("stats_text", FormatStats(item.stats), true))
+    GEAR_ENGINE.AppendKnownEffectJson(lines, indent + 2, "known_effect", GEAR_ENGINE.KnownItemEffect(item), true)
     AppendIndented(lines, indent + 2, "\"stats\": [")
     for index = 1, #(item.stats or {}) do
         local stat = item.stats[index]
@@ -6026,6 +6266,64 @@ function GEAR_ENGINE.AppendPhase2StrategyJson(lines, indent, phase2, comma)
     AppendIndented(lines, indent, "}" .. (comma and "," or ""))
 end
 
+function GEAR_ENGINE.AppendEffectDecisionJson(lines, indent, decision, comma)
+    if not decision or not decision.canCompare then
+        AppendIndented(lines, indent, "\"effect_decision\": null" .. (comma and "," or ""))
+        return
+    end
+    AppendIndented(lines, indent, "\"effect_decision\": {")
+    AppendIndented(lines, indent + 2, JsonField("mode_key", decision.modeKey, true))
+    AppendIndented(lines, indent + 2, JsonField("current_affinity", decision.currentAffinity, true))
+    AppendIndented(lines, indent + 2, JsonField("candidate_affinity", decision.candidateAffinity, true))
+    AppendIndented(lines, indent + 2, JsonField("prefer_candidate", decision.preferCandidate, true))
+    AppendIndented(lines, indent + 2, JsonField("prefer_current", decision.preferCurrent, true))
+    AppendIndented(lines, indent + 2, JsonField("equivalent", decision.equivalent, true))
+    GEAR_ENGINE.AppendKnownEffectJson(lines, indent + 2, "current_effect", decision.currentEffect, true)
+    GEAR_ENGINE.AppendKnownEffectJson(lines, indent + 2, "candidate_effect", decision.candidateEffect, false)
+    AppendIndented(lines, indent, "}" .. (comma and "," or ""))
+end
+
+function GEAR_ENGINE.AppendSetImpactsJson(lines, indent, impacts, comma)
+    AppendIndented(lines, indent, "\"set_impacts\": [")
+    for index = 1, #(impacts or {}) do
+        local impact = impacts[index]
+        AppendIndented(lines, indent + 2, "{")
+        AppendIndented(lines, indent + 4, JsonField("set_key", impact.setKey, true))
+        AppendIndented(lines, indent + 4, JsonField("set_name_en", impact.setLabels and impact.setLabels.enUS, true))
+        AppendIndented(lines, indent + 4, JsonField("set_name_zh_cn", impact.setLabels and impact.setLabels.zhCN, true))
+        AppendIndented(lines, indent + 4, JsonField("pieces", impact.pieces, true))
+        AppendIndented(lines, indent + 4, JsonField("before", impact.before, true))
+        AppendIndented(lines, indent + 4, JsonField("after", impact.after, true))
+        AppendIndented(lines, indent + 4, JsonField("effect", impact.effect, true))
+        AppendIndented(lines, indent + 4, JsonField("bonus_en", impact.labels and impact.labels.enUS, true))
+        AppendIndented(lines, indent + 4, JsonField("bonus_zh_cn", impact.labels and impact.labels.zhCN, true))
+        AppendIndented(lines, indent + 4, JsonField("source_key", impact.sourceKey, true))
+        AppendIndented(lines, indent + 4, JsonField("source_url", impact.sourceUrl, false))
+        AppendIndented(lines, indent + 2, "}" .. (index < #(impacts or {}) and "," or ""))
+    end
+    AppendIndented(lines, indent, "]" .. (comma and "," or ""))
+end
+
+function GEAR_ENGINE.AppendRouteGapsJson(lines, indent, gaps, comma)
+    AppendIndented(lines, indent, "\"route_gaps\": [")
+    for index = 1, #(gaps or {}) do
+        local gap = gaps[index]
+        AppendIndented(lines, indent + 2, "{")
+        AppendIndented(lines, indent + 4, JsonField("slot_key", gap.slotKey, true))
+        AppendIndented(lines, indent + 4, JsonField("evidence", gap.evidence, true))
+        AppendIndented(lines, indent + 4, JsonField("source", gap.sourcePath, true))
+        GEAR_ENGINE.AppendGearItemJson(lines, indent + 4, "current", gap.current, nil, true)
+        AppendIndented(lines, indent + 4, "\"target\": {")
+        AppendIndented(lines, indent + 6, JsonField("name", gap.target and gap.target.name, true))
+        AppendIndented(lines, indent + 6, JsonField("item_id", gap.target and gap.target.itemID, true))
+        AppendIndented(lines, indent + 6, JsonField("item_level", gap.target and gap.target.itemLevel, true))
+        AppendIndented(lines, indent + 6, JsonField("wowhead_url", gap.target and gap.target.wowheadUrl, false))
+        AppendIndented(lines, indent + 4, "}")
+        AppendIndented(lines, indent + 2, "}" .. (index < #(gaps or {}) and "," or ""))
+    end
+    AppendIndented(lines, indent, "]" .. (comma and "," or ""))
+end
+
 function GEAR_ENGINE.AppendGearRecommendationsJson(lines, indent, engine, comma)
     engine = engine or GEAR_ENGINE.BuildGearRecommendations({}, {}, nil)
     AppendIndented(lines, indent, "\"gear_recommendations\": {")
@@ -6044,6 +6342,8 @@ function GEAR_ENGINE.AppendGearRecommendationsJson(lines, indent, engine, comma)
     AppendIndented(lines, indent + 2, JsonField("gate_rejected_count", engine.gateRejectedCount or 0, true))
     AppendIndented(lines, indent + 2, JsonField("loadout_rejected_count", engine.loadoutRejectedCount or 0, true))
     AppendIndented(lines, indent + 2, JsonField("unscorable_rejected_count", engine.unscorableRejectedCount or 0, true))
+    AppendIndented(lines, indent + 2, JsonField("effect_decision_count", engine.effectDecisionCount or 0, true))
+    AppendIndented(lines, indent + 2, JsonField("set_decision_count", engine.setDecisionCount or 0, true))
     AppendIndented(lines, indent + 2, JsonField("caveat", engine.caveat, true))
     AppendJsonObjectArray(lines, indent + 2, "available_roles", engine.availableRoles, {
         { name = "key", value = "key" },
@@ -6076,6 +6376,7 @@ function GEAR_ENGINE.AppendGearRecommendationsJson(lines, indent, engine, comma)
         { name = "unit", value = "unit" },
         { name = "status", value = "status" },
     }, true)
+    GEAR_ENGINE.AppendRouteGapsJson(lines, indent + 2, engine.routeGaps, true)
     AppendIndented(lines, indent + 2, "\"equipped_gear\": [")
     for index = 1, #(engine.equipped or {}) do
         local item = engine.equipped[index]
@@ -6094,8 +6395,11 @@ function GEAR_ENGINE.AppendGearRecommendationsJson(lines, indent, engine, comma)
         AppendIndented(lines, indent + 6, JsonField("data_completeness", upgrade.dataCompleteness or upgrade.evidence, true))
         AppendIndented(lines, indent + 6, JsonField("evidence", upgrade.evidence, true))
         AppendIndented(lines, indent + 6, JsonField("verdict", upgrade.verdict, true))
+        AppendIndented(lines, indent + 6, JsonField("decision_kind", upgrade.decisionKind, true))
         GEAR_ENGINE.AppendGearItemJson(lines, indent + 6, "current", upgrade.current, upgrade.currentScore, true)
         GEAR_ENGINE.AppendGearItemJson(lines, indent + 6, "candidate", upgrade.candidate, upgrade.candidateScore, true)
+        GEAR_ENGINE.AppendEffectDecisionJson(lines, indent + 6, upgrade.effectDecision, true)
+        GEAR_ENGINE.AppendSetImpactsJson(lines, indent + 6, upgrade.setImpacts, true)
         AppendJsonObjectArray(lines, indent + 6, "matched_stats", upgrade.matchedStats, {
             { name = "token", value = "token" },
             { name = "label", value = "label" },
@@ -6220,6 +6524,53 @@ function GEAR_ENGINE.GearBenchmarkText(engine, locale)
     return #values > 0 and table.concat(values, "; ") or LForLocale(locale or ClientLocale(), "advice_no_gaps")
 end
 
+function GEAR_ENGINE.RouteGapsText(engine, locale, limit)
+    local values = {}
+    local gaps = engine and engine.routeGaps or {}
+    for index = 1, math.min(#gaps, limit or 5) do
+        local gap = gaps[index]
+        values[#values + 1] = GEAR_ENGINE.EquipmentSlotLabel(gap.slotKey, locale) .. ": "
+            .. tostring(gap.target and (gap.target.name or ("Item #" .. tostring(gap.target.itemID))) or "?")
+    end
+    if #gaps > (limit or 5) then
+        values[#values + 1] = string.format(GEAR_ENGINE.ReportTerms(locale).more, #gaps - (limit or 5))
+    end
+    return #values > 0 and table.concat(values, "; ") or LForLocale(locale or ClientLocale(), "advice_no_routes")
+end
+
+function GEAR_ENGINE.EffectDecisionText(upgrade, locale)
+    local decision = upgrade and upgrade.effectDecision
+    if not decision or not decision.canCompare then
+        return GEAR_ENGINE.ReportTerms(locale).none
+    end
+    local current = GEAR_ENGINE.LocalizedDataLabel(decision.currentEffect and decision.currentEffect.labels, locale, GEAR_ENGINE.ReportTerms(locale).none)
+    local candidate = GEAR_ENGINE.LocalizedDataLabel(decision.candidateEffect and decision.candidateEffect.labels, locale, GEAR_ENGINE.ReportTerms(locale).none)
+    return tostring(current) .. " -> " .. tostring(candidate)
+end
+
+function GEAR_ENGINE.SetImpactText(upgrade, locale)
+    local values = {}
+    local promptLocale = PromptLocale(locale or ClientLocale())
+    for index = 1, #(upgrade and upgrade.setImpacts or {}) do
+        local impact = upgrade.setImpacts[index]
+        local setName = GEAR_ENGINE.LocalizedDataLabel(impact.setLabels, locale, impact.setKey)
+        local bonus = GEAR_ENGINE.LocalizedDataLabel(impact.labels, locale, "")
+        local action = impact.effect == "breaks_active_bonus"
+            and (promptLocale == "enUS" and "loses" or (promptLocale == "zhTW" and "失去" or "失去"))
+            or (promptLocale == "enUS" and "gains" or (promptLocale == "zhTW" and "獲得" or "获得"))
+        values[#values + 1] = tostring(setName) .. " " .. tostring(impact.pieces) .. "pc " .. action
+            .. " (" .. tostring(impact.before) .. " -> " .. tostring(impact.after) .. "): " .. tostring(bonus)
+    end
+    return #values > 0 and table.concat(values, "; ") or GEAR_ENGINE.ReportTerms(locale).none
+end
+
+function GEAR_ENGINE.DecisionMetricText(upgrade, locale)
+    if upgrade and upgrade.decisionKind == "effect_choice" then
+        return LForLocale(locale or ClientLocale(), "advice_cycle_choice")
+    end
+    return "+" .. CompactNumber(upgrade and upgrade.scoreGain or 0, 2)
+end
+
 function GEAR_ENGINE.GearMatchedStatsText(upgrade, locale)
     return GEAR_ENGINE.FormatLocalizedStats(upgrade and upgrade.matchedStats or {}, locale, 3)
 end
@@ -6241,6 +6592,7 @@ function GEAR_ENGINE.AppendGearRecommendationsMarkdown(lines, engine, locale)
     lines[#lines + 1] = "- " .. terms.talent_map .. ": " .. GEAR_ENGINE.TalentMapSummary(engine.talentMap, locale, 5)
     lines[#lines + 1] = "- " .. terms.priority_stats .. ": " .. GEAR_ENGINE.GearPriorityText(engine, locale)
     lines[#lines + 1] = "- " .. terms.benchmark_gaps .. ": " .. GEAR_ENGINE.GearBenchmarkText(engine, locale)
+    lines[#lines + 1] = "- " .. terms.route_priorities .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.RouteGapsText(engine, locale, 6))
     lines[#lines + 1] = "- " .. terms.caveat .. ": " .. tostring(engine.caveat)
     lines[#lines + 1] = ""
     for index = 1, #(engine.upgrades or {}) do
@@ -6249,12 +6601,18 @@ function GEAR_ENGINE.AppendGearRecommendationsMarkdown(lines, engine, locale)
         local candidate = Addon.MarkdownPlainItemName(upgrade.candidate)
         lines[#lines + 1] = "### " .. tostring(index) .. ". " .. Addon.MarkdownEscape(GEAR_ENGINE.EquipmentSlotLabel(upgrade.slotKey, locale))
             .. " · " .. Addon.MarkdownEscape(GEAR_ENGINE.RecommendationVerdictLabel(upgrade.verdict, locale))
-            .. " · +" .. Addon.MarkdownEscape(CompactNumber(upgrade.scoreGain, 2))
+            .. " · " .. Addon.MarkdownEscape(GEAR_ENGINE.DecisionMetricText(upgrade, locale))
         lines[#lines + 1] = "- " .. terms.current .. ": " .. current
         lines[#lines + 1] = "- " .. terms.suggested .. ": " .. candidate
         lines[#lines + 1] = "- " .. terms.gains .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.DeltaText(upgrade.statGains, locale))
         lines[#lines + 1] = "- " .. terms.losses .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.DeltaText(upgrade.statLosses, locale))
         lines[#lines + 1] = "- " .. terms.benchmark_impact .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.BenchmarkImpactText(upgrade.benchmarkImpacts, locale))
+        if upgrade.effectDecision and upgrade.effectDecision.canCompare then
+            lines[#lines + 1] = "- " .. terms.effect_choice .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.EffectDecisionText(upgrade, locale))
+        end
+        if #(upgrade.setImpacts or {}) > 0 then
+            lines[#lines + 1] = "- " .. terms.set_impact .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.SetImpactText(upgrade, locale))
+        end
         lines[#lines + 1] = "- " .. terms.item_data .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.EvidenceLabel(upgrade.dataCompleteness or upgrade.evidence, locale))
         lines[#lines + 1] = ""
     end
@@ -6280,17 +6638,24 @@ function GEAR_ENGINE.AppendGearRecommendationsText(lines, engine, locale)
     lines[#lines + 1] = terms.talent_map .. ": " .. GEAR_ENGINE.TalentMapSummary(engine.talentMap, locale, 5)
     lines[#lines + 1] = terms.priority_stats .. ": " .. GEAR_ENGINE.GearPriorityText(engine, locale)
     lines[#lines + 1] = terms.benchmark_gaps .. ": " .. GEAR_ENGINE.GearBenchmarkText(engine, locale)
+    lines[#lines + 1] = terms.route_priorities .. ": " .. GEAR_ENGINE.RouteGapsText(engine, locale, 6)
     for index = 1, #(engine.upgrades or {}) do
         local upgrade = engine.upgrades[index]
         local current = upgrade.current and upgrade.current.name or LForLocale(locale, "advice_empty_slot")
         lines[#lines + 1] = tostring(index) .. ". " .. GEAR_ENGINE.EquipmentSlotLabel(upgrade.slotKey, locale)
             .. " · " .. GEAR_ENGINE.RecommendationVerdictLabel(upgrade.verdict, locale)
-            .. " · " .. terms.score .. " +" .. CompactNumber(upgrade.scoreGain, 2)
+            .. " · " .. terms.score .. " " .. GEAR_ENGINE.DecisionMetricText(upgrade, locale)
         lines[#lines + 1] = "   " .. terms.current .. ": " .. tostring(current)
         lines[#lines + 1] = "   " .. terms.suggested .. ": " .. tostring(upgrade.candidate and upgrade.candidate.name)
         lines[#lines + 1] = "   " .. terms.gains .. ": " .. GEAR_ENGINE.DeltaText(upgrade.statGains, locale)
         lines[#lines + 1] = "   " .. terms.losses .. ": " .. GEAR_ENGINE.DeltaText(upgrade.statLosses, locale)
         lines[#lines + 1] = "   " .. terms.benchmark_impact .. ": " .. GEAR_ENGINE.BenchmarkImpactText(upgrade.benchmarkImpacts, locale)
+        if upgrade.effectDecision and upgrade.effectDecision.canCompare then
+            lines[#lines + 1] = "   " .. terms.effect_choice .. ": " .. GEAR_ENGINE.EffectDecisionText(upgrade, locale)
+        end
+        if #(upgrade.setImpacts or {}) > 0 then
+            lines[#lines + 1] = "   " .. terms.set_impact .. ": " .. GEAR_ENGINE.SetImpactText(upgrade, locale)
+        end
         lines[#lines + 1] = "   " .. terms.item_data .. ": " .. GEAR_ENGINE.EvidenceLabel(upgrade.dataCompleteness or upgrade.evidence, locale)
     end
     if #(engine.upgrades or {}) == 0 then
@@ -7694,6 +8059,7 @@ function Addon:BuildExport(scope, format, filter)
             AppendIndented(lines, 6, JsonField("subtype", item.itemSubType, true))
             AppendIndented(lines, 6, JsonField("equip_slot", item.equipSlot, true))
             AppendIndented(lines, 6, JsonField("stats_text", statsText, true))
+            GEAR_ENGINE.AppendKnownEffectJson(lines, 6, "known_effect", GEAR_ENGINE.KnownItemEffect(item), true)
             AppendIndented(lines, 6, "\"stats\": [")
 
             for statIndex = 1, #(item.stats or {}) do
@@ -8010,11 +8376,20 @@ function Addon:RefreshGearComparison(profile, engine, index)
     self.exportFrame.compareNames:SetText((upgrade.current and ItemColoredName(upgrade.current) or LForLocale(locale, "advice_empty_slot"))
         .. "  >  " .. ItemColoredName(upgrade.candidate))
     self.exportFrame.compareVerdict:SetText(GEAR_ENGINE.RecommendationVerdictLabel(upgrade.verdict, locale)
-        .. "  |cff33ff99+" .. CompactNumber(upgrade.scoreGain, 2) .. "|r  · "
+        .. "  |cff33ff99" .. GEAR_ENGINE.DecisionMetricText(upgrade, locale) .. "|r  · "
         .. LForLocale(locale, "advice_evidence", LForLocale(locale, "advice_evidence_" .. tostring(upgrade.dataCompleteness or upgrade.evidence or "low"))))
-    self.exportFrame.compareDetails:SetText(LForLocale(locale, "advice_gains", GEAR_ENGINE.DeltaText(upgrade.statGains, locale))
-        .. "\n" .. LForLocale(locale, "advice_losses", GEAR_ENGINE.DeltaText(upgrade.statLosses, locale))
-        .. "\n" .. LForLocale(locale, "advice_impact", GEAR_ENGINE.BenchmarkImpactText(upgrade.benchmarkImpacts, locale)))
+    local details = {
+        LForLocale(locale, "advice_gains", GEAR_ENGINE.DeltaText(upgrade.statGains, locale)),
+        LForLocale(locale, "advice_losses", GEAR_ENGINE.DeltaText(upgrade.statLosses, locale)),
+        LForLocale(locale, "advice_impact", GEAR_ENGINE.BenchmarkImpactText(upgrade.benchmarkImpacts, locale)),
+    }
+    if upgrade.effectDecision and upgrade.effectDecision.canCompare then
+        details[#details + 1] = LForLocale(locale, "advice_effect_choice", GEAR_ENGINE.EffectDecisionText(upgrade, locale))
+    end
+    if #(upgrade.setImpacts or {}) > 0 then
+        details[#details + 1] = LForLocale(locale, "advice_set_impact", GEAR_ENGINE.SetImpactText(upgrade, locale))
+    end
+    self.exportFrame.compareDetails:SetText(table.concat(details, "\n"))
     return upgrade
 end
 
@@ -8032,7 +8407,8 @@ function Addon:RefreshGearAdvice(profile, engine)
     self.exportFrame.adviceSummary:SetText(LForLocale(locale, "advice_summary", roleLabel, engine.equippedCount or 0, engine.candidateCount or 0, engine.roleRejectedCount or 0, #(engine.upgrades or {}))
         .. "\n" .. LForLocale(locale, "advice_verdicts", GEAR_ENGINE.VerdictSummary(engine, locale))
         .. "\n" .. LForLocale(locale, "advice_talent_map", GEAR_ENGINE.TalentMapSummary(engine.talentMap, locale, 4))
-        .. "\n" .. LForLocale(locale, "advice_priorities", GEAR_ENGINE.GearPriorityText(engine, locale)))
+        .. "\n" .. LForLocale(locale, "advice_priorities", GEAR_ENGINE.GearPriorityText(engine, locale))
+        .. "\n" .. LForLocale(locale, "advice_routes", GEAR_ENGINE.RouteGapsText(engine, locale, 3)))
     self.exportFrame.adviceCaveat:SetText(GEAR_ENGINE.ReportTerms(locale).score_model .. ": " .. GEAR_ENGINE.ScoreModelText(engine.scoreModel, locale)
         .. "\n" .. (engine.caveat or LForLocale(locale, "advice_caveat")))
 
@@ -8062,12 +8438,22 @@ function Addon:RefreshGearAdvice(profile, engine)
         row.candidateIcon:SetTexture(upgrade.candidate and upgrade.candidate.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
         row.slot:SetText(GEAR_ENGINE.EquipmentSlotLabel(upgrade.slotKey, locale))
         row.name:SetText(ItemColoredName(upgrade.candidate))
-        row.gain:SetText("|cff33ff99+" .. CompactNumber(upgrade.scoreGain, 2) .. "|r\n"
+        row.gain:SetText("|cff33ff99" .. GEAR_ENGINE.DecisionMetricText(upgrade, locale) .. "|r\n"
             .. GEAR_ENGINE.RecommendationVerdictLabel(upgrade.verdict, locale))
-        row.reason:SetText(LForLocale(locale, "advice_gains", GEAR_ENGINE.DeltaText(upgrade.statGains, locale, 2))
-            .. "\n" .. LForLocale(locale, "advice_losses", GEAR_ENGINE.DeltaText(upgrade.statLosses, locale, 2))
-            .. "\n" .. LForLocale(locale, "advice_impact", GEAR_ENGINE.BenchmarkImpactText(upgrade.benchmarkImpacts, locale, 1))
-            .. " · " .. LForLocale(locale, "advice_evidence", LForLocale(locale, "advice_evidence_" .. tostring(upgrade.dataCompleteness or upgrade.evidence or "low"))))
+        local reasons = {}
+        if upgrade.decisionKind == "visible_stats" or #(upgrade.statGains or {}) > 0 or #(upgrade.statLosses or {}) > 0 then
+            reasons[#reasons + 1] = LForLocale(locale, "advice_gains", GEAR_ENGINE.DeltaText(upgrade.statGains, locale, 2))
+            reasons[#reasons + 1] = LForLocale(locale, "advice_losses", GEAR_ENGINE.DeltaText(upgrade.statLosses, locale, 2))
+        end
+        if upgrade.effectDecision and upgrade.effectDecision.canCompare then
+            reasons[#reasons + 1] = LForLocale(locale, "advice_effect_choice", GEAR_ENGINE.EffectDecisionText(upgrade, locale))
+        end
+        if #(upgrade.setImpacts or {}) > 0 then
+            reasons[#reasons + 1] = LForLocale(locale, "advice_set_impact", GEAR_ENGINE.SetImpactText(upgrade, locale))
+        end
+        reasons[#reasons + 1] = LForLocale(locale, "advice_impact", GEAR_ENGINE.BenchmarkImpactText(upgrade.benchmarkImpacts, locale, 1))
+            .. " · " .. LForLocale(locale, "advice_evidence", LForLocale(locale, "advice_evidence_" .. tostring(upgrade.dataCompleteness or upgrade.evidence or "low")))
+        row.reason:SetText(table.concat(reasons, "\n"))
         row:Show()
     end
 
@@ -8078,7 +8464,7 @@ function Addon:RefreshGearAdvice(profile, engine)
         self.exportFrame.adviceRowsContent:SetHeight(math.max(220, (#upgrades * GEAR_ENGINE.ADVICE_ROW_STEP) + 8))
     end
     if self.exportFrame.adviceContent.SetHeight then
-        self.exportFrame.adviceContent:SetHeight(math.max(634, (#upgrades * GEAR_ENGINE.ADVICE_ROW_STEP) + 426))
+        self.exportFrame.adviceContent:SetHeight(math.max(686, (#upgrades * GEAR_ENGINE.ADVICE_ROW_STEP) + 478))
     end
     return #upgrades
 end
@@ -8680,22 +9066,22 @@ function Addon:CreateExportFrame()
     local adviceSummary = adviceContent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     adviceSummary:SetPoint("TOPLEFT", 4, -124)
     adviceSummary:SetWidth(478)
-    adviceSummary:SetHeight(88)
+    adviceSummary:SetHeight(108)
     adviceSummary:SetJustifyH("LEFT")
     adviceSummary:SetJustifyV("TOP")
     adviceSummary:SetText(L("advice_title"))
 
     local adviceCaveat = adviceContent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    adviceCaveat:SetPoint("TOPLEFT", 4, -216)
+    adviceCaveat:SetPoint("TOPLEFT", 4, -238)
     adviceCaveat:SetWidth(478)
-    adviceCaveat:SetHeight(56)
+    adviceCaveat:SetHeight(64)
     adviceCaveat:SetJustifyH("LEFT")
     adviceCaveat:SetJustifyV("TOP")
     adviceCaveat:SetText(L("advice_caveat"))
 
     local comparePanel = CreateFrame("Frame", nil, adviceContent, BackdropTemplate())
-    SetFrameSize(comparePanel, 486, 118)
-    comparePanel:SetPoint("TOPLEFT", adviceContent, "TOPLEFT", 2, -280)
+    SetFrameSize(comparePanel, 486, 142)
+    comparePanel:SetPoint("TOPLEFT", adviceContent, "TOPLEFT", 2, -310)
     if comparePanel.SetBackdrop then
         comparePanel:SetBackdrop({
             bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
@@ -8751,7 +9137,9 @@ function Addon:CreateExportFrame()
     local compareDetails = comparePanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     compareDetails:SetPoint("TOPLEFT", 120, -66)
     compareDetails:SetPoint("RIGHT", comparePanel, "RIGHT", -8, 0)
+    compareDetails:SetHeight(68)
     compareDetails:SetJustifyH("LEFT")
+    compareDetails:SetJustifyV("TOP")
 
     compareCurrentButton:SetScript("OnEnter", function(self)
         GEAR_ENGINE.ShowRecommendationTooltip(self, self.item)
@@ -8768,7 +9156,7 @@ function Addon:CreateExportFrame()
 
     local adviceRowsContent = CreateFrame("Frame", nil, adviceContent)
     SetFrameSize(adviceRowsContent, 490, 220)
-    adviceRowsContent:SetPoint("TOPLEFT", adviceContent, "TOPLEFT", 0, -410)
+    adviceRowsContent:SetPoint("TOPLEFT", adviceContent, "TOPLEFT", 0, -462)
 
     local adviceEmpty = adviceRowsContent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     adviceEmpty:SetPoint("TOPLEFT", 4, -4)
@@ -9367,6 +9755,13 @@ if _G.TBCGearExporterTestMode then
         StatAppliesToRoleSlot = GEAR_ENGINE.StatAppliesToRoleSlot,
         ItemRoleScore = GEAR_ENGINE.ItemRoleScore,
         ItemRoleFit = GEAR_ENGINE.ItemRoleFit,
+        ItemID = GEAR_ENGINE.ItemID,
+        KnownItemEffect = GEAR_ENGINE.KnownItemEffect,
+        DefinitionAppliesToRole = GEAR_ENGINE.DefinitionAppliesToRole,
+        BuildEffectDecision = GEAR_ENGINE.BuildEffectDecision,
+        SetItemCount = GEAR_ENGINE.SetItemCount,
+        BuildSetImpacts = GEAR_ENGINE.BuildSetImpacts,
+        HasSetImpact = GEAR_ENGINE.HasSetImpact,
         ItemRelevantStatMap = GEAR_ENGINE.ItemRelevantStatMap,
         BuildStatDeltas = GEAR_ENGINE.BuildStatDeltas,
         RecommendationEvidence = GEAR_ENGINE.RecommendationEvidence,
@@ -9388,7 +9783,15 @@ if _G.TBCGearExporterTestMode then
         FindStrategyRole = GEAR_ENGINE.FindStrategyRole,
         AvailableStrategyRoles = GEAR_ENGINE.AvailableStrategyRoles,
         CompareItems = GEAR_ENGINE.CompareItems,
+        RecommendationSelectionPriority = GEAR_ENGINE.RecommendationSelectionPriority,
+        BuildRouteGaps = GEAR_ENGINE.BuildRouteGaps,
         BuildGearRecommendations = GEAR_ENGINE.BuildGearRecommendations,
+        AppendKnownEffectJson = GEAR_ENGINE.AppendKnownEffectJson,
+        AppendGearItemJson = GEAR_ENGINE.AppendGearItemJson,
+        AppendEffectDecisionJson = GEAR_ENGINE.AppendEffectDecisionJson,
+        AppendSetImpactsJson = GEAR_ENGINE.AppendSetImpactsJson,
+        AppendRouteGapsJson = GEAR_ENGINE.AppendRouteGapsJson,
+        AppendGearRecommendationsJson = GEAR_ENGINE.AppendGearRecommendationsJson,
         TalentEffectLabel = GEAR_ENGINE.TalentEffectLabel,
         TalentMapSummary = GEAR_ENGINE.TalentMapSummary,
         GearRoleLabel = GEAR_ENGINE.GearRoleLabel,
@@ -9400,6 +9803,10 @@ if _G.TBCGearExporterTestMode then
         Phase2Goal = GEAR_ENGINE.Phase2Goal,
         GearPriorityText = GEAR_ENGINE.GearPriorityText,
         GearBenchmarkText = GEAR_ENGINE.GearBenchmarkText,
+        RouteGapsText = GEAR_ENGINE.RouteGapsText,
+        EffectDecisionText = GEAR_ENGINE.EffectDecisionText,
+        SetImpactText = GEAR_ENGINE.SetImpactText,
+        DecisionMetricText = GEAR_ENGINE.DecisionMetricText,
         GearMatchedStatsText = GEAR_ENGINE.GearMatchedStatsText,
         RoleHasModel = GEAR_ENGINE.RoleHasModel,
         RoleUsesHitModel = GEAR_ENGINE.RoleUsesHitModel,

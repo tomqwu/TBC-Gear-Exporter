@@ -1,6 +1,6 @@
 # Gear Engine Contract
 
-This document defines what TBC Gear Exporter database version 6 actually computes. It is the release gate for future engine claims.
+This document defines what TBC Gear Exporter database version 7 actually computes. It is the release gate for future engine claims.
 
 ## Current Maturity
 
@@ -14,7 +14,7 @@ The database contains 28 role records, but a role record is not the same thing a
 
 No current model supports definitive upgrade verdicts. The addon may rank a visible-stat candidate, but labels it **Estimated candidate / 估算候选**. Low-data items remain manual checks, and swaps that risk a tracked cap remain tradeoffs or are rejected.
 
-Separately, 18 roles have a WoWSims reference gear route and 10 use a class-guide route. A reference set supplies target item IDs and collection progress. It does **not** prove that a bag or bank candidate was simulated.
+Separately, 18 roles have a WoWSims reference gear route and 10 use a class-guide route. Holy Paladin now has three class-guide presets for Mixed Healing, Flash of Light, and Holy Light. A reference set supplies target item IDs and collection progress. It does **not** prove that a bag or bank candidate was simulated.
 
 ## Role Matrix
 
@@ -54,22 +54,26 @@ Separately, 18 roles have a WoWSims reference gear route and 10 use a class-guid
 The current comparison path is:
 
 1. Resolve class compatibility, equipment slot, and legal one-hand/two-hand layout.
-2. Reject items whose visible stats conflict with the selected role archetype.
+2. Reject items whose visible stats or curated known effect conflicts with the selected role archetype.
 3. Normalize item-stat aliases exposed by the TBC Anniversary API.
-4. Apply the declared static EP table or ordered-stat heuristic.
+4. Apply the declared static EP table or ordered-stat heuristic to visible stats only.
 5. Apply tracked cap-gap, selected key-talent, and strategy-mode multipliers.
-6. Compare visible relevant stats and reject swaps that worsen an unmet tracked gate.
-7. Rank one candidate per slot and report gains, losses, cap impact, model kind, and item-data completeness.
+6. Compare curated item effects categorically for the selected strategy mode; effect affinity is never added to EP.
+7. Evaluate curated set thresholds in the current full equipped set, marking a broken bonus as a tradeoff and a newly completed threshold as a contextual decision.
+8. Reject swaps that worsen an unmet tracked gate.
+9. Rank one candidate per slot and report gains, losses, effect choice, set impact, route gaps, cap impact, model kind, and item-data completeness.
 
 Item level and quality do not add score. They are display and filtering fields, not performance stats.
 
-The engine does not currently model set bonuses, gems, enchants, socket bonuses, use/proc effects, weapon speed rules, school-specific spell coefficients, rotations, encounter timelines, party buff uptime, pet uptime, healing assignments, or whole-loadout interactions. It is not a combat simulator or a global loadout optimizer.
+Database version 7 contains a deliberately bounded contextual layer: nine source-linked item effects and the Crystalforge Raiment 2/4-piece thresholds. These rules can gate roles, choose between spell-cycle items, and protect active set bonuses, but they do not produce numeric EP.
+
+The engine does not currently model unlisted set bonuses or item effects, gems, enchants, socket bonuses, proc rates, weapon speed rules, school-specific spell coefficients, full rotations, encounter timelines, party buff uptime, pet uptime, healing assignments, or global whole-loadout interactions. It is not a combat simulator or a global loadout optimizer.
 
 ## Talent Contract
 
 Every selected talent is exported with tree, rank, icon, and alignment when the client API supplies it. That is **representation coverage**.
 
-Only a curated subset has a calculation rule that modifies weights or a tracked formula. That is **model coverage**. Database version 6 reports both values separately; it no longer counts an exported but unmodeled talent as modeled.
+Only a curated subset has a calculation rule that modifies weights or a tracked formula. That is **model coverage**. Database version 7 reports both values separately; it does not count an exported but unmodeled talent as modeled.
 
 ## Evidence Contract
 
@@ -80,8 +84,11 @@ Three independent fields must not be conflated:
 | `score_model` | How was the candidate score produced? |
 | `route_evidence` | Where did the reference gear route come from? |
 | `data_completeness` | How much comparable visible stat data was available for this item pair? |
+| `known_effect` / `effect_decision` | Is a source-linked item effect applicable, and which selected mode does it fit? |
+| `set_impacts` | Does the proposed swap cross a curated equipped-set threshold? |
+| `route_gaps` | Which items from the selected guide/reference route are not in current gear, bags, or bank? |
 
-`evidence` remains in JSON as a compatibility alias for `data_completeness`; new consumers should use the explicit field.
+`evidence` remains in JSON as a compatibility alias for `data_completeness`; new consumers should use the explicit field. Effect affinity is ordinal context, not a score model or simulation result.
 
 ## Engine Completion Gates
 
