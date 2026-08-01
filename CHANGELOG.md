@@ -4,6 +4,14 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+## [0.4.5] - 2026-08-01
+
+- Make stable `v*` tags publish both the GitHub Release and the CurseForge BCC release from the default `Release` workflow.
+- Fail stable releases visibly when the `CF_API_KEY` repository secret is missing instead of silently skipping CurseForge.
+- Retain the generated CurseForge zip as a workflow artifact and keep `Manual Package` only as a recovery path.
+- Add a release-policy regression test that protects trigger, token, ordering, stable-only, packager, and artifact requirements.
+- Expand the suite to 82 tests with 99.16% executable-line coverage.
+
 ## [0.4.4] - 2026-08-01
 
 - Evaluate generic one-hand weapon candidates against both main hand and off hand when the current loadout is dual wielding, then keep only the strongest legal comparison.

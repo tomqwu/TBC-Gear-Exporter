@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   release:
-    name: Build + publish
+    name: Build + publish GitHub + CurseForge
     runs-on: ubuntu-latest
 
     steps:
@@ -24,17 +24,38 @@ jobs:
         run: |
           set -euo pipefail
           tag="${GITHUB_REF#refs/tags/}"
-          lower_tag="${tag,,}"
-          if [[ "$lower_tag" == *alpha* || "$lower_tag" == *beta* || "$lower_tag" == *dev* ]]; then
-            prerelease="true"
-          else
+          if [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             prerelease="false"
+          else
+            prerelease="true"
           fi
           {
             echo "tag=$tag"
             echo "prerelease=$prerelease"
           } >> "$GITHUB_OUTPUT"
           echo "Resolved tag=$tag prerelease=$prerelease"
+
+      - name: Validate tag and addon versions
+        run: |
+          set -euo pipefail
+          tag_version="${{ steps.version.outputs.tag }}"
+          tag_version="${tag_version#v}"
+          toc_version="$(awk -F ': ' '/^## Version:/ { print $2; exit }' TBCGearExporter/TBCGearExporter.toc)"
+          if [[ -z "$toc_version" || "$toc_version" != "$tag_version" ]]; then
+            echo "::error::Tag version $tag_version does not match addon version ${toc_version:-missing}."
+            exit 1
+          fi
+
+      - name: Require CurseForge token for stable releases
+        if: steps.version.outputs.prerelease == 'false'
+        env:
+          CF_API_KEY: ${{ secrets.CF_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${CF_API_KEY:-}" ]]; then
+            echo "::error::Set the CF_API_KEY repository secret before publishing a stable release."
+            exit 1
+          fi
 
       - name: Extract release notes from CHANGELOG.md
         run: |
@@ -84,3 +105,19 @@ jobs:
           files: ${{ steps.zip.outputs.path }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish stable release to CurseForge
+        if: steps.version.outputs.prerelease == 'false'
+        uses: BigWigsMods/packager@master
+        env:
+          CF_API_KEY: ${{ secrets.CF_API_KEY }}
+        with:
+          args: -e -l -r ${{ github.workspace }}/.release/curseforge
+
+      - name: Upload CurseForge package artifact
+        if: steps.version.outputs.prerelease == 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: TBCGearExporter-CurseForge-${{ steps.version.outputs.tag }}
+          path: .release/curseforge/*.zip
+          if-no-files-found: error
