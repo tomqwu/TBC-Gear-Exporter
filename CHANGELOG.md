@@ -4,6 +4,15 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+## [0.4.6] - 2026-08-01
+
+- Put the three strategy controls directly on Gear Advice, so tank players can switch Balanced, Mitigation / progression, and Threat / farm without discovering them on another page.
+- Recalculate the complete recommendation list, weights, selected comparison, and export whenever the strategy view changes.
+- Name both the selected mode and all available modes in localized Markdown and plain-text reports.
+- Explain the separate tank views on Stats Analysis and instruct external AI tools not to collapse mitigation and threat into one ranking.
+- Keep mode controls in fixed non-overlapping regions and expand GUI regression coverage for switching, localization, export synchronization, and empty states.
+- Expand the suite to 83 tests with 99.16% executable-line coverage.
+
 ## [0.4.5] - 2026-08-01
 
 - Make stable `v*` tags publish both the GitHub Release and the CurseForge BCC release from the default `Release` workflow.
