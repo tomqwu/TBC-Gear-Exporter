@@ -1,5 +1,5 @@
 local DB = {
-    version = 5,
+    version = 6,
     phase = 2,
     phaseLabel = "TBC Anniversary Phase 2 (Tier 5)",
     patch = "2.5.6",
@@ -12,7 +12,7 @@ local DB = {
             label = "WoWSims TBC",
             url = "https://github.com/wowsims/tbc-new",
             commit = "3fc6a414979d62186f75d51ab6f6dd5d44f35b9c",
-            use = "P2/T5 gear presets, talent strings, encounter variants, and simulation-backed stat models where supported.",
+            use = "P2/T5 reference gear and talent presets plus explicitly imported static EP tables. A gear preset does not by itself calibrate candidate scoring.",
         },
         {
             key = "wowhead",
@@ -70,6 +70,19 @@ end
 
 local function Mode(key, labels, multipliers, focus)
     return { key = key, labels = labels, multipliers = multipliers or {}, focus = focus or {} }
+end
+
+local function ScoreModel(kind, sourcePath, sourcePhase, sourceSpec, limitations)
+    return {
+        version = 1,
+        kind = kind,
+        sourceKey = sourcePath and "wowsims" or "local_heuristic",
+        sourcePath = sourcePath,
+        sourcePhase = sourcePhase,
+        sourceSpec = sourceSpec,
+        supportsDefinitiveVerdicts = false,
+        limitations = limitations or {},
+    }
 end
 
 local function TankModes(threat)
@@ -147,8 +160,10 @@ local TANK_CAPS = {
     Cap("avoidance_table", 102.4, "%", "context", Labels("Uncrushable combat table", "防碾压战斗表", "防輾壓戰鬥表"), "Paladin and Warrior only. Include boss miss and temporary block effects; the standing sheet subtotal is incomplete."),
 }
 
--- Pinned WoWSims hunter EP preset, normalized to 1 agility. Generic item attack
--- power contributes both melee AP (0.06) and ranged AP (0.40) in the simulator.
+-- Pinned WoWSims P1 Hunter EP presets, normalized to 1 agility. These are
+-- shared by the source BM and SV presets and are not a P2 or MM calibration.
+-- Generic item attack power contributes both melee AP (0.06) and ranged AP
+-- (0.40) for the visible item stat exposed by the WoW API.
 local HUNTER_EP_WEIGHTS = {
     [S.agility] = 1,
     [S.attackPower] = 0.46,
@@ -162,9 +177,58 @@ local HUNTER_EP_WEIGHTS = {
     [S.weaponDps] = 1.75,
 }
 
+-- Exact static Phase 2 EP tables imported from the pinned WoWSims revision.
+-- They remain linear visible-stat estimates, not live character simulations.
+local BALANCE_P2_EP_WEIGHTS = {
+    [S.intellect] = 0.56,
+    [S.spirit] = 0.12,
+    [S.spellPower] = 1,
+    [S.spellDamage] = 1,
+    [S.spellHit] = 1.86,
+    [S.spellCrit] = 0.69,
+    [S.spellHaste] = 1.29,
+    [S.mp5] = 0.04,
+}
+
+local ARCANE_P2_EP_WEIGHTS = {
+    [S.intellect] = 1.31,
+    [S.spirit] = 0.90,
+    [S.spellPower] = 1,
+    [S.spellDamage] = 1,
+    [S.spellHit] = 2.30,
+    [S.spellCrit] = 0.77,
+    [S.spellHaste] = 0.55,
+    [S.mp5] = 0.48,
+}
+
+local RETRIBUTION_P2_EP_WEIGHTS = {
+    [S.strength] = 1,
+    [S.agility] = 0.75,
+    [S.attackPower] = 0.41,
+    [S.hit] = 2.15,
+    [S.crit] = 0.77,
+    [S.meleeHaste] = 1.17,
+    [S.expertise] = 2.14,
+    [S.spellPower] = 0.17,
+    [S.spellDamage] = 0.17,
+    [S.weaponDps] = 5.34,
+}
+
+local ORDERED_STAT_MODEL = ScoreModel("ordered_stat_heuristic", nil, nil, nil, {
+    "Weights are generated from the declared stat order and generic unit scales.",
+    "No simulator EP table is attached to this role.",
+})
+
+local HUNTER_SHARED_P1_MODEL = ScoreModel("cross_phase_shared_ep", "ui/hunter/dps/presets.ts", 1, "BM/SV", {
+    "The source labels these as P1 BM and P1 SV EP presets.",
+    "The same table is reused for BM, MM, and SV here and is not P2-spec calibrated.",
+})
+
 local function Role(definition)
     definition.phase = 2
     definition.modes = definition.modes or DpsModes({})
+    definition.scoreModel = definition.scoreModel or ORDERED_STAT_MODEL
+    definition.routeEvidence = definition.evidence or (#(definition.presets or {}) > 0 and "simulator_preset" or "guide")
     return definition
 end
 
@@ -212,7 +276,7 @@ Preset("warrior_protection_p2", "Protection Warrior P2", "warrior_protection", "
 Preset("warrior_hydross_p2", "Protection Warrior Hydross", "warrior_protection", "mitigation", { 31371, 28244, 29023, 28328, 31369, 28996, 30644, 28995, 31370, 28997, 31398, 30834, 23836, 29181, 28438, 28189, 28319 }, "ui/warrior/protection/gear_sets/p2_hydross.gear.json", "Encounter resistance set; never use as a default boss set.")
 
 DB.classes.DRUID = { roles = {
-    Role({ key = "balance_caster", talentRuleKey = "balance_caster", label = "Balance Druid", labels = Labels("Balance Druid", "平衡德鲁伊", "平衡德魯伊"), talentTabs = { 1 }, archetype = "caster", models = { "caster_dps", "mana_longevity" }, priorities = { "spell hit to adjusted cap", "Tier 5 set threshold", "spell damage", "spell crit", "haste", "intellect" }, benchmarkKeys = { "spell_hit" }, statTokens = { S.spellPower, S.spellHit, S.spellCrit, S.spellHaste, S.intellect, S.spirit }, caps = SPELL_CAPS, modes = DpsModes({ S.spellPower }), setGoal = "Nordrassil Regalia 4-piece", talentString = "510022312503135231351--520033", presets = { "balance_p2" }, guideUrl = "https://www.wowhead.com/tbc/guide/classes/druid/balance/dps-bis-gear-pve-phase-2" }),
+    Role({ key = "balance_caster", talentRuleKey = "balance_caster", label = "Balance Druid", labels = Labels("Balance Druid", "平衡德鲁伊", "平衡德魯伊"), talentTabs = { 1 }, archetype = "caster", models = { "caster_dps", "mana_longevity" }, priorities = { "spell hit to adjusted cap", "Tier 5 set threshold", "spell damage", "spell crit", "haste", "intellect" }, benchmarkKeys = { "spell_hit" }, statTokens = { S.spellPower, S.spellHit, S.spellCrit, S.spellHaste, S.intellect, S.spirit }, baseWeights = BALANCE_P2_EP_WEIGHTS, scoreModel = ScoreModel("phase_ep", "ui/druid/balance/presets.ts", 2, "Balance"), caps = SPELL_CAPS, modes = DpsModes({ S.spellPower }), setGoal = "Nordrassil Regalia 4-piece", talentString = "510022312503135231351--520033", presets = { "balance_p2" }, guideUrl = "https://www.wowhead.com/tbc/guide/classes/druid/balance/dps-bis-gear-pve-phase-2" }),
     Role({ key = "bear_tank", talentRuleKey = "bear_tank", label = "Feral Bear Tank", labels = Labels("Feral Bear Tank", "野性熊坦", "野性熊坦"), talentTabs = { 2 }, archetype = "tank", models = { "tank_mitigation", "tank_threat" }, priorities = { "combined crit immunity", "armor and effective health", "stamina", "agility/dodge", "expertise", "hit", "feral attack power and threat" }, benchmarkKeys = { "crit_immunity", "melee_special_hit", "expertise_dodge" }, statTokens = { S.stamina, S.armor, S.bonusArmor, S.agility, S.dodge, S.resilience, S.defense, S.expertise, S.hit, S.feralAttackPower, S.strength, S.crit }, caps = { TANK_CAPS[1], MELEE_CAPS[1], MELEE_CAPS[2] }, modes = TankModes({ [S.feralAttackPower] = 1.25, [S.agility] = 1.12, [S.strength] = 1.20, [S.crit] = 1.12 }), setGoal = "Choose Survival, Balanced, Offensive, Warden, or Hydross resistance set per encounter", talentString = "-503032132322105301251-05503301", presets = { "bear_balanced", "bear_survival", "bear_offensive", "bear_warden", "bear_hydross_frost", "bear_hydross_nature" }, guideUrl = "https://www.wowhead.com/tbc/guide/classes/druid/feral/tank-bis-gear-pve-phase-2" }),
     Role({ key = "cat_dps", talentRuleKey = "cat_dps", label = "Feral Cat DPS", labels = Labels("Feral Cat DPS", "野性猎豹输出", "野性獵豹輸出"), talentTabs = { 2 }, archetype = "melee", models = { "melee_dps", "weapon_selection" }, priorities = { "6% or 9% hit route", "Tier 4 2-piece versus T5 off-pieces", "agility", "strength", "feral attack power", "crit", "expertise" }, benchmarkKeys = { "melee_special_hit", "expertise_dodge" }, statTokens = { S.agility, S.strength, S.feralAttackPower, S.attackPower, S.hit, S.expertise, S.crit }, caps = MELEE_CAPS, modes = DpsModes({ S.agility, S.feralAttackPower }), setGoal = "Compare Tier 4 2-piece finisher route against T5 alternatives", talentString = "-503032132322105301251-05503301", presets = { "cat_6_hit", "cat_9_hit", "cat_alt_6_hit", "cat_alt_9_hit" }, guideUrl = "https://www.wowhead.com/tbc/guide/classes/druid/feral/dps-bis-gear-pve-phase-2" }),
     Role({ key = "restoration_healer", talentRuleKey = "restoration_healer", label = "Restoration Druid", labels = Labels("Restoration Druid", "恢复德鲁伊", "恢復德魯伊"), talentTabs = { 3 }, archetype = "healer", models = { "healing_throughput", "mana_longevity" }, priorities = { "bonus healing", "spirit", "mp5", "intellect", "haste", "Lifebloom idol" }, benchmarkKeys = {}, statTokens = { S.healing, S.spirit, S.mp5, S.intellect, S.spellHaste }, caps = {}, modes = HealerModes(), setGoal = "Nordrassil Raiment and encounter-length mana set", talentString = "05320031103--230023312131502331050313051", presets = {}, guideUrl = "https://www.wowhead.com/tbc/guide/classes/druid/healer-bis-gear-pve-phase-2", evidence = "guide" }),
@@ -227,7 +291,7 @@ DB.classes.WARRIOR = { roles = {
 DB.classes.PALADIN = { roles = {
     Role({ key = "holy_healer", talentRuleKey = "holy_healer", label = "Holy Paladin", labels = Labels("Holy Paladin", "神圣圣骑士", "神聖聖騎士"), talentTabs = { 1 }, archetype = "healer", models = { "healing_throughput", "mana_longevity" }, priorities = { "bonus healing", "intellect", "spell crit", "mp5", "haste", "downrank efficiency" }, benchmarkKeys = {}, statTokens = { S.healing, S.intellect, S.spellCrit, S.mp5, S.spellHaste }, caps = {}, modes = HealerModes(), setGoal = "Crystalforge Raiment only when its set value beats healing off-pieces", presets = {}, guideUrl = "https://www.wowhead.com/tbc/guide/classes/paladin/holy/healer-bis-gear-pve-phase-2", evidence = "guide" }),
     Role({ key = "protection_tank", talentRuleKey = "protection_tank", label = "Protection Paladin", labels = Labels("Protection Paladin", "防护圣骑士", "防護聖騎士"), talentTabs = { 2 }, archetype = "tank", models = { "tank_mitigation", "spell_threat" }, priorities = { "crit immunity", "102.4 combat table", "stamina", "spell power", "defense/avoidance", "spell hit", "mana sustain" }, benchmarkKeys = { "crit_immunity", "avoidance_table", "spell_hit" }, statTokens = { S.stamina, S.defense, S.resilience, S.armor, S.dodge, S.parry, S.block, S.blockValue, S.spellPower, S.spellHit, S.intellect, S.mp5 }, caps = { TANK_CAPS[1], TANK_CAPS[2], SPELL_CAPS[1] }, modes = TankModes({ [S.spellPower] = 1.32, [S.spellHit] = 1.30, [S.intellect] = 1.10 }), setGoal = "Keep Justicar Armor 2-piece for single-target threat; do not force weak Crystalforge bonuses", talentString = "-0530513050000142521051-052050003003", presets = { "paladin_protection_p2" }, guideUrl = "https://www.wowhead.com/tbc/guide/classes/paladin/tank-bis-gear-pve-phase-2" }),
-    Role({ key = "retribution_dps", talentRuleKey = "retribution_dps", label = "Retribution Paladin", labels = Labels("Retribution Paladin", "惩戒圣骑士", "懲戒聖騎士"), talentTabs = { 3 }, archetype = "melee", models = { "melee_dps", "utility_dps" }, priorities = { "weapon damage", "hit", "expertise", "strength", "crit", "haste", "seal twisting" }, benchmarkKeys = { "melee_special_hit", "expertise_dodge" }, statTokens = { S.weaponDps, S.hit, S.expertise, S.strength, S.attackPower, S.crit, S.meleeHaste }, caps = MELEE_CAPS, modes = DpsModes({ S.weaponDps, S.strength }), setGoal = "Crystalforge Battlegear and weapon-first upgrade path", talentString = "5-053201-0523005120033125331051", presets = { "paladin_retribution_p2" }, guideUrl = "https://www.wowhead.com/tbc/guide/classes/paladin/retribution/dps-bis-gear-pve-phase-2" }),
+    Role({ key = "retribution_dps", talentRuleKey = "retribution_dps", label = "Retribution Paladin", labels = Labels("Retribution Paladin", "惩戒圣骑士", "懲戒聖騎士"), talentTabs = { 3 }, archetype = "melee", models = { "melee_dps", "utility_dps" }, priorities = { "weapon damage", "hit", "expertise", "strength", "crit", "haste", "seal twisting" }, benchmarkKeys = { "melee_special_hit", "expertise_dodge" }, statTokens = { S.weaponDps, S.hit, S.expertise, S.strength, S.attackPower, S.crit, S.meleeHaste }, baseWeights = RETRIBUTION_P2_EP_WEIGHTS, scoreModel = ScoreModel("phase_ep", "ui/paladin/retribution/presets.ts", 2, "Retribution"), caps = MELEE_CAPS, modes = DpsModes({ S.weaponDps, S.strength }), setGoal = "Crystalforge Battlegear and weapon-first upgrade path", talentString = "5-053201-0523005120033125331051", presets = { "paladin_retribution_p2" }, guideUrl = "https://www.wowhead.com/tbc/guide/classes/paladin/retribution/dps-bis-gear-pve-phase-2" }),
 } }
 
 DB.classes.PRIEST = { roles = {
@@ -243,9 +307,9 @@ DB.classes.SHAMAN = { roles = {
 } }
 
 DB.classes.HUNTER = { roles = {
-    Role({ key = "beast_mastery", talentRuleKey = "ranged_dps", label = "Beast Mastery Hunter", labels = Labels("Beast Mastery Hunter", "野兽控制猎人", "野獸控制獵人"), talentTabs = { 1 }, archetype = "ranged", models = { "ranged_dps", "pet_synergy" }, priorities = { "6% or 9% hit route", "ranged weapon DPS", "agility", "attack power", "crit", "haste", "pet scaling" }, benchmarkKeys = { "ranged_hit" }, statTokens = { S.weaponDps, S.rangedHit, S.agility, S.rangedAttackPower, S.attackPower, S.rangedCrit, S.rangedHaste }, baseWeights = HUNTER_EP_WEIGHTS, caps = RANGED_CAPS, modes = DpsModes({ S.weaponDps, S.agility, S.rangedAttackPower }), setGoal = "Rift Stalker Armor and 2H/DW route selected around party hit", talentString = "522002005150122431051-0505201205", presets = { "hunter_bm_dw_6", "hunter_bm_dw_9", "hunter_bm_2h_6", "hunter_bm_2h_9" }, guideUrl = "https://www.wowhead.com/tbc/guide/classes/hunter/beast-mastery/dps-bis-gear-pve-phase-2" }),
-    Role({ key = "marksmanship_hunter", talentRuleKey = "ranged_dps", label = "Marksmanship Hunter", labels = Labels("Marksmanship Hunter", "射击猎人", "射擊獵人"), talentTabs = { 2 }, archetype = "ranged", models = { "ranged_dps", "raid_support" }, priorities = { "ranged hit", "ranged weapon DPS", "agility", "attack power", "crit", "haste", "Trueshot Aura" }, benchmarkKeys = { "ranged_hit" }, statTokens = { S.rangedHit, S.weaponDps, S.agility, S.rangedAttackPower, S.attackPower, S.rangedCrit, S.rangedHaste }, baseWeights = HUNTER_EP_WEIGHTS, caps = RANGED_CAPS, modes = DpsModes({ S.weaponDps, S.agility, S.rangedAttackPower }), setGoal = "Rift Stalker Armor with raid-support-aware off-pieces", presets = {}, guideUrl = "https://www.wowhead.com/tbc/guide/classes/hunter/marksmanship/dps-bis-gear-pve-phase-2", evidence = "guide" }),
-    Role({ key = "survival_hunter", talentRuleKey = "ranged_dps", label = "Survival Hunter", labels = Labels("Survival Hunter", "生存猎人", "生存獵人"), talentTabs = { 3 }, archetype = "ranged", models = { "ranged_dps", "raid_support" }, priorities = { "6% or 9% hit route", "agility for Expose Weakness", "ranged weapon DPS", "crit", "attack power", "haste" }, benchmarkKeys = { "ranged_hit" }, statTokens = { S.rangedHit, S.agility, S.weaponDps, S.rangedCrit, S.rangedAttackPower, S.attackPower, S.rangedHaste }, baseWeights = HUNTER_EP_WEIGHTS, caps = RANGED_CAPS, modes = DpsModes({ S.agility, S.weaponDps }), setGoal = "Rift Stalker pieces with maximum sustainable Expose Weakness agility", talentString = "502-0550201205-333200022003223005103", presets = { "hunter_sv_dw_6", "hunter_sv_2h_6" }, guideUrl = "https://www.wowhead.com/tbc/guide/classes/hunter/survival/dps-bis-gear-pve-phase-2" }),
+    Role({ key = "beast_mastery", talentRuleKey = "ranged_dps", label = "Beast Mastery Hunter", labels = Labels("Beast Mastery Hunter", "野兽控制猎人", "野獸控制獵人"), talentTabs = { 1 }, archetype = "ranged", models = { "ranged_dps", "pet_synergy" }, priorities = { "6% or 9% hit route", "ranged weapon DPS", "agility", "attack power", "crit", "haste", "pet scaling" }, benchmarkKeys = { "ranged_hit" }, statTokens = { S.weaponDps, S.rangedHit, S.agility, S.rangedAttackPower, S.attackPower, S.rangedCrit, S.rangedHaste }, baseWeights = HUNTER_EP_WEIGHTS, scoreModel = HUNTER_SHARED_P1_MODEL, caps = RANGED_CAPS, modes = DpsModes({ S.weaponDps, S.agility, S.rangedAttackPower }), setGoal = "Rift Stalker Armor and 2H/DW route selected around party hit", talentString = "522002005150122431051-0505201205", presets = { "hunter_bm_dw_6", "hunter_bm_dw_9", "hunter_bm_2h_6", "hunter_bm_2h_9" }, guideUrl = "https://www.wowhead.com/tbc/guide/classes/hunter/beast-mastery/dps-bis-gear-pve-phase-2" }),
+    Role({ key = "marksmanship_hunter", talentRuleKey = "ranged_dps", label = "Marksmanship Hunter", labels = Labels("Marksmanship Hunter", "射击猎人", "射擊獵人"), talentTabs = { 2 }, archetype = "ranged", models = { "ranged_dps", "raid_support" }, priorities = { "ranged hit", "ranged weapon DPS", "agility", "attack power", "crit", "haste", "Trueshot Aura" }, benchmarkKeys = { "ranged_hit" }, statTokens = { S.rangedHit, S.weaponDps, S.agility, S.rangedAttackPower, S.attackPower, S.rangedCrit, S.rangedHaste }, baseWeights = HUNTER_EP_WEIGHTS, scoreModel = HUNTER_SHARED_P1_MODEL, caps = RANGED_CAPS, modes = DpsModes({ S.weaponDps, S.agility, S.rangedAttackPower }), setGoal = "Rift Stalker Armor with raid-support-aware off-pieces", presets = {}, guideUrl = "https://www.wowhead.com/tbc/guide/classes/hunter/marksmanship/dps-bis-gear-pve-phase-2", evidence = "guide" }),
+    Role({ key = "survival_hunter", talentRuleKey = "ranged_dps", label = "Survival Hunter", labels = Labels("Survival Hunter", "生存猎人", "生存獵人"), talentTabs = { 3 }, archetype = "ranged", models = { "ranged_dps", "raid_support" }, priorities = { "6% or 9% hit route", "agility for Expose Weakness", "ranged weapon DPS", "crit", "attack power", "haste" }, benchmarkKeys = { "ranged_hit" }, statTokens = { S.rangedHit, S.agility, S.weaponDps, S.rangedCrit, S.rangedAttackPower, S.attackPower, S.rangedHaste }, baseWeights = HUNTER_EP_WEIGHTS, scoreModel = HUNTER_SHARED_P1_MODEL, caps = RANGED_CAPS, modes = DpsModes({ S.agility, S.weaponDps }), setGoal = "Rift Stalker pieces with maximum sustainable Expose Weakness agility", talentString = "502-0550201205-333200022003223005103", presets = { "hunter_sv_dw_6", "hunter_sv_2h_6" }, guideUrl = "https://www.wowhead.com/tbc/guide/classes/hunter/survival/dps-bis-gear-pve-phase-2" }),
 } }
 
 DB.classes.ROGUE = { roles = {
@@ -255,7 +319,7 @@ DB.classes.ROGUE = { roles = {
 } }
 
 DB.classes.MAGE = { roles = {
-    Role({ key = "arcane_mage", talentRuleKey = "caster_dps", label = "Arcane Mage", labels = Labels("Arcane Mage", "奥术法师", "奧術法師"), talentTabs = { 1 }, archetype = "caster", models = { "caster_dps", "mana_longevity" }, priorities = { "arcane hit after Arcane Focus", "Tier 5 set", "intellect", "spell power", "spirit", "crit", "haste" }, benchmarkKeys = { "spell_hit" }, statTokens = { S.spellHit, S.intellect, S.spellPower, S.spirit, S.spellCrit, S.spellHaste, S.mp5 }, caps = { Cap("spell_hit", 6, "%", "talent_cap", Labels("Arcane hit after talents", "天赋后奥术命中", "天賦後奧術命中"), "Assumes 5/5 Arcane Focus; subtract reliable Misery when present.") }, modes = DpsModes({ S.intellect, S.spellPower }), setGoal = "Tirisfal Regalia and Serpent-Coil Braid mana-cycle route", talentString = "2500052300030150330125--053500031003001", presets = { "mage_arcane_p2" }, guideUrl = "https://www.wowhead.com/tbc/guide/classes/mage/arcane/dps-bis-gear-pve-phase-2" }),
+    Role({ key = "arcane_mage", talentRuleKey = "caster_dps", label = "Arcane Mage", labels = Labels("Arcane Mage", "奥术法师", "奧術法師"), talentTabs = { 1 }, archetype = "caster", models = { "caster_dps", "mana_longevity" }, priorities = { "arcane hit after Arcane Focus", "Tier 5 set", "intellect", "spell power", "spirit", "crit", "haste" }, benchmarkKeys = { "spell_hit" }, statTokens = { S.spellHit, S.intellect, S.spellPower, S.spirit, S.spellCrit, S.spellHaste, S.mp5 }, baseWeights = ARCANE_P2_EP_WEIGHTS, scoreModel = ScoreModel("phase_ep", "ui/mage/dps/presets.ts", 2, "Arcane"), caps = { Cap("spell_hit", 6, "%", "talent_cap", Labels("Arcane hit after talents", "天赋后奥术命中", "天賦後奧術命中"), "Assumes 5/5 Arcane Focus; subtract reliable Misery when present.") }, modes = DpsModes({ S.intellect, S.spellPower }), setGoal = "Tirisfal Regalia and Serpent-Coil Braid mana-cycle route", talentString = "2500052300030150330125--053500031003001", presets = { "mage_arcane_p2" }, guideUrl = "https://www.wowhead.com/tbc/guide/classes/mage/arcane/dps-bis-gear-pve-phase-2" }),
     Role({ key = "fire_mage", talentRuleKey = "caster_dps", label = "Fire Mage", labels = Labels("Fire Mage", "火焰法师", "火焰法師"), talentTabs = { 2 }, archetype = "caster", models = { "caster_dps" }, priorities = { "fire hit after Elemental Precision", "spell power", "spell crit", "haste", "intellect", "set bonus" }, benchmarkKeys = { "spell_hit" }, statTokens = { S.spellHit, S.spellPower, S.spellCrit, S.spellHaste, S.intellect }, caps = { Cap("spell_hit", 13, "%", "talent_cap", Labels("Fire hit after talents", "天赋后火焰命中", "天賦後火焰命中"), "Assumes 3/3 Elemental Precision; subtract reliable Misery when present.") }, modes = DpsModes({ S.spellPower }), setGoal = "Tirisfal Regalia versus fire-damage off-pieces", presets = {}, guideUrl = "https://www.wowhead.com/tbc/guide/classes/mage/fire/dps-bis-gear-pve-phase-2", evidence = "guide" }),
     Role({ key = "frost_mage", talentRuleKey = "caster_dps", label = "Frost Mage", labels = Labels("Frost Mage", "冰霜法师", "冰霜法師"), talentTabs = { 3 }, archetype = "caster", models = { "caster_dps", "control" }, priorities = { "frost hit after Elemental Precision", "spell power", "spell crit", "haste", "intellect", "survivability" }, benchmarkKeys = { "spell_hit" }, statTokens = { S.spellHit, S.spellPower, S.spellCrit, S.spellHaste, S.intellect, S.stamina }, caps = { Cap("spell_hit", 13, "%", "talent_cap", Labels("Frost hit after talents", "天赋后冰霜命中", "天賦後冰霜命中"), "Assumes 3/3 Elemental Precision; subtract reliable Misery when present.") }, modes = DpsModes({ S.spellPower }), setGoal = "Tirisfal Regalia versus frost-damage off-pieces", presets = {}, guideUrl = "https://www.wowhead.com/tbc/guide/classes/mage/frost/dps-bis-gear-pve-phase-2", evidence = "guide" }),
 } }
@@ -321,6 +385,67 @@ function DB.GetRole(classToken, roleKey)
         end
     end
     return nil
+end
+
+function DB.Validate()
+    local issues = {}
+    local summary = {
+        classes = 0,
+        roles = 0,
+        phaseEp = 0,
+        crossPhaseEp = 0,
+        orderedHeuristic = 0,
+        simulatorRoutes = 0,
+        guideRoutes = 0,
+        definitiveModels = 0,
+    }
+
+    for classToken, class in pairs(DB.classes) do
+        summary.classes = summary.classes + 1
+        for index = 1, #(class.roles or {}) do
+            local role = class.roles[index]
+            local model = role.scoreModel
+            summary.roles = summary.roles + 1
+            if not model or not model.kind then
+                issues[#issues + 1] = classToken .. "." .. tostring(role.key) .. ": missing score model contract"
+            else
+                if model.kind == "phase_ep" then
+                    summary.phaseEp = summary.phaseEp + 1
+                elseif model.kind == "cross_phase_shared_ep" then
+                    summary.crossPhaseEp = summary.crossPhaseEp + 1
+                elseif model.kind == "ordered_stat_heuristic" then
+                    summary.orderedHeuristic = summary.orderedHeuristic + 1
+                else
+                    issues[#issues + 1] = classToken .. "." .. tostring(role.key) .. ": unknown score model " .. tostring(model.kind)
+                end
+                if model.kind ~= "ordered_stat_heuristic" and not next(role.baseWeights or {}) then
+                    issues[#issues + 1] = classToken .. "." .. tostring(role.key) .. ": sourced score model has no explicit weights"
+                end
+                if model.supportsDefinitiveVerdicts then
+                    summary.definitiveModels = summary.definitiveModels + 1
+                end
+            end
+
+            if role.routeEvidence == "simulator_preset" then
+                summary.simulatorRoutes = summary.simulatorRoutes + 1
+                if #(role.presets or {}) == 0 then
+                    issues[#issues + 1] = classToken .. "." .. tostring(role.key) .. ": simulator route has no preset"
+                end
+            elseif role.routeEvidence == "guide" then
+                summary.guideRoutes = summary.guideRoutes + 1
+            else
+                issues[#issues + 1] = classToken .. "." .. tostring(role.key) .. ": unknown route evidence " .. tostring(role.routeEvidence)
+            end
+        end
+    end
+
+    if summary.classes ~= 9 then
+        issues[#issues + 1] = "expected 9 classes, found " .. tostring(summary.classes)
+    end
+    if summary.roles ~= 28 then
+        issues[#issues + 1] = "expected 28 roles, found " .. tostring(summary.roles)
+    end
+    return #issues == 0, issues, summary
 end
 
 _G.TBCGearExporterP2DB = DB
