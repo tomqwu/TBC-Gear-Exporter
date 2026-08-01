@@ -8,8 +8,8 @@
 ![Lua 5.1](https://img.shields.io/badge/Lua-5.1-2C2D72?logo=lua&logoColor=white)
 ![WoW AddOn](https://img.shields.io/badge/WoW-TBC%20Classic-C69B6D)
 ![TBC Anniversary](https://img.shields.io/badge/client-Anniversary-0E8A16)
-![Tests](https://img.shields.io/badge/tests-78%20passing-brightgreen)
-![Coverage](https://img.shields.io/badge/coverage-99.15%25-brightgreen)
+![Tests](https://img.shields.io/badge/tests-81%20passing-brightgreen)
+![Coverage](https://img.shields.io/badge/coverage-99.16%25-brightgreen)
 ![Coverage Gate](https://img.shields.io/badge/coverage%20gate-99%25-blue)
 ![Local Install](https://img.shields.io/badge/local%20install-PowerShell-5391FE?logo=powershell&logoColor=white)
 
@@ -87,7 +87,7 @@ The export panel pops up from saved `TBCGearExporterDB` data. It shows saved bag
 
 ## Phase 2 strategy database
 
-Version 0.4.3 replaces the defense-only tank gate with combined boss critical-hit reduction from defense skill, resilience, and applicable talents. For Feral bears, each rank of Survival of the Fittest contributes its 1% reduction, so 3/3 bears need the remaining 2.6% from defense and resilience rather than 490 defense skill. Gear comparisons convert defense and resilience rating changes into the same percentage unit, reject off-hands beside an equipped two-hander, and exclude a comparison when either item has no parsed static stats, since hidden use/proc/set/gem/enchant value would make the score misleading. Version 0.4.2 made role summaries sheet-aware, scoped Hunter weapon DPS to the ranged slot, recognized Beast Mastery talents, selected unresolved 9% hit routes, and blocked swaps that worsen an unmet benchmark. Version 0.4.0 introduced the versioned Tier 5 database covering all 9 TBC classes and 28 PvE specializations. Every role has localized labels, stat priorities, explicit cap assumptions, three switchable modes, a P2 set/route goal, a guide source, and a reference talent string where available. The database includes 29 WoWSims reference sets with 475 non-empty target slots; target progress is checked against current equipment plus saved bags and bank, independent of the active export filter.
+Version 0.4.4 evaluates a generic one-hand weapon against both occupied weapon slots in a dual-wield setup, while keeping shields, held-in-off-hand items, explicit main-hand weapons, and two-hand loadouts on their legal routes. Hunter scoring now uses the pinned WoWSims EP preset instead of the generic priority heuristic: agility 1.00, generic attack power 0.46, ranged attack power 0.40, hit 0.12, crit 0.92, haste 0.788, and ranged weapon DPS 1.75 before cap, talent, and selected-mode adjustments. Generic hit, crit, and haste ratings are also folded into the matching melee, ranged, or spell role highlights. Version 0.4.3 replaced the defense-only tank gate with combined boss critical-hit reduction from defense skill, resilience, and applicable talents. For Feral bears, each rank of Survival of the Fittest contributes its 1% reduction, so 3/3 bears need the remaining 2.6% from defense and resilience rather than 490 defense skill. Version 0.4.0 introduced the versioned Tier 5 database covering all 9 TBC classes and 28 PvE specializations. Every role has localized labels, stat priorities, explicit cap assumptions, three switchable modes, a P2 set/route goal, a guide source, and a reference talent string where available. The database includes 29 WoWSims reference sets with 475 non-empty target slots; target progress is checked against current equipment plus saved bags and bank, independent of the active export filter.
 
 Simulation presets and guide-only roles are labeled separately. Healers and niche builds without a mature preset still receive visible-stat comparisons, but the addon does not present those results as simulation certainty. The full role matrix, tank/healer/DPS rules, source revisions, and limitations are documented in [docs/phase2-strategy.md](docs/phase2-strategy.md). WoWSims-derived preset data is pinned to an exact commit and distributed with its MIT notice in [TBCGearExporter/ThirdPartyNotices.txt](TBCGearExporter/ThirdPartyNotices.txt).
 
@@ -118,6 +118,6 @@ CI runs syntax checks for every Lua file and the local WoW API mock suite on eve
 This repo follows the same shape as `ArenaCoachTBC`:
 
 - Pull requests and `main` pushes run Lua tests, the 99% coverage gate, syntax checks, and a package dry run.
-- Stable tags named `v*`, for example `v0.4.3`, build a GitHub Release using notes from `CHANGELOG.md`; routine `main` pushes do not create development tags.
+- Stable tags named `v*`, for example `v0.4.4`, build a GitHub Release using notes from `CHANGELOG.md`; routine `main` pushes do not create development tags.
 - The release zip contains the addon folder as the top-level entry, so extraction into `Interface/AddOns/` works directly.
 - Local release mirroring is done with `scripts/install-local.ps1` because GitHub Actions cannot access your `F:\` drive.

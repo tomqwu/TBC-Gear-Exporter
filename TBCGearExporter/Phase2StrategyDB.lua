@@ -1,5 +1,5 @@
 local DB = {
-    version = 3,
+    version = 4,
     phase = 2,
     phaseLabel = "TBC Anniversary Phase 2 (Tier 5)",
     patch = "2.5.6",
@@ -139,6 +139,21 @@ local TANK_CAPS = {
     Cap("avoidance_table", 102.4, "%", "context", Labels("Uncrushable combat table", "防碾压战斗表", "防輾壓戰鬥表"), "Paladin and Warrior only. Include boss miss and temporary block effects; the standing sheet subtotal is incomplete."),
 }
 
+-- Pinned WoWSims hunter EP preset, normalized to 1 agility. Generic item attack
+-- power contributes both melee AP (0.06) and ranged AP (0.40) in the simulator.
+local HUNTER_EP_WEIGHTS = {
+    [S.agility] = 1,
+    [S.attackPower] = 0.46,
+    [S.rangedAttackPower] = 0.40,
+    [S.hit] = 0.12,
+    [S.rangedHit] = 0.12,
+    [S.crit] = 0.92,
+    [S.rangedCrit] = 0.92,
+    [S.haste] = 0.788,
+    [S.rangedHaste] = 0.788,
+    [S.weaponDps] = 1.75,
+}
+
 local function Role(definition)
     definition.phase = 2
     definition.modes = definition.modes or DpsModes({})
@@ -220,9 +235,9 @@ DB.classes.SHAMAN = { roles = {
 } }
 
 DB.classes.HUNTER = { roles = {
-    Role({ key = "beast_mastery", talentRuleKey = "ranged_dps", label = "Beast Mastery Hunter", labels = Labels("Beast Mastery Hunter", "野兽控制猎人", "野獸控制獵人"), talentTabs = { 1 }, archetype = "ranged", models = { "ranged_dps", "pet_synergy" }, priorities = { "6% or 9% hit route", "ranged weapon DPS", "agility", "attack power", "crit", "haste", "pet scaling" }, benchmarkKeys = { "ranged_hit" }, statTokens = { S.weaponDps, S.rangedHit, S.agility, S.rangedAttackPower, S.attackPower, S.rangedCrit, S.rangedHaste }, caps = RANGED_CAPS, modes = DpsModes({ S.weaponDps, S.agility, S.rangedAttackPower }), setGoal = "Rift Stalker Armor and 2H/DW route selected around party hit", talentString = "522002005150122431051-0505201205", presets = { "hunter_bm_dw_6", "hunter_bm_dw_9", "hunter_bm_2h_6", "hunter_bm_2h_9" }, guideUrl = "https://www.wowhead.com/tbc/guide/classes/hunter/beast-mastery/dps-bis-gear-pve-phase-2" }),
-    Role({ key = "marksmanship_hunter", talentRuleKey = "ranged_dps", label = "Marksmanship Hunter", labels = Labels("Marksmanship Hunter", "射击猎人", "射擊獵人"), talentTabs = { 2 }, archetype = "ranged", models = { "ranged_dps", "raid_support" }, priorities = { "ranged hit", "ranged weapon DPS", "agility", "attack power", "crit", "haste", "Trueshot Aura" }, benchmarkKeys = { "ranged_hit" }, statTokens = { S.rangedHit, S.weaponDps, S.agility, S.rangedAttackPower, S.rangedCrit, S.rangedHaste }, caps = RANGED_CAPS, modes = DpsModes({ S.weaponDps, S.agility, S.rangedAttackPower }), setGoal = "Rift Stalker Armor with raid-support-aware off-pieces", presets = {}, guideUrl = "https://www.wowhead.com/tbc/guide/classes/hunter/marksmanship/dps-bis-gear-pve-phase-2", evidence = "guide" }),
-    Role({ key = "survival_hunter", talentRuleKey = "ranged_dps", label = "Survival Hunter", labels = Labels("Survival Hunter", "生存猎人", "生存獵人"), talentTabs = { 3 }, archetype = "ranged", models = { "ranged_dps", "raid_support" }, priorities = { "6% or 9% hit route", "agility for Expose Weakness", "ranged weapon DPS", "crit", "attack power", "haste" }, benchmarkKeys = { "ranged_hit" }, statTokens = { S.rangedHit, S.agility, S.weaponDps, S.rangedCrit, S.rangedAttackPower, S.rangedHaste }, caps = RANGED_CAPS, modes = DpsModes({ S.agility, S.weaponDps }), setGoal = "Rift Stalker pieces with maximum sustainable Expose Weakness agility", talentString = "502-0550201205-333200022003223005103", presets = { "hunter_sv_dw_6", "hunter_sv_2h_6" }, guideUrl = "https://www.wowhead.com/tbc/guide/classes/hunter/survival/dps-bis-gear-pve-phase-2" }),
+    Role({ key = "beast_mastery", talentRuleKey = "ranged_dps", label = "Beast Mastery Hunter", labels = Labels("Beast Mastery Hunter", "野兽控制猎人", "野獸控制獵人"), talentTabs = { 1 }, archetype = "ranged", models = { "ranged_dps", "pet_synergy" }, priorities = { "6% or 9% hit route", "ranged weapon DPS", "agility", "attack power", "crit", "haste", "pet scaling" }, benchmarkKeys = { "ranged_hit" }, statTokens = { S.weaponDps, S.rangedHit, S.agility, S.rangedAttackPower, S.attackPower, S.rangedCrit, S.rangedHaste }, baseWeights = HUNTER_EP_WEIGHTS, caps = RANGED_CAPS, modes = DpsModes({ S.weaponDps, S.agility, S.rangedAttackPower }), setGoal = "Rift Stalker Armor and 2H/DW route selected around party hit", talentString = "522002005150122431051-0505201205", presets = { "hunter_bm_dw_6", "hunter_bm_dw_9", "hunter_bm_2h_6", "hunter_bm_2h_9" }, guideUrl = "https://www.wowhead.com/tbc/guide/classes/hunter/beast-mastery/dps-bis-gear-pve-phase-2" }),
+    Role({ key = "marksmanship_hunter", talentRuleKey = "ranged_dps", label = "Marksmanship Hunter", labels = Labels("Marksmanship Hunter", "射击猎人", "射擊獵人"), talentTabs = { 2 }, archetype = "ranged", models = { "ranged_dps", "raid_support" }, priorities = { "ranged hit", "ranged weapon DPS", "agility", "attack power", "crit", "haste", "Trueshot Aura" }, benchmarkKeys = { "ranged_hit" }, statTokens = { S.rangedHit, S.weaponDps, S.agility, S.rangedAttackPower, S.attackPower, S.rangedCrit, S.rangedHaste }, baseWeights = HUNTER_EP_WEIGHTS, caps = RANGED_CAPS, modes = DpsModes({ S.weaponDps, S.agility, S.rangedAttackPower }), setGoal = "Rift Stalker Armor with raid-support-aware off-pieces", presets = {}, guideUrl = "https://www.wowhead.com/tbc/guide/classes/hunter/marksmanship/dps-bis-gear-pve-phase-2", evidence = "guide" }),
+    Role({ key = "survival_hunter", talentRuleKey = "ranged_dps", label = "Survival Hunter", labels = Labels("Survival Hunter", "生存猎人", "生存獵人"), talentTabs = { 3 }, archetype = "ranged", models = { "ranged_dps", "raid_support" }, priorities = { "6% or 9% hit route", "agility for Expose Weakness", "ranged weapon DPS", "crit", "attack power", "haste" }, benchmarkKeys = { "ranged_hit" }, statTokens = { S.rangedHit, S.agility, S.weaponDps, S.rangedCrit, S.rangedAttackPower, S.attackPower, S.rangedHaste }, baseWeights = HUNTER_EP_WEIGHTS, caps = RANGED_CAPS, modes = DpsModes({ S.agility, S.weaponDps }), setGoal = "Rift Stalker pieces with maximum sustainable Expose Weakness agility", talentString = "502-0550201205-333200022003223005103", presets = { "hunter_sv_dw_6", "hunter_sv_2h_6" }, guideUrl = "https://www.wowhead.com/tbc/guide/classes/hunter/survival/dps-bis-gear-pve-phase-2" }),
 } }
 
 DB.classes.ROGUE = { roles = {

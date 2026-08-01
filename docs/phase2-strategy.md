@@ -1,6 +1,6 @@
 # Phase 2 Strategy Database
 
-TBC Gear Exporter v0.4.3 includes a versioned Phase 2 / Tier 5 strategy database used by the in-game P2 Guide, gear comparison engine, and AI/JSON exports.
+TBC Gear Exporter v0.4.4 includes a versioned Phase 2 / Tier 5 strategy database used by the in-game P2 Guide, gear comparison engine, and AI/JSON exports.
 
 ## Database Scale
 
@@ -10,6 +10,7 @@ TBC Gear Exporter v0.4.3 includes a versioned Phase 2 / Tier 5 strategy database
 - 29 simulation reference presets with 475 non-empty target item slots.
 - 17-slot target-set tracking against current equipment plus saved bags and bank.
 - English, simplified Chinese, and traditional Chinese role, mode, cap, and route labels.
+- Database version 4, including explicit pinned Hunter EP weights and dual-wield-aware one-hand comparisons.
 
 The source of truth is [`TBCGearExporter/Phase2StrategyDB.lua`](../TBCGearExporter/Phase2StrategyDB.lua). Every role records its talent-tree rule, archetype, analysis models, priorities, stat tokens, caps, three modes, set/route goal, reference talent string where available, presets, evidence level, and guide URL.
 
@@ -85,11 +86,15 @@ Mode selection changes the role weights used by every item comparison. The selec
 1. Cap Recovery prioritizes the role's adjusted hit/expertise target; Maximum Output prioritizes power, crit, and haste after required caps.
 2. Talent and raid assumptions are attached to the cap. For example, Arcane Focus, Elemental Precision, Shadow Focus, Totem of Wrath, Misery, Improved Faerie Fire, and Draenei party hit can change the amount needed from gear.
 3. Weapon DPS, speed, set bonuses, school-specific effects, pet survival, and proc behavior remain explicit comparison caveats when the item API does not expose enough information.
+4. Hunter visible-stat comparisons use the pinned WoWSims preset normalized to 1 agility: generic attack power 0.46, ranged attack power 0.40, hit 0.12, crit 0.92, haste 0.788, and ranged weapon DPS 1.75. Open hit caps and selected modes still apply their documented multipliers.
+5. A generic one-hand weapon is compared with both current weapons only when the character is already dual wielding weapons. Shields, held-in-off-hand items, explicit main-hand weapons, and two-hand setups do not create a false off-hand route.
 
 ## Sources And Reproducibility
 
 - [WoWSims TBC](https://github.com/wowsims/tbc-new), pinned to commit `3fc6a414979d62186f75d51ab6f6dd5d44f35b9c`, supplies the adapted P2/T5 item-ID presets and reference talent strings where available.
+- [Pinned WoWSims Hunter preset source](https://github.com/wowsims/tbc-new/blob/3fc6a414979d62186f75d51ab6f6dd5d44f35b9c/ui/hunter/dps/presets.ts) supplies the Hunter EP values used by database version 4.
 - [Wowhead Phase 2 specialization guide index](https://www.wowhead.com/tbc/news/best-in-slot-guides-for-every-class-specialization-updated-for-phase-2-tbc-381617) supplies role-specific acquisition, alternative, set-bonus, and healer context.
+- [Wowhead Hunter stat priority](https://www.wowhead.com/tbc/guide/classes/hunter/dps-stat-priority-attributes-pve) supplies the TBC agility, hit, crit, and ranged attack-power context used to interpret the simulator weights.
 - [Wowhead Feral tank stat priority](https://www.wowhead.com/tbc/guide/classes/druid/feral/tank-stat-priority-attributes-pve) supplies the defense/resilience equivalence and 39.4 resilience per 1% critical-hit reduction reference.
 - [Wowhead Feral tank talents](https://www.wowhead.com/tbc/guide/classes/druid/feral/tank-talent-builds-pve) supplies the 3% reduction from 3/3 Survival of the Fittest.
 - [Wowhead Feral tank gear set](https://www.wowhead.com/tbc/gear-set/pve-feral-tank-131518) supplies the 415 defense-skill and 103 resilience hard-cap references for a 3/3 Survival of the Fittest bear.

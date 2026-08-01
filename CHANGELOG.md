@@ -4,6 +4,15 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+## [0.4.4] - 2026-08-01
+
+- Evaluate generic one-hand weapon candidates against both main hand and off hand when the current loadout is dual wielding, then keep only the strongest legal comparison.
+- Preserve safe weapon routing for shields, held-in-off-hand items, explicit main-hand weapons, and two-handed loadouts.
+- Replace Hunter's generic priority heuristic with the pinned WoWSims EP preset for agility, attack power, ranged attack power, hit, crit, haste, and ranged weapon DPS.
+- Combine generic hit, crit, and haste ratings into role-specific melee, ranged, and spell highlights, and include generic attack power for Marksmanship and Survival Hunters.
+- Add the exact Yamede 41/20/0 weapon fixture: Spiteblade is now a `+5.54` minor off-hand upgrade over Stellaris and is not falsely compared only with Big Bad Wolf's Paw.
+- Expand the suite to 81 tests with 99.16% executable-line coverage.
+
 ## [0.4.3] - 2026-08-01
 
 - Replace the tank defense-only benchmark with combined 5.6% boss critical-hit reduction from defense skill, resilience, and applicable talents.

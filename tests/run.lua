@@ -1130,7 +1130,7 @@ end)
 
 test("Phase 2 database covers every TBC class and PvE specialization", function()
     local db = assert(_G.TBCGearExporterP2DB)
-    assertEquals(db.version, 3)
+    assertEquals(db.version, 4)
     assertEquals(db.phase, 2)
     assertEquals(db.patch, "2.5.6")
     assertEquals(#db.sources, 2)
@@ -1301,19 +1301,34 @@ test("hunter analysis uses ranged sheet stats scoped weapon DPS and localized su
                 { token = "ITEM_MOD_DAMAGE_PER_SECOND_SHORT", value = 66.43 },
                 { token = "ITEM_MOD_RANGED_ATTACK_POWER_SHORT", value = 21 },
             } },
-            { category = "Gear", slotKey = "CHEST", stats = { { token = "ITEM_MOD_AGILITY_SHORT", value = 40 } } },
+            { category = "Gear", slotKey = "CHEST", stats = {
+                { token = "ITEM_MOD_AGILITY_SHORT", value = 40 },
+                { token = "ITEM_MOD_HIT_RATING_SHORT", value = 91 },
+                { token = "ITEM_MOD_CRIT_RATING_SHORT", value = 50 },
+                { token = "ITEM_MOD_ATTACK_POWER_SHORT", value = 100 },
+            } },
         } },
     }
     local chartStats = private.BuildChartStats({})
     local strategy = private.BuildStrategyBook(profile, chartStats)
     local beastMastery = private.FindStrategyRole(strategy, "beast_mastery")
-    local weaponDps
+    local marksmanship = private.FindStrategyRole(strategy, "marksmanship_hunter")
+    local weaponDps, rangedHit, rangedCrit, marksmanshipAttackPower
     for index = 1, #beastMastery.observed.gearStatHighlights do
         local stat = beastMastery.observed.gearStatHighlights[index]
         if stat.token == "ITEM_MOD_DAMAGE_PER_SECOND_SHORT" then weaponDps = stat.value end
+        if stat.token == "ITEM_MOD_HIT_RANGED_RATING_SHORT" then rangedHit = stat.value end
+        if stat.token == "ITEM_MOD_CRIT_RANGED_RATING_SHORT" then rangedCrit = stat.value end
+    end
+    for index = 1, #marksmanship.observed.gearStatHighlights do
+        local stat = marksmanship.observed.gearStatHighlights[index]
+        if stat.token == "ITEM_MOD_ATTACK_POWER_SHORT" then marksmanshipAttackPower = stat.value end
     end
 
     assertEquals(weaponDps, 66.43)
+    assertEquals(rangedHit, 91)
+    assertEquals(rangedCrit, 50)
+    assertEquals(marksmanshipAttackPower, 100)
     assertTrue(#beastMastery.talentMap.effects >= 4)
     assertContains(private.TalentMapSummary(beastMastery.talentMap, "zhCN", 5), "狂野怒火")
     assertEquals(private.BuildPhase2Strategy(profile, {}, beastMastery, "balanced").presetProgress.key, "hunter_bm_dw_9")
@@ -1322,11 +1337,114 @@ test("hunter analysis uses ranged sheet stats scoped weapon DPS and localized su
     assertContains(analysis, "实测远程：命中 6.53%，暴击 25.42%")
     assertContains(analysis, "团队支援")
     assertContains(analysis, "+66.43 每秒伤害")
+    assertContains(analysis, "+91 远程命中等级")
     assertFalse(analysis:find("raid_support", 1, true))
     assertFalse(analysis:find("+225.61 每秒伤害", 1, true))
 
     local overview = private.BuildOverviewText(profile, chartStats, strategy, {})
     assertContains(overview, "远程属性：命中 6.53%，暴击 25.42%，远程攻强 1828，敏捷 378")
+end)
+
+test("Yamede dual wield evaluates generic one-hand candidates against both weapon slots", function()
+    local mainHand = {
+        itemID = 28584, name = "Big Bad Wolf's Paw", category = "Gear", slotKey = "MAINHAND",
+        equipSlot = "INVTYPE_WEAPON", classID = 2, subClassID = 13, itemLevel = 115, quality = 4,
+        stats = {
+            { token = "ITEM_MOD_AGILITY_SHORT", value = 17 },
+            { token = "ITEM_MOD_STAMINA_SHORT", value = 18 },
+            { token = "ITEM_MOD_DAMAGE_PER_SECOND_SHORT", value = 87.6 },
+            { token = "ITEM_MOD_CRIT_RATING_SHORT", value = 20 },
+        },
+    }
+    local offHand = {
+        itemID = 28263, name = "Stellaris", category = "Gear", slotKey = "OFFHAND",
+        equipSlot = "INVTYPE_WEAPON", classID = 2, subClassID = 7, itemLevel = 115, quality = 3,
+        stats = {
+            { token = "ITEM_MOD_AGILITY_SHORT", value = 21 },
+            { token = "ITEM_MOD_STAMINA_SHORT", value = 12 },
+            { token = "ITEM_MOD_ATTACK_POWER_SHORT", value = 21 },
+            { token = "ITEM_MOD_DAMAGE_PER_SECOND_SHORT", value = 71.58 },
+        },
+    }
+    local spiteblade = {
+        itemID = 28729, name = "Spiteblade", category = "Gear",
+        equipSlot = "INVTYPE_WEAPON", classID = 2, subClassID = 7, itemLevel = 115, quality = 4,
+        stats = {
+            { token = "ITEM_MOD_AGILITY_SHORT", value = 14 },
+            { token = "ITEM_MOD_STAMINA_SHORT", value = 16 },
+            { token = "ITEM_MOD_ATTACK_POWER_SHORT", value = 45 },
+            { token = "ITEM_MOD_DAMAGE_PER_SECOND_SHORT", value = 87.59 },
+        },
+    }
+    local profile = {
+        player = "Yamede", classEnglish = "HUNTER", locale = "zhCN",
+        talents = {
+            available = true, primaryTab = "野兽控制", primaryTabIndex = 1, spentPoints = 61,
+            tabs = {
+                { index = 1, name = "野兽控制", points = 41, talents = {} },
+                { index = 2, name = "射击", points = 20, talents = {} },
+                { index = 3, name = "生存", points = 0, talents = {} },
+            },
+        },
+        characterStats = {
+            race = { localized = "暗夜精灵", english = "NIGHTELF" },
+            group = { type = "solo", size = 1 },
+            ratings = { { key = "ranged_hit", bonus = 7.93 } },
+            attributes = {}, chances = { spellCrit = {} }, attackPower = {}, defense = {}, armor = {}, spell = {},
+        },
+        equipped = { items = { mainHand, offHand } },
+    }
+    local strategy = private.BuildStrategyBook(profile, private.BuildChartStats({ spiteblade }))
+    local role = private.FindStrategyRole(strategy, "beast_mastery")
+    local weights = private.BuildRoleStatWeights(role, "balanced")
+    assertEquals(weights.ITEM_MOD_AGILITY_SHORT, 1)
+    assertEquals(weights.ITEM_MOD_ATTACK_POWER_SHORT, 0.46)
+    assertEquals(weights.ITEM_MOD_RANGED_ATTACK_POWER_SHORT, 0.4)
+    assertEquals(weights.ITEM_MOD_CRIT_RATING_SHORT, 0.92)
+    assertEquals(weights.ITEM_MOD_DAMAGE_PER_SECOND_SHORT, 1.75)
+    assertEquals(weights.ITEM_MOD_HIT_RATING_SHORT, 0.21)
+
+    local slots = private.CandidateSlotKeys(profile, spiteblade)
+    assertEquals(#slots, 2)
+    assertEquals(slots[1], "MAINHAND")
+    assertEquals(slots[2], "OFFHAND")
+    assertTrue(private.IsWeaponItem(spiteblade))
+    local offHandCandidate = private.ItemForSlot(spiteblade, "OFFHAND")
+    assertEquals(offHandCandidate.slotKey, "OFFHAND")
+    assertEquals(private.EquipmentSlotKey(spiteblade), "MAINHAND")
+
+    local engine = private.BuildGearRecommendations(profile, { spiteblade }, strategy, role.key, "balanced")
+    assertEquals(engine.version, 9)
+    assertEquals(engine.candidateCount, 1)
+    assertEquals(#engine.upgrades, 1)
+    local upgrade = engine.upgrades[1]
+    assertEquals(upgrade.slotKey, "OFFHAND")
+    assertEquals(upgrade.current.itemID, 28263)
+    assertEquals(upgrade.candidate.itemID, 28729)
+    assertEquals(upgrade.scoreGain, 5.54)
+    assertEquals(upgrade.verdict, "minor")
+    assertEquals(upgrade.statGains[1].token, "ITEM_MOD_ATTACK_POWER_SHORT")
+    assertEquals(upgrade.statGains[1].value, 24)
+    assertEquals(upgrade.statLosses[1].token, "ITEM_MOD_AGILITY_SHORT")
+    assertEquals(upgrade.statLosses[1].value, 7)
+end)
+
+test("flexible one-hand routing does not replace shields or invent offhand slots", function()
+    local oneHand = { category = "Gear", equipSlot = "INVTYPE_WEAPON", classID = 2, stats = {} }
+    local shield = { category = "Gear", slotKey = "OFFHAND", equipSlot = "INVTYPE_SHIELD", classID = 4, stats = {} }
+    local holdable = { category = "Gear", slotKey = "OFFHAND", equipSlot = "INVTYPE_HOLDABLE", classID = 4, stats = {} }
+    local twoHand = { category = "Gear", slotKey = "MAINHAND", equipSlot = "INVTYPE_2HWEAPON", classID = 2, stats = {} }
+    local mainOnly = { category = "Gear", equipSlot = "INVTYPE_WEAPONMAINHAND", classID = 2, stats = {} }
+
+    assertEquals(#private.CandidateSlotKeys({ equipped = { items = { oneHand, shield } } }, oneHand), 1)
+    assertEquals(#private.CandidateSlotKeys({ equipped = { items = { oneHand, holdable } } }, oneHand), 1)
+    assertEquals(#private.CandidateSlotKeys({ equipped = { items = { twoHand } } }, oneHand), 1)
+    assertEquals(#private.CandidateSlotKeys({ equipped = { items = { oneHand, oneHand } } }, mainOnly), 1)
+    assertFalse(private.IsWeaponItem(shield))
+    assertFalse(private.IsWeaponItem(holdable))
+    assertTrue(private.IsWeaponItem(twoHand))
+    assertTrue(private.ItemForSlot(oneHand, "MAINHAND") == oneHand)
+    assertEquals(#private.CandidateSlotKeys({}, {}), 0)
 end)
 
 test("role core summaries select tank melee ranged caster and healer sheet data", function()
@@ -2365,6 +2483,26 @@ test("generic hit rating uses the strongest role-specific hit weight", function(
     assertEquals(private.StatWeightForToken(weights, "ITEM_MOD_HIT_RATING_SHORT"), 1.4)
 end)
 
+test("role highlights combine generic combat ratings with role-specific totals", function()
+    local scoped = {
+        ITEM_MOD_HIT_RANGED_RATING_SHORT = { value = 5 },
+        ITEM_MOD_HIT_RATING_SHORT = { value = 91 },
+        ITEM_MOD_CRIT_RATING_SHORT = { value = 50 },
+    }
+    local rangedHit = private.RoleHighlightStat(scoped, nil, "ITEM_MOD_HIT_RANGED_RATING_SHORT")
+    local rangedCrit = private.RoleHighlightStat(scoped, nil, "ITEM_MOD_CRIT_RANGED_RATING_SHORT")
+    assertEquals(rangedHit.token, "ITEM_MOD_HIT_RANGED_RATING_SHORT")
+    assertEquals(rangedHit.value, 96)
+    assertEquals(rangedCrit.value, 50)
+
+    local chartStats = private.BuildChartStats({ {
+        category = "Gear",
+        stats = { { token = "ITEM_MOD_HASTE_RATING_SHORT", value = 12 } },
+    } })
+    assertEquals(private.RoleHighlightStat(nil, chartStats, "ITEM_MOD_HASTE_RANGED_RATING_SHORT").value, 12)
+    assertEquals(private.RoleHighlightStat({}, chartStats, "ITEM_MOD_SPIRIT_SHORT"), nil)
+end)
+
 test("equal item contributions sort by stat label for stable comparisons", function()
     local _, matched = private.ItemRoleScore({ stats = {
         { token = "ITEM_MOD_STAMINA_SHORT", value = 10 },
@@ -2469,7 +2607,7 @@ test("item comparison switches role weights and rejects mismatched slots", funct
     assertEquals(private.FindStrategyRole(nil, "missing").key, "general_inventory")
 
     local damageEngine = private.BuildGearRecommendations(profile, { candidate }, strategy, "retribution_dps")
-    assertEquals(damageEngine.version, 8)
+    assertEquals(damageEngine.version, 9)
     assertEquals(damageEngine.roleKey, "retribution_dps")
     assertEquals(#damageEngine.availableRoles, 3)
     assertEquals(damageEngine.talentMap.effects[1].key, "crusade")
@@ -2547,7 +2685,7 @@ test("holy paladin role fit rejects physical crit bracers before upgrade scoring
     assertFalse(incidentalIntellectFit.suitable, "incidental intellect must not make physical gear healer-suitable")
 
     local engine = private.BuildGearRecommendations(profile, { physicalCandidate, healingCandidate }, strategy, "holy_healer")
-    assertEquals(engine.version, 8)
+    assertEquals(engine.version, 9)
     assertEquals(engine.candidateCount, 1)
     assertEquals(engine.roleRejectedCount, 1)
     assertEquals(#engine.upgrades, 1)
@@ -2744,7 +2882,7 @@ test("protection paladin strategy compares visible gains and losses without inve
     assertEquals(role.observed.gearStatHighlights[1].value, 20)
     assertFalse(role.observed.gearStatHighlights[1].value == 30, "candidate stamina must not leak into current gear highlights")
 
-    assertEquals(engine.version, 8)
+    assertEquals(engine.version, 9)
     assertEquals(#engine.upgrades, 1)
     assertEquals(engine.upgrades[1].evidence, "high")
     assertEquals(engine.upgrades[1].verdict, "upgrade")
@@ -3343,7 +3481,7 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(allExport, "\"loadout_rejected_count\":")
     assertContains(allExport, "\"unscorable_rejected_count\":")
     assertContains(allExport, "\"phase2_strategy\": {")
-    assertContains(allExport, "\"database_version\": 3")
+    assertContains(allExport, "\"database_version\": 4")
     assertContains(allExport, "\"phase\": 2")
     assertContains(allExport, "\"mode_key\": \"balanced\"")
     assertContains(allExport, "\"mode_label_zh_cn\": \"均衡\"")
@@ -4226,7 +4364,7 @@ test("Thatdruid report uses the talent-aware combined crit benchmark", function(
     local strategy = private.BuildStrategyBook(profile, private.BuildChartStats({}))
     local bear = private.FindStrategyRole(strategy, "bear_tank")
     assertEquals(strategy.version, 5)
-    assertEquals(strategy.phaseDatabase.version, 3)
+    assertEquals(strategy.phaseDatabase.version, 4)
     assertEquals(bear.observed.tank.critReduction, 5.03)
     assertEquals(bear.observed.tank.critImmunity.gap, 0.57)
     assertEquals(private.BenchmarkObservedValue("crit_immunity", bear.observed), 5.03)
@@ -4329,7 +4467,7 @@ test("hidden trinket effects are excluded instead of scored as upgrades", functi
     assertEquals(private.RecommendationVerdictLabel(comparison.verdict, "zhCN"), "效果无法量化")
 
     local engine = private.BuildGearRecommendations(profile, { shard }, { roles = { role } }, role.key)
-    assertEquals(engine.version, 8)
+    assertEquals(engine.version, 9)
     assertEquals(engine.unscorableRejectedCount, 1)
     assertEquals(engine.loadoutRejectedCount, 0)
     assertEquals(#engine.upgrades, 0)
