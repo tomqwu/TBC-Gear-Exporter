@@ -8,8 +8,8 @@
 ![Lua 5.1](https://img.shields.io/badge/Lua-5.1-2C2D72?logo=lua&logoColor=white)
 ![WoW AddOn](https://img.shields.io/badge/WoW-TBC%20Classic-C69B6D)
 ![TBC Anniversary](https://img.shields.io/badge/client-Anniversary-0E8A16)
-![Tests](https://img.shields.io/badge/tests-67%20passing-brightgreen)
-![Coverage](https://img.shields.io/badge/coverage-99.27%25-brightgreen)
+![Tests](https://img.shields.io/badge/tests-72%20passing-brightgreen)
+![Coverage](https://img.shields.io/badge/coverage-99.13%25-brightgreen)
 ![Coverage Gate](https://img.shields.io/badge/coverage%20gate-99%25-blue)
 ![Local Install](https://img.shields.io/badge/local%20install-PowerShell-5391FE?logo=powershell&logoColor=white)
 
@@ -87,7 +87,7 @@ The export panel pops up from saved `TBCGearExporterDB` data. It shows saved bag
 
 ## Phase 2 strategy database
 
-Version 0.4.1 adds role-fit gates before item scoring, preventing physical attack-power gear from appearing as a healer upgrade merely because generic crit can map to spell crit. The Gear Advice page also uses fixed, non-overlapping summary and comparison regions. Version 0.4.0 introduced the versioned Tier 5 database covering all 9 TBC classes and 28 PvE specializations. Every role has localized labels, stat priorities, explicit cap assumptions, three switchable modes, a P2 set/route goal, a guide source, and a reference talent string where available. The database includes 29 WoWSims reference sets with 475 non-empty target slots; target progress is checked against current equipment plus saved bags and bank, independent of the active export filter.
+Version 0.4.2 makes role summaries sheet-aware, so ranged, melee, caster, healer, and tank views show their own live stats. Hunter weapon DPS now comes only from the ranged slot, Beast Mastery key talents are recognized, unresolved hit gaps select the matching 9% route, and candidates that worsen an unmet benchmark are excluded from recommendations with an explicit count. Version 0.4.1 added role-fit gates before item scoring, preventing physical attack-power gear from appearing as a healer upgrade merely because generic crit can map to spell crit. Version 0.4.0 introduced the versioned Tier 5 database covering all 9 TBC classes and 28 PvE specializations. Every role has localized labels, stat priorities, explicit cap assumptions, three switchable modes, a P2 set/route goal, a guide source, and a reference talent string where available. The database includes 29 WoWSims reference sets with 475 non-empty target slots; target progress is checked against current equipment plus saved bags and bank, independent of the active export filter.
 
 Simulation presets and guide-only roles are labeled separately. Healers and niche builds without a mature preset still receive visible-stat comparisons, but the addon does not present those results as simulation certainty. The full role matrix, tank/healer/DPS rules, source revisions, and limitations are documented in [docs/phase2-strategy.md](docs/phase2-strategy.md). WoWSims-derived preset data is pinned to an exact commit and distributed with its MIT notice in [TBCGearExporter/ThirdPartyNotices.txt](TBCGearExporter/ThirdPartyNotices.txt).
 
@@ -118,6 +118,6 @@ CI runs syntax checks for every Lua file and the local WoW API mock suite on eve
 This repo follows the same shape as `ArenaCoachTBC`:
 
 - Pull requests and `main` pushes run Lua tests, the 99% coverage gate, syntax checks, and a package dry run.
-- Stable tags named `v*`, for example `v0.4.1`, build a GitHub Release using notes from `CHANGELOG.md`; routine `main` pushes do not create development tags.
+- Stable tags named `v*`, for example `v0.4.2`, build a GitHub Release using notes from `CHANGELOG.md`; routine `main` pushes do not create development tags.
 - The release zip contains the addon folder as the top-level entry, so extraction into `Interface/AddOns/` works directly.
 - Local release mirroring is done with `scripts/install-local.ps1` because GitHub Actions cannot access your `F:\` drive.
