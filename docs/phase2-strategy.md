@@ -1,6 +1,6 @@
 # Phase 2 Strategy Database
 
-TBC Gear Exporter v0.5.1 includes Phase 2 / Tier 5 strategy database version 8 and recommendation engine version 14, used by the in-game P2 Guide, candidate ranking, and AI/JSON exports.
+TBC Gear Exporter v0.5.2 includes Phase 2 / Tier 5 strategy database version 8 and recommendation engine version 15, used by the in-game P2 Guide, explainable candidate ranking, and AI/JSON exports.
 
 ## Database Scale
 
