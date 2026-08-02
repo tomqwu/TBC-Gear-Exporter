@@ -87,7 +87,7 @@ The export panel pops up from saved `TBCGearExporterDB` data. It shows saved bag
 
 ## Phase 2 strategy database
 
-Version 0.5.0 introduces database version 8 and engine version 13. The contextual layer now contains 14 source-linked item effects and all 17 Tier 5 class sets, covering every one of the 28 supported PvE roles. Set ownership is gated by both class and role, so shared role keys such as Restoration Druid and Restoration Shaman cannot leak across classes. The GUI and exports show currently equipped set counts and their 2/4-piece activation states. A 5-to-4 swap correctly keeps the 4-piece bonus, while a 4-to-3 swap is marked as a tradeoff. Protection-tank trinkets are selected by balanced, mitigation, or threat context instead of visible stats alone. The database still tracks 32 reference sets and 526 target slots, with route gaps exported independently from bag-item recommendations.
+Version 0.5.1 uses database version 8 and recommendation engine version 14. The contextual layer contains 14 source-linked item effects and all 17 Tier 5 class sets, covering every one of the 28 supported PvE roles. Set ownership is gated by both class and role, so shared role keys such as Restoration Druid and Restoration Shaman cannot leak across classes. The GUI and exports show currently equipped set counts and their 2/4-piece activation states. A 5-to-4 swap correctly keeps the 4-piece bonus, while a 4-to-3 swap is marked as a tradeoff. Candidates whose curated effect is weaker than the equipped effect in the selected mode are now excluded instead of appearing as green upgrades; they can reappear in a mode where their effect is preferred. The database still tracks 32 reference sets and 526 target slots, with route gaps exported independently from bag-item recommendations.
 
 Reference gear routes and guide-only routes are labeled separately from score models. The audited 28-role maturity matrix and the criteria required before definitive verdicts can be enabled are documented in [docs/engine-contract.md](docs/engine-contract.md); cap and route details remain in [docs/phase2-strategy.md](docs/phase2-strategy.md). WoWSims-derived data is pinned to an exact commit and distributed with its MIT notice in [TBCGearExporter/ThirdPartyNotices.txt](TBCGearExporter/ThirdPartyNotices.txt).
 
@@ -118,6 +118,6 @@ CI runs syntax checks for every Lua file and the local WoW API mock suite on eve
 This repo follows the same shape as `ArenaCoachTBC`:
 
 - Pull requests and `main` pushes run Lua tests, the 99% coverage gate, syntax checks, and a package dry run.
-- Stable tags named `v*`, for example `v0.5.0`, build a GitHub Release using notes from `CHANGELOG.md`, then automatically publish the BCC package to CurseForge as a stable release. Routine `main` pushes do not create development tags or uploads.
+- Stable tags named `v*`, for example `v0.5.1`, build a GitHub Release using notes from `CHANGELOG.md`, then automatically publish the BCC package to CurseForge as a stable release. Routine `main` pushes do not create development tags or uploads.
 - The release zip contains the addon folder as the top-level entry, so extraction into `Interface/AddOns/` works directly.
 - Local release mirroring is done with `scripts/install-local.ps1` because GitHub Actions cannot access your `F:\` drive.

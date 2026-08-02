@@ -58,7 +58,7 @@ The current comparison path is:
 3. Normalize item-stat aliases exposed by the TBC Anniversary API.
 4. Apply the declared static EP table or ordered-stat heuristic to visible stats only.
 5. Apply tracked cap-gap, selected key-talent, and strategy-mode multipliers.
-6. Compare curated item effects categorically for the selected strategy mode; effect affinity is never added to EP.
+6. Compare curated item effects categorically for the selected strategy mode; effect affinity is never added to EP, and a candidate with an explicitly weaker known effect is excluded from that mode's recommendations.
 7. Evaluate curated set thresholds in the current full equipped set, marking a broken bonus as a tradeoff and a newly completed threshold as a contextual decision.
 8. Reject swaps that worsen an unmet tracked gate.
 9. Rank one candidate per slot and report gains, losses, effect choice, set impact, route gaps, cap impact, model kind, and item-data completeness.
@@ -89,7 +89,7 @@ Three independent fields must not be conflated:
 | `set_impacts` | Does the proposed swap cross a curated equipped-set threshold? |
 | `route_gaps` | Which items from the selected guide/reference route are not in current gear, bags, or bank? |
 
-`evidence` remains in JSON as a compatibility alias for `data_completeness`; new consumers should use the explicit field. Effect affinity is ordinal context, not a score model or simulation result.
+`evidence` remains in JSON as a compatibility alias for `data_completeness`; new consumers should use the explicit field. Effect affinity is ordinal context, not a score model or simulation result. `effect_rejected_count` reports candidates suppressed because the equipped effect is preferred in the selected mode, while `choice_kind` distinguishes spell-cycle choices from generic contextual effects.
 
 ## Engine Completion Gates
 

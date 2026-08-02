@@ -1,6 +1,6 @@
 # Phase 2 Strategy Database
 
-TBC Gear Exporter v0.5.0 includes Phase 2 / Tier 5 strategy database version 8, used by the in-game P2 Guide, candidate ranking, and AI/JSON exports.
+TBC Gear Exporter v0.5.1 includes Phase 2 / Tier 5 strategy database version 8 and recommendation engine version 14, used by the in-game P2 Guide, candidate ranking, and AI/JSON exports.
 
 ## Database Scale
 
@@ -35,6 +35,8 @@ Route evidence, score-model provenance, item-data completeness, curated effect d
 | DPS | Caps, set value, output | Cap recovery: hit and expertise | Maximum output: primary power, crit, haste |
 
 Mode selection changes the role weights used by every item comparison. The same three localized controls appear on Gear Advice and the P2 Guide, and changing one immediately recalculates both pages and the export. Readable reports name the selected view and all available views; AI/JSON exports retain their keys and weights so external tools can reproduce the intended lens. Tank mitigation/progression and threat/farm remain separate rankings rather than being averaged together. Threat / farm deliberately lowers survival weights while raising offensive weights; unresolved hard gates still prevent unsafe suggestions.
+
+Curated item effects are also mode-specific gates. If the equipped item's known effect has higher affinity for the selected mode, the candidate is excluded from that mode's recommendations even when its visible-stat heuristic is positive. The same candidate can reappear when another mode prefers its effect. This prevents a mitigation-oriented pull tool from being displayed as a balanced or threat upgrade solely because it has stamina.
 
 ## Class And Route Matrix
 

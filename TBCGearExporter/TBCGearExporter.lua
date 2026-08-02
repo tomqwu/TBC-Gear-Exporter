@@ -1197,10 +1197,12 @@ local UI_STRINGS = {
         advice_effect_choice = "Effect choice: %s",
         advice_set_impact = "Set impact: %s",
         advice_cycle_choice = "Cycle choice",
+        advice_keep_current_effect = "Keep current effect",
         advice_no_upgrades = "No saved bag or bank item is strong enough to compare for this role.",
         advice_no_safe_upgrades = "No safe upgrade is recommended; %d candidate(s) would move an unmet benchmark farther from its target.",
         advice_no_scorable_upgrades = "No reliable upgrade is recommended; %d comparison(s) include unparsed use, proc, set, gem, or enchant effects.",
         advice_no_legal_upgrades = "No legal upgrade is recommended; %d candidate(s) conflict with the currently equipped weapon loadout.",
+        advice_no_effect_upgrades = "No upgrade is recommended; %d candidate(s) have a weaker known effect for this strategy mode.",
         advice_empty_slot = "Fill empty slot",
         advice_replace = "Estimated +%s score; %s",
         advice_ilvl = "item level %s → %s",
@@ -1333,10 +1335,12 @@ local UI_STRINGS = {
         advice_effect_choice = "效果选择：%s",
         advice_set_impact = "套装影响：%s",
         advice_cycle_choice = "循环选择",
+        advice_keep_current_effect = "保留当前效果",
         advice_no_upgrades = "背包和银行中没有值得为此职责进一步比较的候选装备。",
         advice_no_safe_upgrades = "没有可安全推荐的升级；%d 件候选会让尚未达标的属性离目标更远。",
         advice_no_scorable_upgrades = "没有可可靠推荐的升级；%d 项比较包含尚未解析的使用、触发、套装、宝石或附魔效果。",
         advice_no_legal_upgrades = "没有合法的升级建议；%d 件候选与当前武器组合冲突。",
+        advice_no_effect_upgrades = "没有推荐升级；%d 件候选的已知效果不适合当前策略模式。",
         advice_empty_slot = "填补空栏位",
         advice_replace = "预计评分 +%s；%s",
         advice_ilvl = "物品等级 %s → %s",
@@ -1469,10 +1473,12 @@ local UI_STRINGS = {
         advice_effect_choice = "效果選擇：%s",
         advice_set_impact = "套裝影響：%s",
         advice_cycle_choice = "循環選擇",
+        advice_keep_current_effect = "保留目前效果",
         advice_no_upgrades = "背包和銀行中沒有值得為此職責進一步比較的候選裝備。",
         advice_no_safe_upgrades = "沒有可安全推薦的升級；%d 件候選會讓尚未達標的屬性離目標更遠。",
         advice_no_scorable_upgrades = "沒有可可靠推薦的升級；%d 項比較包含尚未解析的使用、觸發、套裝、寶石或附魔效果。",
         advice_no_legal_upgrades = "沒有合法的升級建議；%d 件候選與目前武器組合衝突。",
+        advice_no_effect_upgrades = "沒有推薦升級；%d 件候選的已知效果不適合目前策略模式。",
         advice_empty_slot = "填補空欄位",
         advice_replace = "預估評分 +%s；%s",
         advice_ilvl = "物品等級 %s → %s",
@@ -5006,6 +5012,7 @@ function GEAR_ENGINE.BuildEffectDecision(currentItem, candidateItem, role, modeK
         candidateEffect = candidateEffect,
         currentAffinity = currentAffinity,
         candidateAffinity = candidateAffinity,
+        choiceKind = candidateEffect and candidateEffect.choiceKind or currentEffect and currentEffect.choiceKind,
         canCompare = canCompare,
         preferCandidate = canCompare and (not currentItem or candidateAffinity > currentAffinity) or false,
         preferCurrent = canCompare and currentItem and currentAffinity > candidateAffinity or false,
@@ -5351,6 +5358,10 @@ function GEAR_ENGINE.NoUpgradeText(engine, locale)
     rejected = tonumber(engine and engine.unscorableRejectedCount) or 0
     if rejected > 0 then
         return LForLocale(locale or ClientLocale(), "advice_no_scorable_upgrades", rejected)
+    end
+    rejected = tonumber(engine and engine.effectRejectedCount) or 0
+    if rejected > 0 then
+        return LForLocale(locale or ClientLocale(), "advice_no_effect_upgrades", rejected)
     end
     rejected = tonumber(engine and engine.loadoutRejectedCount) or 0
     if rejected > 0 then
@@ -5803,6 +5814,7 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
     local gateRejectedCount = 0
     local loadoutRejectedCount = 0
     local unscorableRejectedCount = 0
+    local effectRejectedCount = 0
     for index = 1, #(candidateItems or {}) do
         local item = candidateItems[index]
         local slotKey = GEAR_ENGINE.EquipmentSlotKey(item)
@@ -5814,6 +5826,7 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
                 local rejectedByGate = false
                 local rejectedByLoadout = false
                 local rejectedAsUnscorable = false
+                local rejectedByEffect = false
                 local candidateSlots = GEAR_ENGINE.CandidateSlotKeys(profile, item)
                 for slotIndex = 1, #candidateSlots do
                     local comparisonSlot = candidateSlots[slotIndex]
@@ -5824,6 +5837,8 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
                         rejectedByLoadout = true
                     elseif not recommendation.comparable then
                         rejectedAsUnscorable = true
+                    elseif recommendation.effectDecision.preferCurrent then
+                        rejectedByEffect = true
                     elseif (recommendation.scoreGain >= 2 and #recommendation.matchedStats > 0)
                         or recommendation.effectDecision.preferCandidate or recommendation.gainsSetBonus then
                         if recommendation.blockedByHardGate then
@@ -5843,6 +5858,8 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
                     gateRejectedCount = gateRejectedCount + 1
                 elseif rejectedAsUnscorable then
                     unscorableRejectedCount = unscorableRejectedCount + 1
+                elseif rejectedByEffect then
+                    effectRejectedCount = effectRejectedCount + 1
                 elseif rejectedByLoadout then
                     loadoutRejectedCount = loadoutRejectedCount + 1
                 end
@@ -5893,7 +5910,7 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
     end
 
     return {
-        version = 13,
+        version = 14,
         generatedAt = Now(),
         roleKey = role.key,
         roleLabel = role.label,
@@ -5912,6 +5929,7 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
         gateRejectedCount = gateRejectedCount,
         loadoutRejectedCount = loadoutRejectedCount,
         unscorableRejectedCount = unscorableRejectedCount,
+        effectRejectedCount = effectRejectedCount,
         priorityStats = GEAR_ENGINE.PriorityStats(role, weights),
         benchmarkGaps = benchmarkGaps,
         activeSets = activeSets,
@@ -6333,6 +6351,7 @@ function GEAR_ENGINE.AppendEffectDecisionJson(lines, indent, decision, comma)
     AppendIndented(lines, indent + 2, JsonField("mode_key", decision.modeKey, true))
     AppendIndented(lines, indent + 2, JsonField("current_affinity", decision.currentAffinity, true))
     AppendIndented(lines, indent + 2, JsonField("candidate_affinity", decision.candidateAffinity, true))
+    AppendIndented(lines, indent + 2, JsonField("choice_kind", decision.choiceKind, true))
     AppendIndented(lines, indent + 2, JsonField("prefer_candidate", decision.preferCandidate, true))
     AppendIndented(lines, indent + 2, JsonField("prefer_current", decision.preferCurrent, true))
     AppendIndented(lines, indent + 2, JsonField("equivalent", decision.equivalent, true))
@@ -6431,6 +6450,7 @@ function GEAR_ENGINE.AppendGearRecommendationsJson(lines, indent, engine, comma)
     AppendIndented(lines, indent + 2, JsonField("gate_rejected_count", engine.gateRejectedCount or 0, true))
     AppendIndented(lines, indent + 2, JsonField("loadout_rejected_count", engine.loadoutRejectedCount or 0, true))
     AppendIndented(lines, indent + 2, JsonField("unscorable_rejected_count", engine.unscorableRejectedCount or 0, true))
+    AppendIndented(lines, indent + 2, JsonField("effect_rejected_count", engine.effectRejectedCount or 0, true))
     AppendIndented(lines, indent + 2, JsonField("effect_decision_count", engine.effectDecisionCount or 0, true))
     AppendIndented(lines, indent + 2, JsonField("set_decision_count", engine.setDecisionCount or 0, true))
     AppendIndented(lines, indent + 2, JsonField("caveat", engine.caveat, true))
@@ -6684,9 +6704,25 @@ end
 
 function GEAR_ENGINE.DecisionMetricText(upgrade, locale)
     if upgrade and upgrade.decisionKind == "effect_choice" then
-        return LForLocale(locale or ClientLocale(), "advice_cycle_choice")
+        if upgrade.effectDecision and upgrade.effectDecision.choiceKind == "spell_cycle" then
+            return LForLocale(locale or ClientLocale(), "advice_cycle_choice")
+        end
+        return GEAR_ENGINE.ReportTerms(locale).effect_choice
+    end
+    if upgrade and upgrade.decisionKind == "effect_tradeoff" then
+        return LForLocale(locale or ClientLocale(), "advice_keep_current_effect")
     end
     return "+" .. CompactNumber(upgrade and upgrade.scoreGain or 0, 2)
+end
+
+function GEAR_ENGINE.DecisionMetricColor(upgrade)
+    if upgrade and upgrade.verdict == "tradeoff" then
+        return "|cffffcc00"
+    end
+    if upgrade and upgrade.verdict == "review" then
+        return "|cffffff00"
+    end
+    return "|cff33ff99"
 end
 
 function GEAR_ENGINE.GearMatchedStatsText(upgrade, locale)
@@ -8403,7 +8439,7 @@ function Addon:CreateGearAdviceRow(parent, index)
 
     local name = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     name:SetPoint("TOPLEFT", candidateButton, "TOPRIGHT", 8, -1)
-    name:SetPoint("RIGHT", row, "RIGHT", -116, 0)
+    name:SetPoint("RIGHT", row, "RIGHT", -140, 0)
     name:SetHeight(18)
     name:SetJustifyH("LEFT")
     name:SetJustifyV("TOP")
@@ -8417,8 +8453,8 @@ function Addon:CreateGearAdviceRow(parent, index)
 
     local gain = row:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     gain:SetPoint("TOPRIGHT", row, "TOPRIGHT", -8, -2)
-    gain:SetWidth(104)
-    gain:SetHeight(34)
+    gain:SetWidth(128)
+    gain:SetHeight(38)
     gain:SetJustifyH("RIGHT")
     gain:SetJustifyV("TOP")
 
@@ -8496,7 +8532,7 @@ function Addon:RefreshGearComparison(profile, engine, index)
     self.exportFrame.compareNames:SetText((upgrade.current and ItemColoredName(upgrade.current) or LForLocale(locale, "advice_empty_slot"))
         .. "  >  " .. ItemColoredName(upgrade.candidate))
     self.exportFrame.compareVerdict:SetText(GEAR_ENGINE.RecommendationVerdictLabel(upgrade.verdict, locale)
-        .. "  |cff33ff99" .. GEAR_ENGINE.DecisionMetricText(upgrade, locale) .. "|r  · "
+        .. "  " .. GEAR_ENGINE.DecisionMetricColor(upgrade) .. GEAR_ENGINE.DecisionMetricText(upgrade, locale) .. "|r  · "
         .. LForLocale(locale, "advice_evidence", LForLocale(locale, "advice_evidence_" .. tostring(upgrade.dataCompleteness or upgrade.evidence or "low"))))
     local details = {
         LForLocale(locale, "advice_gains", GEAR_ENGINE.DeltaText(upgrade.statGains, locale)),
@@ -8559,7 +8595,7 @@ function Addon:RefreshGearAdvice(profile, engine)
         row.candidateIcon:SetTexture(upgrade.candidate and upgrade.candidate.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
         row.slot:SetText(GEAR_ENGINE.EquipmentSlotLabel(upgrade.slotKey, locale))
         row.name:SetText(ItemColoredName(upgrade.candidate))
-        row.gain:SetText("|cff33ff99" .. GEAR_ENGINE.DecisionMetricText(upgrade, locale) .. "|r\n"
+        row.gain:SetText(GEAR_ENGINE.DecisionMetricColor(upgrade) .. GEAR_ENGINE.DecisionMetricText(upgrade, locale) .. "|r\n"
             .. GEAR_ENGINE.RecommendationVerdictLabel(upgrade.verdict, locale))
         local reasons = {}
         if upgrade.decisionKind == "visible_stats" or #(upgrade.statGains or {}) > 0 or #(upgrade.statLosses or {}) > 0 then
@@ -9932,6 +9968,7 @@ if _G.TBCGearExporterTestMode then
         EffectDecisionText = GEAR_ENGINE.EffectDecisionText,
         SetImpactText = GEAR_ENGINE.SetImpactText,
         DecisionMetricText = GEAR_ENGINE.DecisionMetricText,
+        DecisionMetricColor = GEAR_ENGINE.DecisionMetricColor,
         GearMatchedStatsText = GEAR_ENGINE.GearMatchedStatsText,
         RoleHasModel = GEAR_ENGINE.RoleHasModel,
         RoleUsesHitModel = GEAR_ENGINE.RoleUsesHitModel,

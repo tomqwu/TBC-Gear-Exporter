@@ -4,6 +4,15 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-08-01
+
+- Suppress a candidate when its curated effect is explicitly weaker than the equipped effect in the selected strategy mode; it can reappear automatically in a mode where its effect is preferred.
+- Fix the Protection Paladin regression where Goblin Rocket Launcher still appeared as a green balanced/threat upgrade over Icon of the Silver Crescent.
+- Export `effect_rejected_count` and effect `choice_kind` so GUI and AI consumers can distinguish a rejected contextual effect from missing item data.
+- Keep Holy Paladin librams labeled as spell-cycle choices while generic trinkets use the broader effect-choice label.
+- Render tradeoffs in yellow instead of upgrade green and widen the recommendation metric column from 104 to 128 pixels to prevent score/status truncation.
+- Upgrade the recommendation engine to version 14; all 99 tests pass with 99.01% executable-line coverage.
+
 ## [0.5.0] - 2026-08-01
 
 - Add all 17 Tier 5 class sets and their localized 2/4-piece effects, covering every one of the 28 class-role combinations in the Phase 2 strategy database.
