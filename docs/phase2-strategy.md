@@ -1,6 +1,6 @@
 # Phase 2 Strategy Database
 
-TBC Gear Exporter v0.4.9 includes Phase 2 / Tier 5 strategy database version 7, used by the in-game P2 Guide, candidate ranking, and AI/JSON exports.
+TBC Gear Exporter v0.5.0 includes Phase 2 / Tier 5 strategy database version 8, used by the in-game P2 Guide, candidate ranking, and AI/JSON exports.
 
 ## Database Scale
 
@@ -9,9 +9,10 @@ TBC Gear Exporter v0.4.9 includes Phase 2 / Tier 5 strategy database version 7, 
 - 3 switchable analysis modes for every role.
 - 32 reference gear presets with 526 non-empty target item slots: 29 WoWSims routes plus 3 Holy Paladin guide routes.
 - 17-slot target-set tracking against current equipment plus saved bags and bank.
-- 9 source-linked contextual item effects and 1 curated set with 2-piece and 4-piece thresholds.
+- 14 source-linked contextual item effects and all 17 Tier 5 class sets with localized 2-piece and 4-piece thresholds.
+- Complete Tier 5 representation for all 28 class-role combinations, with class and role ownership checked independently.
 - English, simplified Chinese, and traditional Chinese role, mode, cap, and route labels.
-- Database version 7, including the score-model contract for every role, exact pinned P2 static EP tables for Balance, Retribution, and Arcane, a clearly downgraded shared P1 Hunter estimate, and no definitive upgrade verdicts.
+- Database version 8, including the score-model contract for every role, exact pinned P2 static EP tables for Balance, Retribution, and Arcane, a clearly downgraded shared P1 Hunter estimate, and no definitive upgrade verdicts.
 
 The source of truth is [`TBCGearExporter/Phase2StrategyDB.lua`](../TBCGearExporter/Phase2StrategyDB.lua). Every role records its score-model kind and limitations in addition to its talent-tree rule, archetype, priorities, stat tokens, caps, modes, route goal, reference talent string where available, presets, route evidence, and guide URL. The exact support boundary and all 28 role maturity levels are in [the engine contract](engine-contract.md).
 
@@ -86,7 +87,7 @@ Mode selection changes the role weights used by every item comparison. The same 
 2. Throughput mode raises visible healing and crit/haste value. Longevity mode raises mp5, spirit, and intellect value.
 3. Healer roles without a mature simulator preset are explicitly guide-backed. The engine still compares visible item stats but marks the evidence boundary.
 4. Holy Paladin uses separate Mixed Healing, Flash of Light, and Holy Light modes. Blessed Book of Nagrand, Libram of Souls Redeemed, and Libram of Absolute Truth are compared by their sourced spell-specific behavior, not converted into EP.
-5. The Crystalforge Raiment 2-piece and 4-piece thresholds are evaluated against the full equipped set. A visible-stat off-piece that breaks 4-piece is labeled a tradeoff; a swap that completes 4-piece is surfaced as a contextual decision.
+5. Every Tier 5 set's 2-piece and 4-piece thresholds are evaluated against the full equipped set. A visible-stat off-piece that breaks an active threshold is labeled a tradeoff; a swap that completes one is surfaced as a contextual decision. A 5-to-4 swap preserves 4-piece, while a 4-to-3 swap breaks it.
 
 ## DPS Rules
 
@@ -99,11 +100,11 @@ Mode selection changes the role weights used by every item comparison. The same 
 ## Sources And Reproducibility
 
 - [WoWSims TBC](https://github.com/wowsims/tbc-new), pinned to commit `3fc6a414979d62186f75d51ab6f6dd5d44f35b9c`, supplies the adapted P2/T5 item-ID presets and reference talent strings where available.
-- [Pinned WoWSims Balance source](https://github.com/wowsims/tbc-new/blob/3fc6a414979d62186f75d51ab6f6dd5d44f35b9c/ui/druid/balance/presets.ts), [Arcane source](https://github.com/wowsims/tbc-new/blob/3fc6a414979d62186f75d51ab6f6dd5d44f35b9c/ui/mage/dps/presets.ts), and [Retribution source](https://github.com/wowsims/tbc-new/blob/3fc6a414979d62186f75d51ab6f6dd5d44f35b9c/ui/paladin/retribution/presets.ts) supply the exact P2 static EP tables retained by database version 7.
+- [Pinned WoWSims Balance source](https://github.com/wowsims/tbc-new/blob/3fc6a414979d62186f75d51ab6f6dd5d44f35b9c/ui/druid/balance/presets.ts), [Arcane source](https://github.com/wowsims/tbc-new/blob/3fc6a414979d62186f75d51ab6f6dd5d44f35b9c/ui/mage/dps/presets.ts), and [Retribution source](https://github.com/wowsims/tbc-new/blob/3fc6a414979d62186f75d51ab6f6dd5d44f35b9c/ui/paladin/retribution/presets.ts) supply the exact P2 static EP tables retained by database version 8.
 - [Pinned WoWSims Hunter source](https://github.com/wowsims/tbc-new/blob/3fc6a414979d62186f75d51ab6f6dd5d44f35b9c/ui/hunter/dps/presets.ts) identifies the reused Hunter values as P1 BM/SV EP presets.
-- [Pinned WoWSims TBC combat-rating constants](https://github.com/wowsims/tbc/blob/9e7504dca2e5253fb9ddff566c66c00e11679376/sim/core/constants.go) supply the level-70 rating conversions retained by database version 7.
+- [Pinned WoWSims TBC combat-rating constants](https://github.com/wowsims/tbc/blob/9e7504dca2e5253fb9ddff566c66c00e11679376/sim/core/constants.go) supply the level-70 rating conversions retained by database version 8.
 - [Wowhead Phase 2 specialization guide index](https://www.wowhead.com/tbc/news/best-in-slot-guides-for-every-class-specialization-updated-for-phase-2-tbc-381617) supplies role-specific acquisition, alternative, set-bonus, and healer context.
-- [Wowhead Holy Paladin Phase 2 gear guide](https://www.wowhead.com/tbc/guide/classes/paladin/holy/healer-bis-gear-pve-phase-2), [Crystalforge Raiment](https://www.wowhead.com/tbc/item-set=627/crystalforge-raiment), and the linked item pages in the database supply the three spell-cycle routes, set thresholds, and nine curated effect records.
+- [Wowhead Holy Paladin Phase 2 gear guide](https://www.wowhead.com/tbc/guide/classes/paladin/holy/healer-bis-gear-pve-phase-2), [the Tier 5 set overview](https://www.wowhead.com/tbc/guide/tier-5-set-overview-burning-crusade-classic), and linked item/set pages in the database supply the spell-cycle routes, Tier 5 thresholds, and 14 curated effect records.
 - [Wowhead Hunter stat priority](https://www.wowhead.com/tbc/guide/classes/hunter/dps-stat-priority-attributes-pve) supplies the TBC agility, hit, crit, and ranged attack-power context used to interpret the simulator weights.
 - [Wowhead Feral tank stat priority](https://www.wowhead.com/tbc/guide/classes/druid/feral/tank-stat-priority-attributes-pve) supplies the defense/resilience equivalence and 39.4 resilience per 1% critical-hit reduction reference.
 - [Wowhead Feral tank talents](https://www.wowhead.com/tbc/guide/classes/druid/feral/tank-talent-builds-pve) supplies the 3% reduction from 3/3 Survival of the Fittest.

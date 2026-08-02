@@ -1,5 +1,5 @@
 local DB = {
-    version = 7,
+    version = 8,
     phase = 2,
     phaseLabel = "TBC Anniversary Phase 2 (Tier 5)",
     patch = "2.5.6",
@@ -272,6 +272,28 @@ local function SetDefinition(key, definition)
     DB.sets[key] = definition
 end
 
+local function SetBonus(pieces, labels, roleKeys, modeAffinity)
+    return {
+        pieces = pieces,
+        labels = labels,
+        roleKeys = roleKeys,
+        modeAffinity = modeAffinity or {},
+    }
+end
+
+local function Tier5Set(key, setID, classToken, labels, roleKeys, itemIDs, bonuses)
+    SetDefinition(key, {
+        tier = 5,
+        setID = setID,
+        labels = labels,
+        classTokens = { [classToken] = true },
+        roleKeys = roleKeys,
+        itemIDs = itemIDs,
+        sourceUrl = "https://www.wowhead.com/tbc/item-set=" .. tostring(setID),
+        bonuses = bonuses,
+    })
+end
+
 ItemEffect(25644, {
     key = "blessed_book_of_nagrand",
     kind = "spell_specific_healing",
@@ -336,17 +358,131 @@ ItemEffect(30621, {
     modeAffinity = { balanced = 1, output = 1, threat = 3 },
     labels = Labels("Reduces threat from harmful critical strikes", "降低伤害性暴击产生的威胁", "降低傷害性致命一擊產生的威脅"),
 })
-
-SetDefinition("crystalforge_raiment", {
-    labels = Labels("Crystalforge Raiment", "晶铸圣装", "晶鑄聖裝"),
-    roleKeys = { holy_healer = true },
-    itemIDs = { 30134, 30135, 30136, 30137, 30138 },
-    sourceUrl = "https://www.wowhead.com/tbc/item-set=627/crystalforge-raiment",
-    bonuses = {
-        { pieces = 2, labels = Labels("Judgements restore 50 mana to party members", "施放审判时为小队成员恢复 50 点法力", "施放審判時為小隊成員恢復 50 點法力") },
-        { pieces = 4, labels = Labels("Critical heals reduce the next Holy Light cast time by 0.50 sec; 1 min cooldown", "治疗暴击使下一次圣光术施法时间缩短 0.50 秒；冷却 1 分钟", "治療致命一擊使下一次聖光術施法時間縮短 0.50 秒；冷卻 1 分鐘") },
-    },
+ItemEffect(23836, {
+    key = "goblin_rocket_launcher",
+    kind = "engineering_stamina_pull_tool",
+    roleKeys = { protection_tank = true, warrior_protection = true },
+    modeAffinity = { balanced = 1, mitigation = 3, threat = 1 },
+    labels = Labels("Stamina-focused pull tool; launches a ranged rocket but knocks the user down", "耐力向远程开怪工具；发射火箭时会击倒使用者", "耐力向遠程開怪工具；發射火箭時會擊倒使用者"),
+    requirements = { "Engineering (350)", "Goblin Engineering", "Long cast makes the active effect an opener, not a tanking cooldown" },
 })
+ItemEffect(30629, {
+    key = "scarab_of_displacement",
+    kind = "defense_rating_cooldown",
+    archetypes = { tank = true },
+    modeAffinity = { balanced = 2, mitigation = 3, threat = 1 },
+    labels = Labels("Grants 165 defense rating and reduces attack power by 330 for 15 sec; 3 min cooldown", "使用后 15 秒内获得 165 防御等级并降低 330 攻击强度；冷却 3 分钟", "使用後 15 秒內獲得 165 防禦等級並降低 330 攻擊強度；冷卻 3 分鐘"),
+    requirements = { "Rebalance the full loadout around its passive defense rating", "Attack-power penalty matters to physical-threat tanks" },
+})
+ItemEffect(27529, {
+    key = "figurine_of_the_colossus",
+    kind = "block_healing_cooldown",
+    roleKeys = { protection_tank = true, warrior_protection = true },
+    modeAffinity = { balanced = 2, mitigation = 2, threat = 2 },
+    labels = Labels("Each blocked attack heals 120 for 20 sec; 2 min cooldown", "使用后 20 秒内每次格挡恢复 120 点生命；冷却 2 分钟", "使用後 20 秒內每次格擋恢復 120 點生命；冷卻 2 分鐘"),
+    requirements = { "Shield equipped", "Best against many frequent blockable attacks" },
+})
+ItemEffect(29370, {
+    key = "icon_of_the_silver_crescent",
+    kind = "spell_power_cooldown",
+    roleKeys = { protection_tank = true },
+    archetypes = { caster = true },
+    modeAffinity = { balanced = 2, mitigation = 0, threat = 3, cap = 1, output = 3 },
+    labels = Labels("Grants 155 spell damage for 20 sec; 2 min cooldown", "使用后 20 秒内获得 155 法术伤害；冷却 2 分钟", "使用後 20 秒內獲得 155 法術傷害；冷卻 2 分鐘"),
+})
+ItemEffect(28528, {
+    key = "moroes_lucky_pocket_watch",
+    kind = "dodge_cooldown",
+    archetypes = { tank = true },
+    modeAffinity = { balanced = 3, mitigation = 3, threat = 1 },
+    labels = Labels("Grants 300 dodge rating for 10 sec; 2 min cooldown", "使用后 10 秒内获得 300 躲闪等级；冷却 2 分钟", "使用後 10 秒內獲得 300 閃躲等級；冷卻 2 分鐘"),
+})
+
+Tier5Set("nordrassil_regalia", 643, "DRUID", Labels("Nordrassil Regalia", "诺达希尔平衡套装", "諾達希爾平衡套裝"),
+    { balance_caster = true }, { 30231, 30232, 30233, 30234, 30235 }, {
+        SetBonus(2, Labels("Leaving Moonkin Form makes the next Regrowth cost 450 less mana", "离开枭兽形态后，下一次愈合法力消耗降低 450", "離開梟獸形態後，下一次癒合法力消耗降低 450"), { balance_caster = true }, { balanced = 1, cap = 0, output = 0 }),
+        SetBonus(4, Labels("Starfire deals 10% more damage to targets affected by Moonfire or Insect Swarm", "目标受到月火术或虫群影响时，星火术伤害提高 10%", "目標受到月火術或蟲群影響時，星火術傷害提高 10%"), { balance_caster = true }, { balanced = 3, cap = 2, output = 3 }),
+    })
+Tier5Set("nordrassil_harness", 641, "DRUID", Labels("Nordrassil Harness", "诺达希尔野性套装", "諾達希爾野性套裝"),
+    { bear_tank = true, cat_dps = true }, { 30222, 30223, 30228, 30229, 30230 }, {
+        SetBonus(2, Labels("Leaving Bear or Cat Form reduces the next Regrowth cast time by 2.0 sec", "离开熊或猎豹形态后，下一次愈合施法时间缩短 2.0 秒", "離開熊或獵豹形態後，下一次癒合施法時間縮短 2.0 秒"), { bear_tank = true, cat_dps = true }, { balanced = 1, mitigation = 1, threat = 1, cap = 0, output = 1 }),
+        SetBonus(4, Labels("Shred deals 75 more damage and Lacerate deals 15 more damage per application", "撕碎额外造成 75 点伤害，割伤每层额外造成 15 点伤害", "撕碎額外造成 75 點傷害，割傷每層額外造成 15 點傷害"), { bear_tank = true, cat_dps = true }, { balanced = 3, mitigation = 1, threat = 3, cap = 2, output = 3 }),
+    })
+Tier5Set("nordrassil_raiment", 642, "DRUID", Labels("Nordrassil Raiment", "诺达希尔恢复套装", "諾達希爾恢復套裝"),
+    { restoration_healer = true }, { 30216, 30217, 30219, 30220, 30221 }, {
+        SetBonus(2, Labels("Increases Regrowth duration by 6 sec", "愈合持续时间延长 6 秒", "癒合持續時間延長 6 秒"), { restoration_healer = true }, { balanced = 2, throughput = 2, longevity = 2 }),
+        SetBonus(4, Labels("Increases Lifebloom final healing by 150", "生命绽放最终治疗量提高 150", "生命之花最終治療量提高 150"), { restoration_healer = true }, { balanced = 3, throughput = 3, longevity = 1 }),
+    })
+Tier5Set("rift_stalker_armor", 652, "HUNTER", Labels("Rift Stalker Armor", "裂隙追猎者护甲", "裂隙追獵者護甲"),
+    { beast_mastery = true, marksmanship_hunter = true, survival_hunter = true }, { 30139, 30140, 30141, 30142, 30143 }, {
+        SetBonus(2, Labels("Heals the pet for 15% of damage dealt", "造成伤害的 15% 会治疗宠物", "造成傷害的 15% 會治療寵物"), { beast_mastery = true, marksmanship_hunter = true, survival_hunter = true }, { balanced = 2, cap = 0, output = 1 }),
+        SetBonus(4, Labels("Steady Shot gains 5% critical strike chance", "稳固射击的暴击几率提高 5%", "穩固射擊的致命一擊機率提高 5%"), { beast_mastery = true, marksmanship_hunter = true, survival_hunter = true }, { balanced = 3, cap = 2, output = 3 }),
+    })
+Tier5Set("tirisfal_regalia", 649, "MAGE", Labels("Tirisfal Regalia", "提瑞斯法法衣", "提里斯法法衣"),
+    { arcane_mage = true, fire_mage = true, frost_mage = true }, { 30196, 30205, 30206, 30207, 30210 }, {
+        SetBonus(2, Labels("Arcane Blast damage and mana cost increase by 20%", "奥术冲击伤害和法力消耗提高 20%", "秘法衝擊傷害和法力消耗提高 20%"), { arcane_mage = true }, { balanced = 3, cap = 1, output = 3 }),
+        SetBonus(4, Labels("Spell critical strikes grant up to 70 spell damage for 6 sec", "法术暴击后获得最多 70 点法术伤害，持续 6 秒", "法術致命一擊後獲得最多 70 點法術傷害，持續 6 秒"), { arcane_mage = true, fire_mage = true, frost_mage = true }, { balanced = 3, cap = 2, output = 3 }),
+    })
+Tier5Set("crystalforge_raiment", 627, "PALADIN", Labels("Crystalforge Raiment", "晶铸圣装", "晶鑄聖裝"),
+    { holy_healer = true }, { 30134, 30135, 30136, 30137, 30138 }, {
+        SetBonus(2, Labels("Judgements restore 50 mana to party members", "施放审判时为小队成员恢复 50 点法力", "施放審判時為小隊成員恢復 50 點法力"), { holy_healer = true }, { balanced = 2, flash_of_light = 1, holy_light = 2 }),
+        SetBonus(4, Labels("Critical heals reduce the next Holy Light cast time by 0.50 sec for 10 sec; 1 min cooldown", "治疗暴击使下一次圣光术施法时间缩短 0.50 秒，效果持续 10 秒；冷却 1 分钟", "治療致命一擊使下一次聖光術施法時間縮短 0.50 秒，效果持續 10 秒；冷卻 1 分鐘"), { holy_healer = true }, { balanced = 3, flash_of_light = 1, holy_light = 3 }),
+    })
+Tier5Set("crystalforge_armor", 628, "PALADIN", Labels("Crystalforge Armor", "晶铸护甲", "晶鑄護甲"),
+    { protection_tank = true }, { 30123, 30124, 30125, 30126, 30127 }, {
+        SetBonus(2, Labels("Retribution Aura deals 15 additional damage", "惩罚光环额外造成 15 点伤害", "懲罰光環額外造成 15 點傷害"), { protection_tank = true }, { balanced = 1, mitigation = 0, threat = 2 }),
+        SetBonus(4, Labels("Holy Shield grants 100 block value against one attack within 6 sec", "施放神圣之盾后，6 秒内下一次格挡获得 100 格挡值", "施放神聖之盾後，6 秒內下一次格擋獲得 100 格擋值"), { protection_tank = true }, { balanced = 2, mitigation = 3, threat = 1 }),
+    })
+Tier5Set("crystalforge_battlegear", 629, "PALADIN", Labels("Crystalforge Battlegear", "晶铸战甲", "晶鑄戰甲"),
+    { retribution_dps = true }, { 30129, 30130, 30131, 30132, 30133 }, {
+        SetBonus(2, Labels("Reduces Judgement mana cost by 35", "审判的法力消耗降低 35", "審判的法力消耗降低 35"), { retribution_dps = true }, { balanced = 2, cap = 1, output = 2 }),
+        SetBonus(4, Labels("Judgements can heal nearby party members for 244 to 257", "审判有几率为附近小队成员恢复 244 至 257 点生命", "審判有機率為附近隊伍成員恢復 244 至 257 點生命"), { retribution_dps = true }, { balanced = 2, cap = 0, output = 1 }),
+    })
+Tier5Set("avatar_raiment", 665, "PRIEST", Labels("Avatar Raiment", "神使治疗套装", "神使治療套裝"),
+    { discipline_priest = true, holy_priest = true }, { 30150, 30151, 30152, 30153, 30154 }, {
+        SetBonus(2, Labels("Greater Heal restoring a target to full health returns 100 mana", "强效治疗术将目标生命值恢复满时返还 100 点法力", "強效治療術將目標生命值恢復滿時返還 100 點法力"), { discipline_priest = true, holy_priest = true }, { balanced = 2, throughput = 1, longevity = 3 }),
+        SetBonus(4, Labels("Increases Renew duration by 3 sec", "恢复的持续时间延长 3 秒", "恢復的持續時間延長 3 秒"), { discipline_priest = true, holy_priest = true }, { balanced = 3, throughput = 2, longevity = 3 }),
+    })
+Tier5Set("avatar_regalia", 666, "PRIEST", Labels("Avatar Regalia", "神使暗影套装", "神使暗影套裝"),
+    { shadow_dps = true }, { 30159, 30160, 30161, 30162, 30163 }, {
+        SetBonus(2, Labels("Offensive spells can reduce the next spell's mana cost by 150", "攻击法术有几率使下一个法术的法力消耗降低 150", "攻擊法術有機率使下一個法術的法力消耗降低 150"), { shadow_dps = true }, { balanced = 3, cap = 1, output = 2 }),
+        SetBonus(4, Labels("Shadow Word: Pain ticks can grant the next spell within 15 sec up to 100 spell damage and healing", "暗言术：痛的周期伤害有几率使 15 秒内施放的下一个法术获得最多 100 点法术伤害和治疗", "暗言術：痛的週期傷害有機率使 15 秒內施放的下一個法術獲得最多 100 點法術傷害和治療"), { shadow_dps = true }, { balanced = 3, cap = 2, output = 3 }),
+    })
+Tier5Set("deathmantle", 622, "ROGUE", Labels("Deathmantle", "死亡阴影套装", "死亡陰影套裝"),
+    { assassination_rogue = true, combat_rogue = true, subtlety_rogue = true }, { 30144, 30145, 30146, 30148, 30149 }, {
+        SetBonus(2, Labels("Eviscerate and Envenom deal 40 additional damage per combo point", "刺骨和毒伤每个连击点数额外造成 40 点伤害", "剔骨和毒化每個連擊點數額外造成 40 點傷害"), { assassination_rogue = true, combat_rogue = true, subtlety_rogue = true }, { balanced = 3, cap = 1, output = 3 }),
+        SetBonus(4, Labels("Attacks can make the next finishing move cost no energy", "攻击有几率使下一个终结技不消耗能量", "攻擊有機率使下一個終結技不消耗能量"), { assassination_rogue = true, combat_rogue = true, subtlety_rogue = true }, { balanced = 3, cap = 2, output = 3 }),
+    })
+Tier5Set("cataclysm_regalia", 635, "SHAMAN", Labels("Cataclysm Regalia", "灾难元素套装", "災難元素套裝"),
+    { elemental_dps = true }, { 30169, 30170, 30171, 30172, 30173 }, {
+        SetBonus(2, Labels("Offensive spells can reduce the next Lesser Healing Wave mana cost by 380", "攻击法术有几率使下一次次级治疗波的法力消耗降低 380", "攻擊法術有機率使下一次次級治療波的法力消耗降低 380"), { elemental_dps = true }, { balanced = 1, cap = 0, output = 0 }),
+        SetBonus(4, Labels("Lightning Bolt critical strikes can restore 120 mana", "闪电箭暴击有几率恢复 120 点法力", "閃電箭致命一擊有機率恢復 120 點法力"), { elemental_dps = true }, { balanced = 3, cap = 2, output = 3 }),
+    })
+Tier5Set("cataclysm_harness", 636, "SHAMAN", Labels("Cataclysm Harness", "灾难增强套装", "災難增強套裝"),
+    { enhancement_dps = true }, { 30185, 30189, 30190, 30192, 30194 }, {
+        SetBonus(2, Labels("Melee attacks can reduce the next Lesser Healing Wave cast time by 1.5 sec", "近战攻击有几率使下一次次级治疗波施法时间缩短 1.5 秒", "近戰攻擊有機率使下一次次級治療波施法時間縮短 1.5 秒"), { enhancement_dps = true }, { balanced = 1, cap = 0, output = 0 }),
+        SetBonus(4, Labels("Flurry grants 5% additional haste", "乱舞额外提供 5% 急速", "亂舞額外提供 5% 加速"), { enhancement_dps = true }, { balanced = 3, cap = 2, output = 3 }),
+    })
+Tier5Set("cataclysm_raiment", 634, "SHAMAN", Labels("Cataclysm Raiment", "灾难恢复套装", "災難恢復套裝"),
+    { restoration_healer = true }, { 30164, 30165, 30166, 30167, 30168 }, {
+        SetBonus(2, Labels("Reduces Lesser Healing Wave mana cost by 5%", "次级治疗波的法力消耗降低 5%", "次級治療波的法力消耗降低 5%"), { restoration_healer = true }, { balanced = 2, throughput = 1, longevity = 3 }),
+        SetBonus(4, Labels("Critical heals reduce the next Healing Wave cast time by 0.50 sec for 10 sec; 1 min cooldown", "治疗暴击使下一次治疗波施法时间缩短 0.50 秒，效果持续 10 秒；冷却 1 分钟", "治療致命一擊使下一次治療波施法時間縮短 0.50 秒，效果持續 10 秒；冷卻 1 分鐘"), { restoration_healer = true }, { balanced = 3, throughput = 3, longevity = 2 }),
+    })
+Tier5Set("corruptor_raiment", 646, "WARLOCK", Labels("Corruptor Raiment", "腐蚀者套装", "腐化者套裝"),
+    { affliction_warlock = true, demonology_warlock = true, destruction_warlock = true }, { 30211, 30212, 30213, 30214, 30215 }, {
+        SetBonus(2, Labels("Heals the pet for 15% of damage dealt", "造成伤害的 15% 会治疗宠物", "造成傷害的 15% 會治療寵物"), { affliction_warlock = true, demonology_warlock = true, destruction_warlock = true }, { balanced = 2, cap = 0, output = 1 }),
+        SetBonus(4, Labels("Shadow Bolt boosts Corruption and Incinerate boosts Immolate damage by 10%", "暗影箭使腐蚀术伤害提高 10%，烧尽使献祭伤害提高 10%", "暗影箭使腐蝕術傷害提高 10%，燒盡使獻祭傷害提高 10%"), { affliction_warlock = true, demonology_warlock = true, destruction_warlock = true }, { balanced = 3, cap = 2, output = 3 }),
+    })
+Tier5Set("destroyer_battlegear", 657, "WARRIOR", Labels("Destroyer Battlegear", "毁灭者战甲", "毀滅者戰甲"),
+    { arms_warrior = true, fury_warrior = true }, { 30118, 30119, 30120, 30121, 30122 }, {
+        SetBonus(2, Labels("Overpower grants 100 attack power for 5 sec", "压制使你获得 100 攻击强度，持续 5 秒", "壓制使你獲得 100 攻擊強度，持續 5 秒"), { arms_warrior = true, fury_warrior = true }, { balanced = 2, cap = 1, output = 3 }),
+        SetBonus(4, Labels("Bloodthirst and Mortal Strike cost 5 less rage", "嗜血和致死打击少消耗 5 点怒气", "嗜血和致死打擊少消耗 5 點怒氣"), { arms_warrior = true, fury_warrior = true }, { balanced = 3, cap = 2, output = 3 }),
+    })
+Tier5Set("destroyer_armor", 656, "WARRIOR", Labels("Destroyer Armor", "毁灭者护甲", "毀滅者護甲"),
+    { warrior_protection = true }, { 30113, 30114, 30115, 30116, 30117 }, {
+        SetBonus(2, Labels("Shield Block grants 100 block value against one attack within 6 sec", "施放盾牌格挡后，6 秒内下一次格挡获得 100 格挡值", "施放盾牌格擋後，6 秒內下一次格擋獲得 100 格擋值"), { warrior_protection = true }, { balanced = 2, mitigation = 3, threat = 1 }),
+        SetBonus(4, Labels("Being hit can grant 200 haste rating for 10 sec", "受到攻击时有几率获得 200 急速等级，持续 10 秒", "受到攻擊時有機率獲得 200 加速等級，持續 10 秒"), { warrior_protection = true }, { balanced = 2, mitigation = 1, threat = 3 }),
+    })
 
 Preset("balance_p2", "Balance P2", "balance_caster", "balanced", { 30233, 30015, 30235, 28797, 30231, 29918, 30232, 30038, 24262, 30067, 28753, 29302, 29370, 27683, 29988, 0, 32387 }, "ui/druid/balance/gear_sets/p2_a.gear.json")
 Preset("bear_balanced", "Feral Bear P2 Balanced", "bear_tank", "balanced", { 30228, 30017, 30230, 28660, 30222, 32810, 29947, 30106, 30229, 32790, 30834, 29279, 28579, 32658, 32014, 0, 32387 }, "ui/druid/feralbear/gear_sets/p2_balanced.gear.json")
@@ -470,6 +606,7 @@ local GOAL_LABELS = {
 for classToken, class in pairs(DB.classes) do
     for index = 1, #(class.roles or {}) do
         local role = class.roles[index]
+        role.classToken = classToken
         role.setGoalLabels = GOAL_LABELS[classToken .. "." .. role.key] or Labels(role.setGoal, role.setGoal, role.setGoal)
     end
 end
@@ -514,7 +651,11 @@ function DB.Validate()
         definitiveModels = 0,
         itemEffects = 0,
         sets = 0,
+        tier5Sets = 0,
+        tier5Roles = 0,
     }
+    local tier5RoleCoverage = {}
+    local tier5ItemOwners = {}
 
     for classToken, class in pairs(DB.classes) do
         summary.classes = summary.classes + 1
@@ -568,6 +709,65 @@ function DB.Validate()
         if set.key ~= key or #(set.itemIDs or {}) == 0 or #(set.bonuses or {}) == 0 then
             issues[#issues + 1] = "invalid set definition " .. tostring(key)
         end
+        if set.tier == 5 then
+            summary.tier5Sets = summary.tier5Sets + 1
+            if not set.setID or #(set.itemIDs or {}) ~= 5 or #(set.bonuses or {}) ~= 2 then
+                issues[#issues + 1] = tostring(key) .. ": Tier 5 sets require a set ID, five items, and two bonuses"
+            end
+            if not set.labels or not set.labels.enUS or not set.labels.zhCN or not set.labels.zhTW then
+                issues[#issues + 1] = tostring(key) .. ": missing localized Tier 5 labels"
+            end
+            if not next(set.classTokens or {}) or not next(set.roleKeys or {}) then
+                issues[#issues + 1] = tostring(key) .. ": missing class or role ownership"
+            end
+
+            local bonusPieces = {}
+            for bonusIndex = 1, #(set.bonuses or {}) do
+                local bonus = set.bonuses[bonusIndex]
+                bonusPieces[bonus.pieces] = true
+                if not bonus.labels or not bonus.labels.enUS or not bonus.labels.zhCN or not bonus.labels.zhTW then
+                    issues[#issues + 1] = tostring(key) .. ": missing localized " .. tostring(bonus.pieces) .. "-piece bonus"
+                end
+            end
+            if not bonusPieces[2] or not bonusPieces[4] then
+                issues[#issues + 1] = tostring(key) .. ": Tier 5 bonuses must use the 2-piece and 4-piece thresholds"
+            end
+
+            for itemIndex = 1, #(set.itemIDs or {}) do
+                local itemID = tonumber(set.itemIDs[itemIndex])
+                if not itemID then
+                    issues[#issues + 1] = tostring(key) .. ": invalid item ID"
+                elseif tier5ItemOwners[itemID] then
+                    issues[#issues + 1] = tostring(key) .. ": item " .. tostring(itemID) .. " already belongs to " .. tier5ItemOwners[itemID]
+                else
+                    tier5ItemOwners[itemID] = key
+                end
+            end
+
+            for classToken in pairs(set.classTokens or {}) do
+                if not DB.classes[classToken] then
+                    issues[#issues + 1] = tostring(key) .. ": unknown class " .. tostring(classToken)
+                end
+                for roleKey in pairs(set.roleKeys or {}) do
+                    if DB.GetRole(classToken, roleKey) then
+                        tier5RoleCoverage[classToken .. "." .. roleKey] = true
+                    else
+                        issues[#issues + 1] = tostring(key) .. ": role " .. tostring(roleKey) .. " does not belong to " .. tostring(classToken)
+                    end
+                end
+            end
+        end
+    end
+
+    for classToken, class in pairs(DB.classes) do
+        for index = 1, #(class.roles or {}) do
+            local roleKey = class.roles[index].key
+            if tier5RoleCoverage[classToken .. "." .. roleKey] then
+                summary.tier5Roles = summary.tier5Roles + 1
+            else
+                issues[#issues + 1] = classToken .. "." .. tostring(roleKey) .. ": no Tier 5 set coverage"
+            end
+        end
     end
 
     if summary.classes ~= 9 then
@@ -575,6 +775,12 @@ function DB.Validate()
     end
     if summary.roles ~= 28 then
         issues[#issues + 1] = "expected 28 roles, found " .. tostring(summary.roles)
+    end
+    if summary.tier5Sets ~= 17 then
+        issues[#issues + 1] = "expected 17 Tier 5 sets, found " .. tostring(summary.tier5Sets)
+    end
+    if summary.tier5Roles ~= 28 then
+        issues[#issues + 1] = "expected Tier 5 coverage for 28 roles, found " .. tostring(summary.tier5Roles)
     end
     return #issues == 0, issues, summary
 end
