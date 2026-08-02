@@ -1580,7 +1580,7 @@ test("Yamede dual wield evaluates generic one-hand candidates against both weapo
     assertEquals(private.EquipmentSlotKey(spiteblade), "MAINHAND")
 
     local engine = private.BuildGearRecommendations(profile, { spiteblade }, strategy, role.key, "balanced")
-    assertEquals(engine.version, 13)
+    assertEquals(engine.version, 14)
     assertEquals(engine.candidateCount, 1)
     assertEquals(#engine.upgrades, 1)
     local upgrade = engine.upgrades[1]
@@ -2797,7 +2797,7 @@ test("item comparison switches role weights and rejects mismatched slots", funct
     assertEquals(private.FindStrategyRole(nil, "missing").key, "general_inventory")
 
     local damageEngine = private.BuildGearRecommendations(profile, { candidate }, strategy, "retribution_dps")
-    assertEquals(damageEngine.version, 13)
+    assertEquals(damageEngine.version, 14)
     assertEquals(damageEngine.roleKey, "retribution_dps")
     assertEquals(#damageEngine.availableRoles, 3)
     assertEquals(damageEngine.talentMap.effects[1].key, "crusade")
@@ -2875,7 +2875,7 @@ test("holy paladin role fit rejects physical crit bracers before upgrade scoring
     assertFalse(incidentalIntellectFit.suitable, "incidental intellect must not make physical gear healer-suitable")
 
     local engine = private.BuildGearRecommendations(profile, { physicalCandidate, healingCandidate }, strategy, "holy_healer")
-    assertEquals(engine.version, 13)
+    assertEquals(engine.version, 14)
     assertEquals(engine.candidateCount, 1)
     assertEquals(engine.roleRejectedCount, 1)
     assertEquals(#engine.upgrades, 1)
@@ -3072,7 +3072,7 @@ test("protection paladin strategy compares visible gains and losses without inve
     assertEquals(role.observed.gearStatHighlights[1].value, 20)
     assertFalse(role.observed.gearStatHighlights[1].value == 30, "candidate stamina must not leak into current gear highlights")
 
-    assertEquals(engine.version, 13)
+    assertEquals(engine.version, 14)
     assertEquals(#engine.upgrades, 1)
     assertEquals(engine.upgrades[1].evidence, "high")
     assertEquals(engine.upgrades[1].verdict, "estimate")
@@ -4882,7 +4882,7 @@ test("known effects are role-gated and compare by the selected healing cycle", f
     assertTrue(private.BuildEffectDecision(nil, absolute, role, "holy_light").preferCandidate)
 
     local holyEngine = private.BuildGearRecommendations(profile, { absolute }, strategy, role.key, "holy_light")
-    assertEquals(holyEngine.version, 13)
+    assertEquals(holyEngine.version, 14)
     assertEquals(#holyEngine.upgrades, 1)
     assertEquals(holyEngine.upgrades[1].candidate.itemID, 30063)
     assertEquals(holyEngine.effectDecisionCount, 1)
@@ -5030,6 +5030,8 @@ test("protection tank trinket effects change decisions with strategy mode", func
     assertEquals(balanced.decisionKind, "effect_tradeoff")
     assertEquals(balanced.verdict, "tradeoff")
     assertTrue(private.RecommendationSelectionPriority(balanced) < balanced.scoreGain)
+    assertEquals(private.DecisionMetricText(balanced, "zhCN"), "保留当前效果")
+    assertEquals(private.DecisionMetricColor(balanced), "|cffffcc00")
 
     local threat = private.BuildEffectDecision(icon, rocket, role, "threat")
     assertTrue(threat.preferCurrent)
@@ -5041,6 +5043,24 @@ test("protection tank trinket effects change decisions with strategy mode", func
     assertEquals(mitigation.effectDecision.candidateAffinity, 3)
     assertEquals(mitigation.decisionKind, "effect_choice")
     assertEquals(mitigation.verdict, "review")
+    assertEquals(private.DecisionMetricText(mitigation, "zhCN"), "效果选择")
+    assertEquals(private.DecisionMetricColor(mitigation), "|cffffff00")
+    assertEquals(private.DecisionMetricColor({ verdict = "estimate" }), "|cff33ff99")
+
+    local balancedEngine = private.BuildGearRecommendations(profile, { rocket }, strategy, role.key, "balanced")
+    assertEquals(#balancedEngine.upgrades, 0)
+    assertEquals(balancedEngine.effectRejectedCount, 1)
+    assertContains(private.NoUpgradeText(balancedEngine, "zhCN"), "已知效果不适合当前策略模式")
+
+    local threatEngine = private.BuildGearRecommendations(profile, { rocket }, strategy, role.key, "threat")
+    assertEquals(#threatEngine.upgrades, 0)
+    assertEquals(threatEngine.effectRejectedCount, 1)
+
+    local mitigationEngine = private.BuildGearRecommendations(profile, { rocket }, strategy, role.key, "mitigation")
+    assertEquals(#mitigationEngine.upgrades, 1)
+    assertEquals(mitigationEngine.effectRejectedCount, 0)
+    assertEquals(mitigationEngine.upgrades[1].candidate.itemID, 23836)
+    assertEquals(mitigationEngine.upgrades[1].decisionKind, "effect_choice")
 
     local effectLines = {}
     private.AppendKnownEffectJson(effectLines, 0, "known_effect", mitigation.effectDecision.candidateEffect, false)
@@ -5048,6 +5068,21 @@ test("protection tank trinket effects change decisions with strategy mode", func
     assertContains(effectJson, "Engineering (350)")
     assertContains(effectJson, "Goblin Engineering")
     assertContains(effectJson, "opener, not a tanking cooldown")
+
+    local engineLines = {}
+    private.AppendGearRecommendationsJson(engineLines, 0, balancedEngine, false)
+    local engineJson = table.concat(engineLines, "\n")
+    assertContains(engineJson, "\"effect_rejected_count\": 1")
+    local decisionLines = {}
+    private.AppendEffectDecisionJson(decisionLines, 0, balanced.effectDecision, false)
+    assertContains(table.concat(decisionLines, "\n"), "\"choice_kind\": null")
+
+    resetRuntimeState(Addon)
+    Addon:CreateExportFrame()
+    assertEquals(Addon:RefreshGearAdvice(profile, mitigationEngine), 1)
+    assertEquals(Addon.exportFrame.adviceRows[1].gain.width, 128)
+    assertEquals(Addon.exportFrame.adviceRows[1].gain.height, 38)
+    assertContains(Addon.exportFrame.adviceRows[1].gain.text, "|cffffff00效果选择|r")
 end)
 
 test("guide route gaps and machine exports preserve evidence without inventing EP", function()
@@ -5079,7 +5114,7 @@ test("guide route gaps and machine exports preserve evidence without inventing E
     local lines = {}
     private.AppendGearRecommendationsJson(lines, 0, engine, false)
     local json = table.concat(lines, "\n")
-    assertContains(json, "\"version\": 13")
+    assertContains(json, "\"version\": 14")
     assertContains(json, "\"effect_decision_count\": 1")
     assertContains(json, "\"route_gaps\": [")
     assertContains(json, "\"known_effect\": {")
@@ -5087,6 +5122,7 @@ test("guide route gaps and machine exports preserve evidence without inventing E
     assertContains(json, "\"decision_kind\": \"effect_choice\"")
     assertContains(json, "\"effect_decision\": {")
     assertContains(json, "\"candidate_affinity\": 3")
+    assertContains(json, "\"choice_kind\": \"spell_cycle\"")
     assertContains(json, "\"set_impacts\": [")
     assertFalse(json:find("candidate_ep", 1, true), "contextual effects must not be emitted as fake EP")
 
@@ -5136,7 +5172,7 @@ test("hidden trinket effects are excluded instead of scored as upgrades", functi
     assertEquals(private.RecommendationVerdictLabel(comparison.verdict, "zhCN"), "效果无法量化")
 
     local engine = private.BuildGearRecommendations(profile, { shard }, { roles = { role } }, role.key)
-    assertEquals(engine.version, 13)
+    assertEquals(engine.version, 14)
     assertEquals(engine.unscorableRejectedCount, 1)
     assertEquals(engine.loadoutRejectedCount, 0)
     assertEquals(#engine.upgrades, 0)

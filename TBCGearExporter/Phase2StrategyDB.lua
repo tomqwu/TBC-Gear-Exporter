@@ -297,6 +297,7 @@ end
 ItemEffect(25644, {
     key = "blessed_book_of_nagrand",
     kind = "spell_specific_healing",
+    choiceKind = "spell_cycle",
     roleKeys = { holy_healer = true },
     modeAffinity = { balanced = 2, flash_of_light = 3, holy_light = 0 },
     labels = Labels("Adds up to 79 healing to Flash of Light", "圣光闪现最多额外治疗 79 点", "聖光閃現最多額外治療 79 點"),
@@ -304,6 +305,7 @@ ItemEffect(25644, {
 ItemEffect(28592, {
     key = "libram_of_souls_redeemed",
     kind = "blessing_synergy",
+    choiceKind = "spell_cycle",
     roleKeys = { holy_healer = true },
     modeAffinity = { balanced = 3, flash_of_light = 2, holy_light = 2 },
     labels = Labels("Blessing of Light grants 60 more Flash of Light and 120 more Holy Light healing", "光明祝福使圣光闪现额外获得 60、圣光术额外获得 120 治疗", "光明祝福使聖光閃現額外獲得 60、聖光術額外獲得 120 治療"),
@@ -312,6 +314,7 @@ ItemEffect(28592, {
 ItemEffect(30063, {
     key = "libram_of_absolute_truth",
     kind = "spell_mana_reduction",
+    choiceKind = "spell_cycle",
     roleKeys = { holy_healer = true },
     modeAffinity = { balanced = 1, flash_of_light = 0, holy_light = 3 },
     labels = Labels("Reduces Holy Light mana cost by 34", "圣光术法力消耗降低 34 点", "聖光術法力消耗降低 34 點"),
