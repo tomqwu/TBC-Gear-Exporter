@@ -4,6 +4,16 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-08-02
+
+- Explain every visible-stat recommendation as `stat delta x active weight = contribution`, including the reconciled net score shown in the GUI, Markdown, plain text, AI Text, and JSON.
+- Export structured `score_breakdown` components, score residual, reconciliation status, and `unscored_changes` for machine-readable audits.
+- State why visible changes were excluded: either the selected role has no weight for the stat or that role does not use the stat in the compared slot.
+- Fix the Yamede Hunter case so Spiteblade's `+4.04` is shown as `+24 Attack Power x 0.46 - 7 Agility x 1.00`, while off-hand weapon DPS and Stamina are explicitly marked unscored.
+- Bind score provenance to each recommendation, including the Hunter model's P1 BM/SV source context and non-definitive limitation.
+- Expand recommendation rows and the selected comparison panel to fit the added Chinese and English explanations without overlap.
+- Upgrade the recommendation engine to version 15; all 103 tests pass with 99.01% executable-line coverage, including reconciliation checks across all 9 classes and 28 role models.
+
 ## [0.5.1] - 2026-08-01
 
 - Suppress a candidate when its curated effect is explicitly weaker than the equipped effect in the selected strategy mode; it can reappear automatically in a mode where its effect is preferred.

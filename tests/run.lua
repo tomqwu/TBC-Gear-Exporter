@@ -1580,7 +1580,7 @@ test("Yamede dual wield evaluates generic one-hand candidates against both weapo
     assertEquals(private.EquipmentSlotKey(spiteblade), "MAINHAND")
 
     local engine = private.BuildGearRecommendations(profile, { spiteblade }, strategy, role.key, "balanced")
-    assertEquals(engine.version, 14)
+    assertEquals(engine.version, 15)
     assertEquals(engine.candidateCount, 1)
     assertEquals(#engine.upgrades, 1)
     local upgrade = engine.upgrades[1]
@@ -1593,6 +1593,162 @@ test("Yamede dual wield evaluates generic one-hand candidates against both weapo
     assertEquals(upgrade.statGains[1].value, 24)
     assertEquals(upgrade.statLosses[1].token, "ITEM_MOD_AGILITY_SHORT")
     assertEquals(upgrade.statLosses[1].value, 7)
+    assertEquals(upgrade.scoreBreakdown.kind, "linear_visible_stat_delta")
+    assertEquals(upgrade.scoreBreakdown.visibleStatTotal, 4.04)
+    assertEquals(upgrade.scoreBreakdown.scoreGain, 4.04)
+    assertEquals(upgrade.scoreBreakdown.residual, 0)
+    assertTrue(upgrade.scoreBreakdown.reconciled)
+    assertEquals(#upgrade.scoreBreakdown.components, 2)
+    assertEquals(upgrade.scoreBreakdown.components[1].token, "ITEM_MOD_ATTACK_POWER_SHORT")
+    assertEquals(upgrade.scoreBreakdown.components[1].delta, 24)
+    assertEquals(upgrade.scoreBreakdown.components[1].weight, 0.46)
+    assertEquals(upgrade.scoreBreakdown.components[1].contribution, 11.04)
+    assertEquals(upgrade.scoreBreakdown.components[2].token, "ITEM_MOD_AGILITY_SHORT")
+    assertEquals(upgrade.scoreBreakdown.components[2].delta, -7)
+    assertEquals(upgrade.scoreBreakdown.components[2].weight, 1)
+    assertEquals(upgrade.scoreBreakdown.components[2].contribution, -7)
+    assertEquals(#upgrade.scoreBreakdown.unscoredChanges, 2)
+    assertEquals(upgrade.scoreBreakdown.unscoredChanges[1].token, "ITEM_MOD_DAMAGE_PER_SECOND_SHORT")
+    assertEquals(upgrade.scoreBreakdown.unscoredChanges[1].delta, 16.01)
+    assertEquals(upgrade.scoreBreakdown.unscoredChanges[1].reason, "not_applicable_to_role_slot")
+    assertEquals(upgrade.scoreBreakdown.unscoredChanges[2].token, "ITEM_MOD_STAMINA_SHORT")
+    assertEquals(upgrade.scoreBreakdown.unscoredChanges[2].delta, 4)
+    assertEquals(upgrade.scoreBreakdown.unscoredChanges[2].reason, "not_weighted_for_role")
+    assertContains(private.ScoreBreakdownText(upgrade, "zhCN"), "+24 攻击强度 x 0.46 = +11.04")
+    assertContains(private.ScoreBreakdownText(upgrade, "zhCN"), "-7 敏捷 x 1 = -7")
+    assertContains(private.ScoreBreakdownText(upgrade, "zhCN"), "净值 +4.04")
+    assertContains(private.UnscoredChangesText(upgrade, "zhCN"), "+16.01 每秒伤害 (当前职责在此栏位不使用)")
+    assertContains(private.UnscoredChangesText(upgrade, "zhCN"), "+4 耐力 (当前职责没有权重)")
+    assertContains(private.RecommendationReasonText(upgrade, "enUS"), "+24 Attack Power x 0.46 = +11.04")
+    assertContains(private.ScoreModelContextText(upgrade.scoreModel, "zhCN"), "P1 BM/SV")
+    assertContains(private.ScoreModelText(upgrade.scoreModel, "zhCN"), "仅作候选排序")
+end)
+
+test("score breakdowns reconcile for every class role model", function()
+    local db = assert(_G.TBCGearExporterP2DB)
+    local roleCount = 0
+    local classCount = 0
+    for classToken, class in pairs(db.classes) do
+        classCount = classCount + 1
+        for index = 1, #(class.roles or {}) do
+            local role = class.roles[index]
+            local weights = private.BuildRoleStatWeights(role, "balanced")
+            local token
+            local weight
+            for candidateToken, candidateWeight in pairs(weights) do
+                if candidateToken ~= "ITEM_MOD_DAMAGE_PER_SECOND_SHORT" and candidateWeight > 0 then
+                    token = candidateToken
+                    weight = candidateWeight
+                    break
+                end
+            end
+            assertTrue(token ~= nil, classToken .. "." .. tostring(role.key) .. " has no explainable stat")
+            local current = { slotKey = "FINGER", stats = { { token = token, value = 10 } } }
+            local candidate = { slotKey = "FINGER", stats = { { token = token, value = 12 } } }
+            local comparison = private.CompareItems({ classEnglish = classToken, equipped = { items = { current } } }, current, candidate, { roles = { role } }, role.key, weights, "balanced")
+            local expected = private.RoundedStatNumber(2 * weight)
+            assertEquals(comparison.scoreBreakdown.visibleStatTotal, expected, classToken .. "." .. tostring(role.key) .. " total")
+            assertEquals(comparison.scoreBreakdown.scoreGain, expected, classToken .. "." .. tostring(role.key) .. " score")
+            assertEquals(comparison.scoreBreakdown.residual, 0, classToken .. "." .. tostring(role.key) .. " residual")
+            assertTrue(comparison.scoreBreakdown.reconciled, classToken .. "." .. tostring(role.key) .. " reconciliation")
+            assertEquals(comparison.scoreBreakdown.components[1].delta, 2)
+            assertEquals(comparison.scoreBreakdown.components[1].contribution, expected)
+            assertContains(private.ScoreBreakdownText(comparison, "enUS"), "net +")
+            roleCount = roleCount + 1
+        end
+    end
+    assertEquals(classCount, 9)
+    assertEquals(roleCount, 28)
+end)
+
+test("Chinese gear advice GUI explains the selected Hunter candidate without overlap-prone dimensions", function()
+    resetRuntimeState(Addon)
+    Addon:CreateExportFrame()
+    local role = assert(_G.TBCGearExporterP2DB.GetRole("HUNTER", "beast_mastery"))
+    local current = {
+        itemID = 28263, name = "恒星之斧", slotKey = "OFFHAND", equipSlot = "INVTYPE_WEAPON", category = "Gear", classID = 2,
+        stats = { { token = "ITEM_MOD_AGILITY_SHORT", value = 21 }, { token = "ITEM_MOD_STAMINA_SHORT", value = 12 }, { token = "ITEM_MOD_ATTACK_POWER_SHORT", value = 21 }, { token = "ITEM_MOD_DAMAGE_PER_SECOND_SHORT", value = 71.58 } },
+    }
+    local candidate = {
+        itemID = 28729, name = "怨恨", slotKey = "OFFHAND", equipSlot = "INVTYPE_WEAPON", category = "Gear", classID = 2, source = "bags",
+        stats = { { token = "ITEM_MOD_AGILITY_SHORT", value = 14 }, { token = "ITEM_MOD_STAMINA_SHORT", value = 16 }, { token = "ITEM_MOD_ATTACK_POWER_SHORT", value = 45 }, { token = "ITEM_MOD_DAMAGE_PER_SECOND_SHORT", value = 87.59 } },
+    }
+    local profile = { classEnglish = "HUNTER", locale = "zhCN", equipped = { items = { current } }, characterStats = {} }
+    local engine = private.BuildGearRecommendations(profile, { candidate }, { roles = { role } }, role.key, "balanced")
+    assertEquals(Addon:RefreshGearAdvice(profile, engine), 1)
+    assertContains(Addon.exportFrame.adviceRows[1].reason.text, "原因：+24 攻击强度 x 0.46 = +11.04")
+    assertContains(Addon.exportFrame.adviceRows[1].reason.text, "未计分：+16.01 每秒伤害")
+    assertContains(Addon.exportFrame.adviceRows[1].reason.text, "依据模型：跨阶段 / 共用 EP 估算 (来源环境: P1 BM/SV)")
+    assertContains(Addon.exportFrame.compareDetails.text, "净值 +4.04")
+    assertContains(Addon.exportFrame.compareDetails.text, "仅作候选排序")
+    assertEquals(Addon.exportFrame.adviceRows[1].height, 156)
+    assertEquals(Addon.exportFrame.adviceRows[1].reason.height, 118)
+    assertEquals(Addon.exportFrame.comparePanel.height, 206)
+    assertEquals(Addon.exportFrame.compareDetails.height, 132)
+    assertTrue(Addon.exportFrame.adviceContent.height >= 796)
+end)
+
+test("score explanation fallbacks remain useful for legacy and effect-only decisions", function()
+    assertEquals(private.SignedCompactNumber(4.04, 2), "+4.04")
+    assertEquals(private.SignedCompactNumber(-7, 2), "-7")
+    assertEquals(private.SignedCompactNumber(0, 2), "0")
+    assertContains(private.ScoreBreakdownText({
+        statGains = { { token = "ITEM_MOD_STAMINA_SHORT", value = 5 } },
+        statLosses = { { token = "ITEM_MOD_AGILITY_SHORT", value = 2 } },
+    }, "enUS"), "Gains: +5 Stamina; Gives up: +2 Agility")
+    assertEquals(private.ScoreBreakdownText({}, "zhCN"), "没有加权可见属性变化")
+    assertContains(private.RecommendationReasonText({
+        decisionKind = "set_threshold",
+        setImpacts = { { setKey = "set", pieces = 4, before = 3, after = 4, effect = "gains_bonus", labels = { zhCN = "四件效果" }, setLabels = { zhCN = "测试套装" } } },
+    }, "zhCN"), "测试套装 4pc 获得")
+end)
+
+test("recommendation explanations export formula provenance in every text format", function()
+    local role = assert(_G.TBCGearExporterP2DB.GetRole("HUNTER", "beast_mastery"))
+    local current = {
+        itemID = 28263, name = "Stellaris", slotKey = "OFFHAND", category = "Gear", classID = 2,
+        stats = { { token = "ITEM_MOD_AGILITY_SHORT", value = 21 }, { token = "ITEM_MOD_STAMINA_SHORT", value = 12 }, { token = "ITEM_MOD_ATTACK_POWER_SHORT", value = 21 }, { token = "ITEM_MOD_DAMAGE_PER_SECOND_SHORT", value = 71.58 } },
+    }
+    local candidate = {
+        itemID = 28729, name = "Spiteblade", slotKey = "OFFHAND", category = "Gear", classID = 2,
+        stats = { { token = "ITEM_MOD_AGILITY_SHORT", value = 14 }, { token = "ITEM_MOD_STAMINA_SHORT", value = 16 }, { token = "ITEM_MOD_ATTACK_POWER_SHORT", value = 45 }, { token = "ITEM_MOD_DAMAGE_PER_SECOND_SHORT", value = 87.59 } },
+    }
+    local comparison = private.CompareItems({ classEnglish = "HUNTER", equipped = { items = { current } } }, current, candidate, { roles = { role } }, role.key, nil, "balanced")
+    local engine = {
+        version = 15, roleKey = role.key, roleLabel = role.label, roleLabels = role.labels, roleConfidence = 100,
+        scoreModel = role.scoreModel, modeKey = "balanced", modeLabels = { enUS = "Balanced", zhCN = "均衡" },
+        equippedCount = 1, candidateCount = 1, upgrades = { comparison }, availableRoles = {}, priorityStats = {},
+        benchmarkGaps = {}, activeSets = {}, routeGaps = {}, equipped = { current }, roleWeights = private.BuildRoleStatWeights(role, "balanced"),
+        phase2 = { caps = {}, presetProgress = { available = false }, setGoalLabels = {}, routeEvidence = "guide" },
+        talentMap = {}, verdictCounts = { estimate = 1 }, caveat = "review",
+    }
+
+    local jsonLines = {}
+    private.AppendGearRecommendationsJson(jsonLines, 0, engine, false)
+    local json = table.concat(jsonLines, "\n")
+    assertContains(json, "\"score_breakdown\": {")
+    assertContains(json, "\"visible_stat_total\": 4.04")
+    assertContains(json, "\"reconciled\": true")
+    assertContains(json, "\"delta\": 24")
+    assertContains(json, "\"weight\": 0.46")
+    assertContains(json, "\"contribution\": 11.04")
+    assertContains(json, "\"unscored_changes\": [")
+    assertContains(json, "\"reason\": \"not_applicable_to_role_slot\"")
+    assertContains(json, "\"reason\": \"not_weighted_for_role\"")
+
+    local markdownLines = {}
+    private.AppendGearRecommendationsMarkdown(markdownLines, engine, "zhCN")
+    local markdown = table.concat(markdownLines, "\n")
+    assertContains(markdown, "- 原因: +24 攻击强度 x 0.46 = +11.04")
+    assertContains(markdown, "- 未计分: +16.01 每秒伤害 (当前职责在此栏位不使用)")
+    assertContains(markdown, "- 评分模型: 跨阶段 / 共用 EP 估算 (来源环境: P1 BM/SV)")
+
+    local textLines = {}
+    private.AppendGearRecommendationsText(textLines, engine, "enUS")
+    local report = table.concat(textLines, "\n")
+    assertContains(report, "Why: +24 Attack Power x 0.46 = +11.04")
+    assertContains(report, "Not scored: +16.01 Damage per Second (not used by this role in this slot)")
+    assertContains(report, "Score model: cross-phase/shared EP estimate (source context: P1 BM/SV)")
 end)
 
 test("flexible one-hand routing does not replace shields or invent offhand slots", function()
@@ -2797,7 +2953,7 @@ test("item comparison switches role weights and rejects mismatched slots", funct
     assertEquals(private.FindStrategyRole(nil, "missing").key, "general_inventory")
 
     local damageEngine = private.BuildGearRecommendations(profile, { candidate }, strategy, "retribution_dps")
-    assertEquals(damageEngine.version, 14)
+    assertEquals(damageEngine.version, 15)
     assertEquals(damageEngine.roleKey, "retribution_dps")
     assertEquals(#damageEngine.availableRoles, 3)
     assertEquals(damageEngine.talentMap.effects[1].key, "crusade")
@@ -2875,7 +3031,7 @@ test("holy paladin role fit rejects physical crit bracers before upgrade scoring
     assertFalse(incidentalIntellectFit.suitable, "incidental intellect must not make physical gear healer-suitable")
 
     local engine = private.BuildGearRecommendations(profile, { physicalCandidate, healingCandidate }, strategy, "holy_healer")
-    assertEquals(engine.version, 14)
+    assertEquals(engine.version, 15)
     assertEquals(engine.candidateCount, 1)
     assertEquals(engine.roleRejectedCount, 1)
     assertEquals(#engine.upgrades, 1)
@@ -3072,7 +3228,7 @@ test("protection paladin strategy compares visible gains and losses without inve
     assertEquals(role.observed.gearStatHighlights[1].value, 20)
     assertFalse(role.observed.gearStatHighlights[1].value == 30, "candidate stamina must not leak into current gear highlights")
 
-    assertEquals(engine.version, 14)
+    assertEquals(engine.version, 15)
     assertEquals(#engine.upgrades, 1)
     assertEquals(engine.upgrades[1].evidence, "high")
     assertEquals(engine.upgrades[1].verdict, "estimate")
@@ -3883,8 +4039,8 @@ test("recommendation exports include current gear and concrete upgrades", functi
     assertContains(markdown, "候选装备: [Feral Grips]")
     assertContains(markdown, "基准影响:")
     assertContains(markdown, "结论")
-    assertContains(markdown, "获得:")
-    assertContains(markdown, "失去:")
+    assertContains(markdown, "原因:")
+    assertContains(markdown, "净值 +")
     assertContains(markdown, "高")
     assertContains(markdown, "属性顺序启发式")
 
@@ -3997,13 +4153,14 @@ test("RefreshExport no-ops without frame and updates edit box with frame", funct
     local _, adviceBreaks = Addon.exportFrame.adviceSummary.text:gsub("\n", "\n")
     assertEquals(adviceBreaks, 5)
     assertEquals(#Addon.exportFrame.adviceRows, 2)
-    assertEquals(Addon.exportFrame.adviceRows[1].height, 116)
-    assertEquals(Addon.exportFrame.adviceRows[1].reason.height, 78)
-    assertEquals(Addon.exportFrame.adviceRows[2].points[1][5], -120)
+    assertEquals(Addon.exportFrame.adviceRows[1].height, 156)
+    assertEquals(Addon.exportFrame.adviceRows[1].reason.height, 118)
+    assertEquals(Addon.exportFrame.adviceRows[2].points[1][5], -160)
     local _, reasonBreaks = Addon.exportFrame.adviceRows[1].reason.text:gsub("\n", "\n")
-    assertEquals(reasonBreaks, 2)
-    assertContains(Addon.exportFrame.adviceRows[1].reason.text, "\n失去：")
+    assertTrue(reasonBreaks >= 2)
+    assertContains(Addon.exportFrame.adviceRows[1].reason.text, "原因：")
     assertContains(Addon.exportFrame.adviceRows[1].reason.text, "\n基准影响：")
+    assertContains(Addon.exportFrame.adviceRows[1].reason.text, "\n依据模型：")
     Addon:SetExportView("advice")
     Addon:RefreshExport("bags")
     assertTrue(Addon.exportFrame.adviceScroll:IsShown())
@@ -4128,7 +4285,7 @@ test("CreateExportFrame wires UI controls and scripts", function()
     assertEquals(exportFrame.adviceCaveat.justifyV, "TOP")
     assertTrue(exportFrame.comparePanel ~= nil)
     assertTrue(exportFrame.comparePanel.backdrop ~= nil)
-    assertEquals(exportFrame.comparePanel.height, 142)
+    assertEquals(exportFrame.comparePanel.height, 206)
     assertEquals(exportFrame.comparePanel.points[1][5], -336)
     assertTrue(exportFrame.compareCurrentButton ~= nil)
     assertTrue(exportFrame.compareCandidateButton ~= nil)
@@ -4136,7 +4293,7 @@ test("CreateExportFrame wires UI controls and scripts", function()
     assertTrue(exportFrame.compareVerdict ~= nil)
     assertTrue(exportFrame.compareDetails ~= nil)
     assertTrue(exportFrame.adviceRowsContent ~= nil)
-    assertEquals(exportFrame.adviceRowsContent.points[1][5], -488)
+    assertEquals(exportFrame.adviceRowsContent.points[1][5], -552)
     assertTrue(exportFrame.itemListContent ~= nil)
     assertTrue(exportFrame.analysisContent ~= nil)
     assertTrue(exportFrame.analysisText ~= nil)
@@ -4882,7 +5039,7 @@ test("known effects are role-gated and compare by the selected healing cycle", f
     assertTrue(private.BuildEffectDecision(nil, absolute, role, "holy_light").preferCandidate)
 
     local holyEngine = private.BuildGearRecommendations(profile, { absolute }, strategy, role.key, "holy_light")
-    assertEquals(holyEngine.version, 14)
+    assertEquals(holyEngine.version, 15)
     assertEquals(#holyEngine.upgrades, 1)
     assertEquals(holyEngine.upgrades[1].candidate.itemID, 30063)
     assertEquals(holyEngine.effectDecisionCount, 1)
@@ -5114,7 +5271,7 @@ test("guide route gaps and machine exports preserve evidence without inventing E
     local lines = {}
     private.AppendGearRecommendationsJson(lines, 0, engine, false)
     local json = table.concat(lines, "\n")
-    assertContains(json, "\"version\": 14")
+    assertContains(json, "\"version\": 15")
     assertContains(json, "\"effect_decision_count\": 1")
     assertContains(json, "\"route_gaps\": [")
     assertContains(json, "\"known_effect\": {")
@@ -5172,7 +5329,7 @@ test("hidden trinket effects are excluded instead of scored as upgrades", functi
     assertEquals(private.RecommendationVerdictLabel(comparison.verdict, "zhCN"), "效果无法量化")
 
     local engine = private.BuildGearRecommendations(profile, { shard }, { roles = { role } }, role.key)
-    assertEquals(engine.version, 14)
+    assertEquals(engine.version, 15)
     assertEquals(engine.unscorableRejectedCount, 1)
     assertEquals(engine.loadoutRejectedCount, 0)
     assertEquals(#engine.upgrades, 0)

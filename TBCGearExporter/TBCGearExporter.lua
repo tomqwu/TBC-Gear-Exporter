@@ -224,7 +224,7 @@ local AI_OUTPUT_REQUESTS = {
     "Summarize likely class/spec roles represented by the saved items.",
     "Use current_talents when available to anchor the main-spec recommendation, while still calling out useful offspec items.",
     "Use chart_stats for high-level totals by source, category, quality, equip slot, item level, and stat totals before drilling into individual items.",
-    "For each plausible role, rank strong keepers, weak slots, and upgrade priorities. Validate every proposed swap with gear_recommendations.score_model, upgrades[].stat_gains, stat_losses, data_completeness, and both item links.",
+    "For each plausible role, rank strong keepers, weak slots, and upgrade priorities. Explain every proposed swap from upgrades[].score_breakdown (delta x weight = contribution), including why unscored_changes were excluded, then check score_model, benchmark_impacts, data_completeness, and both item links.",
     "Treat ordered_stat_heuristic and cross_phase_shared_ep results only as ranked candidates, never definitive upgrades. A WoWSims reference gear route is not proof that candidate scoring was simulated.",
     "For tank roles, compare mitigation/progression and threat/farm modes separately; never collapse both views into one ranking.",
     "Separate mitigation, threat, DPS, healing, caster, and utility value when relevant.",
@@ -281,7 +281,7 @@ local AI_OUTPUT_REQUESTS_ZHCN = {
     "总结这些已保存物品最可能对应的职业天赋/职责。",
     "如果 current_talents 可用，请用当前天赋锚定主天赋建议，同时指出有价值的副天赋物品。",
     "在逐件分析前，请先使用 character_stats、chart_stats 和 strategy_book 按当前天赋、职业、种族、队伍/团队环境、命中、暴击、防御、免伤、仇恨、治疗、续航和输出价值做整体对比。",
-    "针对每个可能职责，列出值得保留的强力装备、薄弱部位和升级优先级；每条换装建议必须核对 gear_recommendations.score_model、upgrades[] 中的 stat_gains、stat_losses、data_completeness 和新旧物品链接。",
+    "针对每个可能职责，列出值得保留的强力装备、薄弱部位和升级优先级；每条换装建议必须用 upgrades[].score_breakdown（属性差 x 权重 = 评分贡献）解释原因，并说明 unscored_changes 为什么没有计分，再核对 score_model、benchmark_impacts、data_completeness 和新旧物品链接。",
     "ordered_stat_heuristic 与 cross_phase_shared_ep 只能作为候选排序，不能写成确定性升级；WoWSims 参考装备路线不等于候选装备经过模拟。",
     "坦克职责必须分别比较减伤/开荒与仇恨/Farm模式，不要把两种视角合并成同一份排名。",
     "在相关时分别分析减伤、仇恨、输出、治疗、法系和功能性价值。",
@@ -308,7 +308,7 @@ local AI_OUTPUT_REQUESTS_ZHTW = {
     "總結這些已儲存物品最可能對應的職業天賦/職責。",
     "如果 current_talents 可用，請用目前天賦錨定主天賦建議，同時指出有價值的副天賦物品。",
     "在逐件分析前，請先使用 character_stats、chart_stats 和 strategy_book 按目前天賦、職業、種族、隊伍/團隊環境、命中、致命、防禦、減傷、仇恨、治療、續航和輸出價值做整體比較。",
-    "針對每個可能職責，列出值得保留的強力裝備、薄弱部位和升級優先順序；每條換裝建議必須核對 gear_recommendations.score_model、upgrades[] 中的 stat_gains、stat_losses、data_completeness 和新舊物品連結。",
+    "針對每個可能職責，列出值得保留的強力裝備、薄弱部位和升級優先順序；每條換裝建議必須用 upgrades[].score_breakdown（屬性差 x 權重 = 評分貢獻）解釋原因，並說明 unscored_changes 為什麼沒有計分，再核對 score_model、benchmark_impacts、data_completeness 和新舊物品連結。",
     "ordered_stat_heuristic 與 cross_phase_shared_ep 只能作為候選排序，不能寫成確定性升級；WoWSims 參考裝備路線不等於候選裝備經過模擬。",
     "坦克職責必須分別比較減傷/開荒與仇恨/Farm模式，不要把兩種視角合併成同一份排名。",
     "在相關時分別分析減傷、仇恨、輸出、治療、法系和功能性價值。",
@@ -420,8 +420,8 @@ GEAR_ENGINE.TBC_RATING = {
     resiliencePerCritPercent = 39.4231,
 }
 
-GEAR_ENGINE.ADVICE_ROW_HEIGHT = 116
-GEAR_ENGINE.ADVICE_ROW_STEP = 120
+GEAR_ENGINE.ADVICE_ROW_HEIGHT = 156
+GEAR_ENGINE.ADVICE_ROW_STEP = 160
 
 GEAR_ENGINE.ROLE_FIT_SIGNALS = {
     healer = {
@@ -1209,6 +1209,9 @@ local UI_STRINGS = {
         advice_stats = "matched stats: %s",
         advice_gains = "Gains: %s",
         advice_losses = "Gives up: %s",
+        advice_why = "Why: %s",
+        advice_unscored = "Not scored: %s",
+        advice_model = "Model: %s",
         advice_impact = "Benchmark impact: %s",
         advice_evidence = "Item data: %s",
         advice_evidence_high = "High",
@@ -1347,6 +1350,9 @@ local UI_STRINGS = {
         advice_stats = "匹配属性：%s",
         advice_gains = "获得：%s",
         advice_losses = "失去：%s",
+        advice_why = "原因：%s",
+        advice_unscored = "未计分：%s",
+        advice_model = "依据模型：%s",
         advice_impact = "基准影响：%s",
         advice_evidence = "物品数据：%s",
         advice_evidence_high = "高",
@@ -1485,6 +1491,9 @@ local UI_STRINGS = {
         advice_stats = "匹配屬性：%s",
         advice_gains = "獲得：%s",
         advice_losses = "失去：%s",
+        advice_why = "原因：%s",
+        advice_unscored = "未計分：%s",
+        advice_model = "依據模型：%s",
         advice_impact = "基準影響：%s",
         advice_evidence = "物品資料：%s",
         advice_evidence_high = "高",
@@ -1571,8 +1580,10 @@ GEAR_ENGINE.REPORT_TERMS = {
         sources = "Sources", no_preset = "No WoWSims reference gear route; use the class guide and treat ranking as an estimate.",
         priority_stats = "Priority stats", benchmark_gaps = "Key benchmark checks", route_priorities = "Guide route gaps", caveat = "Limit",
         effect_choice = "Effect choice", set_impact = "Set impact",
-        score_model = "Score model", item_data = "Item data completeness",
+        score_model = "Score model", score_reason = "Why", item_data = "Item data completeness",
         model_phase_ep = "source-backed static P2 EP", model_cross_phase_shared_ep = "cross-phase/shared EP estimate", model_ordered_stat_heuristic = "ordered-stat heuristic",
+        model_source = "source context", formula_net = "net", formula_no_delta = "no weighted visible-stat change", unscored_changes = "Not scored",
+        unscored_no_weight = "no weight for this role", unscored_wrong_slot = "not used by this role in this slot",
         model_not_definitive = "ranked estimate only; definitive upgrade labels disabled",
         slot = "Slot", current = "Current", suggested = "Candidate", score = "Score", evidence = "Item data", verdict = "Decision",
         gains = "Gains", losses = "Gives up", high = "High", medium = "Medium", low = "Low",
@@ -1610,8 +1621,10 @@ GEAR_ENGINE.REPORT_TERMS = {
         sources = "资料来源", no_preset = "该专精没有 WoWSims 参考装备路线；请结合职业攻略，并把排序视为估算。",
         priority_stats = "优先属性", benchmark_gaps = "关键基准检查", route_priorities = "攻略路线缺口", caveat = "分析限制",
         effect_choice = "效果选择", set_impact = "套装影响",
-        score_model = "评分模型", item_data = "物品数据完整度",
+        score_model = "评分模型", score_reason = "原因", item_data = "物品数据完整度",
         model_phase_ep = "有明确来源的 P2 静态 EP", model_cross_phase_shared_ep = "跨阶段 / 共用 EP 估算", model_ordered_stat_heuristic = "属性顺序启发式",
+        model_source = "来源环境", formula_net = "净值", formula_no_delta = "没有加权可见属性变化", unscored_changes = "未计分",
+        unscored_no_weight = "当前职责没有权重", unscored_wrong_slot = "当前职责在此栏位不使用",
         model_not_definitive = "仅作候选排序；已禁用确定性升级结论",
         slot = "栏位", current = "当前装备", suggested = "候选装备", score = "评分变化", evidence = "物品数据", verdict = "结论",
         gains = "获得", losses = "失去", high = "高", medium = "中", low = "低",
@@ -1649,8 +1662,10 @@ GEAR_ENGINE.REPORT_TERMS = {
         sources = "資料來源", no_preset = "該專精沒有 WoWSims 參考裝備路線；請結合職業攻略，並把排序視為估算。",
         priority_stats = "優先屬性", benchmark_gaps = "關鍵基準檢查", route_priorities = "攻略路線缺口", caveat = "分析限制",
         effect_choice = "效果選擇", set_impact = "套裝影響",
-        score_model = "評分模型", item_data = "物品資料完整度",
+        score_model = "評分模型", score_reason = "原因", item_data = "物品資料完整度",
         model_phase_ep = "有明確來源的 P2 靜態 EP", model_cross_phase_shared_ep = "跨階段 / 共用 EP 估算", model_ordered_stat_heuristic = "屬性順序啟發式",
+        model_source = "來源環境", formula_net = "淨值", formula_no_delta = "沒有加權可見屬性變化", unscored_changes = "未計分",
+        unscored_no_weight = "目前職責沒有權重", unscored_wrong_slot = "目前職責在此欄位不使用",
         model_not_definitive = "僅作候選排序；已停用確定性升級結論",
         slot = "欄位", current = "目前裝備", suggested = "候選裝備", score = "評分變化", evidence = "物品資料", verdict = "結論",
         gains = "獲得", losses = "失去", high = "高", medium = "中", low = "低",
@@ -2332,9 +2347,24 @@ function GEAR_ENGINE.ScoreModelLabel(scoreModel, locale)
     return terms["model_" .. tostring(kind)] or tostring(kind)
 end
 
+function GEAR_ENGINE.ScoreModelContextText(scoreModel, locale)
+    local text = GEAR_ENGINE.ScoreModelLabel(scoreModel, locale)
+    local source = {}
+    if scoreModel and scoreModel.sourcePhase then
+        source[#source + 1] = "P" .. tostring(scoreModel.sourcePhase)
+    end
+    if scoreModel and scoreModel.sourceSpec then
+        source[#source + 1] = tostring(scoreModel.sourceSpec)
+    end
+    if #source > 0 then
+        text = text .. " (" .. GEAR_ENGINE.ReportTerms(locale).model_source .. ": " .. table.concat(source, " ") .. ")"
+    end
+    return text
+end
+
 function GEAR_ENGINE.ScoreModelText(scoreModel, locale)
     local terms = GEAR_ENGINE.ReportTerms(locale)
-    local text = GEAR_ENGINE.ScoreModelLabel(scoreModel, locale)
+    local text = GEAR_ENGINE.ScoreModelContextText(scoreModel, locale)
     if not scoreModel or not scoreModel.supportsDefinitiveVerdicts then
         text = text .. " · " .. terms.model_not_definitive
     end
@@ -3659,7 +3689,7 @@ local function BuildAIPrompt(profile, scope, filter, itemCount)
             "当前天赋：" .. talentSummary .. "。",
             "请优先使用 current_talents.tree_points、current_talents.trees[].points_spent 和每个已点天赋的 points_spent/rank 来判断当前天赋点数。",
             "银行内容是最后一次保存的快照。背包/银行来源只代表库存位置，不代表物品已经装备。",
-            "请使用 character_stats、chart_stats、strategy_book、gear_recommendations、当前装备、物品属性、物品等级、品质、装备栏位、来源位置和 wowhead_url 字段。重点读取 score_model、talent_mapping、phase2_strategy、active_sets、known_effect、effect_decision、set_impacts、route_gaps、verdict、benchmark_impacts 与 data_completeness；已收录效果用于情境选择，不等同 EP。ordered_stat_heuristic 和 cross_phase_shared_ep 只能视为候选排序。不要把参考装备路线说成已模拟，也不要编造未收录的附魔、宝石、套装或触发效果。",
+            "请使用 character_stats、chart_stats、strategy_book、gear_recommendations、当前装备、物品属性、物品等级、品质、装备栏位、来源位置和 wowhead_url 字段。每条建议先读取 score_breakdown，按属性差 x 权重 = 评分贡献解释净值，再核对 score_model、talent_mapping、phase2_strategy、active_sets、known_effect、effect_decision、set_impacts、route_gaps、verdict、benchmark_impacts 与 data_completeness；已收录效果用于情境选择，不等同 EP。ordered_stat_heuristic 和 cross_phase_shared_ep 只能视为候选排序。不要把参考装备路线说成已模拟，也不要编造未收录的附魔、宝石、套装或触发效果。",
             "请考虑该职业可能的天赋/职责，不要只假设一个专精。",
             "",
             "职业职责分析视角：",
@@ -3674,7 +3704,7 @@ local function BuildAIPrompt(profile, scope, filter, itemCount)
             "目前天賦：" .. talentSummary .. "。",
             "請優先使用 current_talents.tree_points、current_talents.trees[].points_spent 和每個已點天賦的 points_spent/rank 來判斷目前天賦點數。",
             "銀行內容是最後一次儲存的快照。背包/銀行來源只代表庫存位置，不代表物品已經裝備。",
-            "請使用 character_stats、chart_stats、strategy_book、gear_recommendations、目前裝備、物品屬性、物品等級、品質、裝備欄位、來源位置和 wowhead_url 欄位。重點讀取 score_model、talent_mapping、phase2_strategy、active_sets、known_effect、effect_decision、set_impacts、route_gaps、verdict、benchmark_impacts 與 data_completeness；已收錄效果用於情境選擇，不等同 EP。ordered_stat_heuristic 和 cross_phase_shared_ep 只能視為候選排序。不要把參考裝備路線說成已模擬，也不要編造未收錄的附魔、寶石、套裝或觸發效果。",
+            "請使用 character_stats、chart_stats、strategy_book、gear_recommendations、目前裝備、物品屬性、物品等級、品質、裝備欄位、來源位置和 wowhead_url 欄位。每條建議先讀取 score_breakdown，按屬性差 x 權重 = 評分貢獻解釋淨值，再核對 score_model、talent_mapping、phase2_strategy、active_sets、known_effect、effect_decision、set_impacts、route_gaps、verdict、benchmark_impacts 與 data_completeness；已收錄效果用於情境選擇，不等同 EP。ordered_stat_heuristic 和 cross_phase_shared_ep 只能視為候選排序。不要把參考裝備路線說成已模擬，也不要編造未收錄的附魔、寶石、套裝或觸發效果。",
             "請考慮該職業可能的天賦/職責，不要只假設一個專精。",
             "",
             "職業職責分析視角：",
@@ -3689,7 +3719,7 @@ local function BuildAIPrompt(profile, scope, filter, itemCount)
             "Current talents: " .. talentSummary .. ".",
             "Use current_talents.tree_points, current_talents.trees[].points_spent, and each selected talent points_spent/rank to anchor the current talent distribution.",
             "Bank contents are the last saved snapshot. Treat bag and bank source labels as inventory location, not proof that an item is equipped.",
-            "Use character_stats, chart_stats, strategy_book, gear_recommendations, current equipment, item stats, item level, quality, equip slot, source location, and wowhead_url fields. Read score_model, talent_mapping, phase2_strategy, active_sets, known_effect, effect_decision, set_impacts, route_gaps, verdict, benchmark_impacts, and data_completeness first. Curated effects support contextual choices and are not EP values. Treat ordered_stat_heuristic and cross_phase_shared_ep as candidate ranking only; never describe a reference gear route as a simulated comparison or invent unlisted enchants, gems, set bonuses, or proc effects.",
+            "Use character_stats, chart_stats, strategy_book, gear_recommendations, current equipment, item stats, item level, quality, equip slot, source location, and wowhead_url fields. For every recommendation, read score_breakdown first and explain delta x weight = contribution before checking score_model, talent_mapping, phase2_strategy, active_sets, known_effect, effect_decision, set_impacts, route_gaps, verdict, benchmark_impacts, and data_completeness. Curated effects support contextual choices and are not EP values. Treat ordered_stat_heuristic and cross_phase_shared_ep as candidate ranking only; never describe a reference gear route as a simulated comparison or invent unlisted enchants, gems, set bonuses, or proc effects.",
             "Consider plausible class talents/specs instead of assuming one role.",
             "",
             "Class role lenses:",
@@ -5154,6 +5184,65 @@ function GEAR_ENGINE.ItemRelevantStatMap(item, weights, role)
     return values
 end
 
+function GEAR_ENGINE.ItemRawStatMap(item)
+    local values = {}
+    for index = 1, #(item and item.stats or {}) do
+        local stat = item.stats[index]
+        local token = GEAR_ENGINE.ComparisonStatToken(stat and stat.token)
+        local value = tonumber(stat and stat.value)
+        if token and value then
+            values[token] = (values[token] or 0) + value
+        end
+    end
+    return values
+end
+
+function GEAR_ENGINE.BuildUnscoredDeltas(currentItem, candidateItem, weights, role, scoredComponents)
+    local current = GEAR_ENGINE.ItemRawStatMap(currentItem)
+    local candidate = GEAR_ENGINE.ItemRawStatMap(candidateItem)
+    local scored = {}
+    local tokens = {}
+    local seen = {}
+    local changes = {}
+    for index = 1, #(scoredComponents or {}) do
+        scored[scoredComponents[index].token] = true
+    end
+    for token in pairs(current) do
+        seen[token] = true
+        tokens[#tokens + 1] = token
+    end
+    for token in pairs(candidate) do
+        if not seen[token] then
+            tokens[#tokens + 1] = token
+        end
+    end
+
+    for index = 1, #tokens do
+        local token = tokens[index]
+        local delta = (candidate[token] or 0) - (current[token] or 0)
+        if delta ~= 0 and not scored[token] then
+            local weight = GEAR_ENGINE.StatWeightForToken(weights, token)
+            local currentExcluded = current[token] and not GEAR_ENGINE.StatAppliesToRoleSlot(role, token, currentItem)
+            local candidateExcluded = candidate[token] and not GEAR_ENGINE.StatAppliesToRoleSlot(role, token, candidateItem)
+            changes[#changes + 1] = {
+                token = token,
+                label = StatLabel(token),
+                delta = RoundedStatNumber(delta),
+                reason = weight and (currentExcluded or candidateExcluded) and "not_applicable_to_role_slot" or "not_weighted_for_role",
+            }
+        end
+    end
+    table.sort(changes, function(left, right)
+        local leftDelta = math.abs(left.delta or 0)
+        local rightDelta = math.abs(right.delta or 0)
+        if leftDelta ~= rightDelta then
+            return leftDelta > rightDelta
+        end
+        return tostring(left.label) < tostring(right.label)
+    end)
+    return changes
+end
+
 function GEAR_ENGINE.BuildStatDeltas(currentItem, candidateItem, weights, role)
     local current = GEAR_ENGINE.ItemRelevantStatMap(currentItem, weights, role)
     local candidate = GEAR_ENGINE.ItemRelevantStatMap(candidateItem, weights, role)
@@ -5161,6 +5250,8 @@ function GEAR_ENGINE.BuildStatDeltas(currentItem, candidateItem, weights, role)
     local seen = {}
     local gains = {}
     local losses = {}
+    local components = {}
+    local total = 0
 
     for token in pairs(current) do
         seen[token] = true
@@ -5176,12 +5267,19 @@ function GEAR_ENGINE.BuildStatDeltas(currentItem, candidateItem, weights, role)
         local token = tokens[index]
         local delta = (candidate[token] or 0) - (current[token] or 0)
         if delta ~= 0 then
+            local weight = GEAR_ENGINE.StatWeightForToken(weights, token) or 0
+            local contribution = delta * weight
             local entry = {
                 token = token,
                 label = StatLabel(token),
                 value = RoundedStatNumber(math.abs(delta)),
-                weightedValue = RoundedStatNumber(math.abs(delta) * (GEAR_ENGINE.StatWeightForToken(weights, token) or 0)),
+                delta = RoundedStatNumber(delta),
+                weight = RoundedStatNumber(weight),
+                contribution = RoundedStatNumber(contribution),
+                weightedValue = RoundedStatNumber(math.abs(contribution)),
             }
+            components[#components + 1] = entry
+            total = total + contribution
             if delta > 0 then
                 gains[#gains + 1] = entry
             else
@@ -5198,7 +5296,8 @@ function GEAR_ENGINE.BuildStatDeltas(currentItem, candidateItem, weights, role)
     end
     table.sort(gains, SortDeltas)
     table.sort(losses, SortDeltas)
-    return gains, losses
+    table.sort(components, SortDeltas)
+    return gains, losses, components, RoundedStatNumber(total), GEAR_ENGINE.BuildUnscoredDeltas(currentItem, candidateItem, weights, role, components)
 end
 
 function GEAR_ENGINE.RecommendationEvidence(currentItem, candidateItem, gains, losses)
@@ -5692,7 +5791,7 @@ function GEAR_ENGINE.CompareItems(profile, currentItem, candidateItem, strategyB
     local currentScore = currentItem and GEAR_ENGINE.ItemRoleScore(currentItem, role, weights) or 0
     local candidateScore, matchedStats = GEAR_ENGINE.ItemRoleScore(candidateItem, role, weights)
     local scoreGain = candidateScore - currentScore
-    local statGains, statLosses = GEAR_ENGINE.BuildStatDeltas(currentItem, candidateItem, weights, role)
+    local statGains, statLosses, scoreComponents, visibleScoreTotal, unscoredChanges = GEAR_ENGINE.BuildStatDeltas(currentItem, candidateItem, weights, role)
     local evidence = GEAR_ENGINE.RecommendationEvidence(currentItem, candidateItem, statGains, statLosses)
     local benchmarkImpacts = GEAR_ENGINE.BuildBenchmarkImpacts(role, statGains, statLosses)
     local currentSlot = GEAR_ENGINE.EquipmentSlotKey(currentItem)
@@ -5718,6 +5817,8 @@ function GEAR_ENGINE.CompareItems(profile, currentItem, candidateItem, strategyB
         or ((effectDecision.preferCandidate or gainsSetBonus) and "review")
         or GEAR_ENGINE.RecommendationVerdict(evidence, scoreGain, benchmarkImpacts, role.scoreModel)
     local blockedByHardGate = GEAR_ENGINE.RecommendationWorsensUnmetBenchmark(benchmarkImpacts)
+    local roundedScoreGain = RoundedStatNumber(scoreGain)
+    local scoreResidual = RoundedStatNumber(roundedScoreGain - visibleScoreTotal)
     return {
         slotKey = candidateSlot or currentSlot,
         slotCompatible = slotCompatible,
@@ -5732,7 +5833,16 @@ function GEAR_ENGINE.CompareItems(profile, currentItem, candidateItem, strategyB
         candidate = candidateItem,
         currentScore = currentScore,
         candidateScore = candidateScore,
-        scoreGain = RoundedStatNumber(scoreGain),
+        scoreGain = roundedScoreGain,
+        scoreBreakdown = {
+            kind = "linear_visible_stat_delta",
+            components = scoreComponents,
+            unscoredChanges = unscoredChanges,
+            visibleStatTotal = visibleScoreTotal,
+            scoreGain = roundedScoreGain,
+            residual = scoreResidual,
+            reconciled = math.abs(scoreResidual) < 0.011,
+        },
         matchedStats = matchedStats,
         statGains = statGains,
         statLosses = statLosses,
@@ -5910,7 +6020,7 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
     end
 
     return {
-        version = 14,
+        version = 15,
         generatedAt = Now(),
         roleKey = role.key,
         roleLabel = role.label,
@@ -6432,6 +6542,30 @@ function GEAR_ENGINE.AppendRouteGapsJson(lines, indent, gaps, comma)
     AppendIndented(lines, indent, "]" .. (comma and "," or ""))
 end
 
+function GEAR_ENGINE.AppendScoreBreakdownJson(lines, indent, breakdown, comma)
+    breakdown = breakdown or {}
+    AppendIndented(lines, indent, "\"score_breakdown\": {")
+    AppendIndented(lines, indent + 2, JsonField("kind", breakdown.kind or "linear_visible_stat_delta", true))
+    AppendIndented(lines, indent + 2, JsonField("visible_stat_total", breakdown.visibleStatTotal or 0, true))
+    AppendIndented(lines, indent + 2, JsonField("score_gain", breakdown.scoreGain or 0, true))
+    AppendIndented(lines, indent + 2, JsonField("residual", breakdown.residual or 0, true))
+    AppendIndented(lines, indent + 2, JsonField("reconciled", breakdown.reconciled and true or false, true))
+    AppendJsonObjectArray(lines, indent + 2, "components", breakdown.components, {
+        { name = "token", value = "token" },
+        { name = "label", value = "label" },
+        { name = "delta", value = "delta" },
+        { name = "weight", value = "weight" },
+        { name = "contribution", value = "contribution" },
+    }, true)
+    AppendJsonObjectArray(lines, indent + 2, "unscored_changes", breakdown.unscoredChanges, {
+        { name = "token", value = "token" },
+        { name = "label", value = "label" },
+        { name = "delta", value = "delta" },
+        { name = "reason", value = "reason" },
+    }, false)
+    AppendIndented(lines, indent, "}" .. (comma and "," or ""))
+end
+
 function GEAR_ENGINE.AppendGearRecommendationsJson(lines, indent, engine, comma)
     engine = engine or GEAR_ENGINE.BuildGearRecommendations({}, {}, nil)
     AppendIndented(lines, indent, "\"gear_recommendations\": {")
@@ -6506,6 +6640,7 @@ function GEAR_ENGINE.AppendGearRecommendationsJson(lines, indent, engine, comma)
         AppendIndented(lines, indent + 6, JsonField("evidence", upgrade.evidence, true))
         AppendIndented(lines, indent + 6, JsonField("verdict", upgrade.verdict, true))
         AppendIndented(lines, indent + 6, JsonField("decision_kind", upgrade.decisionKind, true))
+        GEAR_ENGINE.AppendScoreBreakdownJson(lines, indent + 6, upgrade.scoreBreakdown, true)
         GEAR_ENGINE.AppendGearItemJson(lines, indent + 6, "current", upgrade.current, upgrade.currentScore, true)
         GEAR_ENGINE.AppendGearItemJson(lines, indent + 6, "candidate", upgrade.candidate, upgrade.candidateScore, true)
         GEAR_ENGINE.AppendEffectDecisionJson(lines, indent + 6, upgrade.effectDecision, true)
@@ -6520,12 +6655,18 @@ function GEAR_ENGINE.AppendGearRecommendationsJson(lines, indent, engine, comma)
             { name = "token", value = "token" },
             { name = "label", value = "label" },
             { name = "value", value = "value" },
+            { name = "delta", value = "delta" },
+            { name = "weight", value = "weight" },
+            { name = "contribution", value = "contribution" },
             { name = "weighted_value", value = "weightedValue" },
         }, true)
         AppendJsonObjectArray(lines, indent + 6, "stat_losses", upgrade.statLosses, {
             { name = "token", value = "token" },
             { name = "label", value = "label" },
             { name = "value", value = "value" },
+            { name = "delta", value = "delta" },
+            { name = "weight", value = "weight" },
+            { name = "contribution", value = "contribution" },
             { name = "weighted_value", value = "weightedValue" },
         }, true)
         AppendJsonObjectArray(lines, indent + 6, "benchmark_impacts", upgrade.benchmarkImpacts, {
@@ -6702,6 +6843,72 @@ function GEAR_ENGINE.SetImpactText(upgrade, locale)
     return #values > 0 and table.concat(values, "; ") or GEAR_ENGINE.ReportTerms(locale).none
 end
 
+function GEAR_ENGINE.SignedCompactNumber(value, decimals)
+    value = tonumber(value) or 0
+    return (value > 0 and "+" or "") .. CompactNumber(value, decimals or 2)
+end
+
+function GEAR_ENGINE.ScoreBreakdownText(upgrade, locale, maxComponents)
+    local terms = GEAR_ENGINE.ReportTerms(locale)
+    local breakdown = upgrade and upgrade.scoreBreakdown
+    local components = breakdown and breakdown.components or {}
+    if #components == 0 then
+        local gains = upgrade and upgrade.statGains or {}
+        local losses = upgrade and upgrade.statLosses or {}
+        if #gains > 0 or #losses > 0 then
+            return terms.gains .. ": " .. GEAR_ENGINE.DeltaText(gains, locale, 2)
+                .. "; " .. terms.losses .. ": " .. GEAR_ENGINE.DeltaText(losses, locale, 2)
+        end
+        return terms.formula_no_delta
+    end
+
+    local parts = {}
+    local limit = math.min(#components, maxComponents or #components)
+    for index = 1, limit do
+        local component = components[index]
+        parts[#parts + 1] = GEAR_ENGINE.SignedCompactNumber(component.delta, 2) .. " "
+            .. GEAR_ENGINE.LocalizedStatLabel(component, locale) .. " x "
+            .. CompactNumber(component.weight, 3) .. " = "
+            .. GEAR_ENGINE.SignedCompactNumber(component.contribution, 2)
+    end
+    if #components > limit then
+        parts[#parts + 1] = string.format(terms.more, #components - limit)
+    end
+    local total = breakdown.visibleStatTotal
+    if total == nil then
+        total = upgrade and upgrade.scoreGain or 0
+    end
+    return table.concat(parts, "; ") .. "; " .. terms.formula_net .. " " .. GEAR_ENGINE.SignedCompactNumber(total, 2)
+end
+
+function GEAR_ENGINE.UnscoredChangesText(upgrade, locale, maxChanges)
+    local terms = GEAR_ENGINE.ReportTerms(locale)
+    local changes = upgrade and upgrade.scoreBreakdown and upgrade.scoreBreakdown.unscoredChanges or {}
+    local parts = {}
+    local limit = math.min(#changes, maxChanges or #changes)
+    for index = 1, limit do
+        local change = changes[index]
+        local reason = change.reason == "not_applicable_to_role_slot" and terms.unscored_wrong_slot or terms.unscored_no_weight
+        parts[#parts + 1] = GEAR_ENGINE.SignedCompactNumber(change.delta, 2) .. " "
+            .. GEAR_ENGINE.LocalizedStatLabel(change, locale) .. " (" .. reason .. ")"
+    end
+    if #changes > limit then
+        parts[#parts + 1] = string.format(terms.more, #changes - limit)
+    end
+    return #parts > 0 and table.concat(parts, "; ") or terms.none
+end
+
+function GEAR_ENGINE.RecommendationReasonText(upgrade, locale, maxComponents)
+    local terms = GEAR_ENGINE.ReportTerms(locale)
+    if upgrade and upgrade.decisionKind == "effect_choice" then
+        return terms.effect_choice .. ": " .. GEAR_ENGINE.EffectDecisionText(upgrade, locale)
+    end
+    if upgrade and upgrade.decisionKind == "set_threshold" then
+        return terms.set_impact .. ": " .. GEAR_ENGINE.SetImpactText(upgrade, locale)
+    end
+    return GEAR_ENGINE.ScoreBreakdownText(upgrade, locale, maxComponents)
+end
+
 function GEAR_ENGINE.DecisionMetricText(upgrade, locale)
     if upgrade and upgrade.decisionKind == "effect_choice" then
         if upgrade.effectDecision and upgrade.effectDecision.choiceKind == "spell_cycle" then
@@ -6759,8 +6966,11 @@ function GEAR_ENGINE.AppendGearRecommendationsMarkdown(lines, engine, locale)
             .. " · " .. Addon.MarkdownEscape(GEAR_ENGINE.DecisionMetricText(upgrade, locale))
         lines[#lines + 1] = "- " .. terms.current .. ": " .. current
         lines[#lines + 1] = "- " .. terms.suggested .. ": " .. candidate
-        lines[#lines + 1] = "- " .. terms.gains .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.DeltaText(upgrade.statGains, locale))
-        lines[#lines + 1] = "- " .. terms.losses .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.DeltaText(upgrade.statLosses, locale))
+        lines[#lines + 1] = "- " .. terms.score_reason .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.RecommendationReasonText(upgrade, locale))
+        if #(upgrade.scoreBreakdown and upgrade.scoreBreakdown.unscoredChanges or {}) > 0 then
+            lines[#lines + 1] = "- " .. terms.unscored_changes .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.UnscoredChangesText(upgrade, locale))
+        end
+        lines[#lines + 1] = "- " .. terms.score_model .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.ScoreModelText(upgrade.scoreModel, locale))
         lines[#lines + 1] = "- " .. terms.benchmark_impact .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.BenchmarkImpactText(upgrade.benchmarkImpacts, locale))
         if upgrade.effectDecision and upgrade.effectDecision.canCompare then
             lines[#lines + 1] = "- " .. terms.effect_choice .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.EffectDecisionText(upgrade, locale))
@@ -6803,8 +7013,11 @@ function GEAR_ENGINE.AppendGearRecommendationsText(lines, engine, locale)
             .. " · " .. terms.score .. " " .. GEAR_ENGINE.DecisionMetricText(upgrade, locale)
         lines[#lines + 1] = "   " .. terms.current .. ": " .. tostring(current)
         lines[#lines + 1] = "   " .. terms.suggested .. ": " .. tostring(upgrade.candidate and upgrade.candidate.name)
-        lines[#lines + 1] = "   " .. terms.gains .. ": " .. GEAR_ENGINE.DeltaText(upgrade.statGains, locale)
-        lines[#lines + 1] = "   " .. terms.losses .. ": " .. GEAR_ENGINE.DeltaText(upgrade.statLosses, locale)
+        lines[#lines + 1] = "   " .. terms.score_reason .. ": " .. GEAR_ENGINE.RecommendationReasonText(upgrade, locale)
+        if #(upgrade.scoreBreakdown and upgrade.scoreBreakdown.unscoredChanges or {}) > 0 then
+            lines[#lines + 1] = "   " .. terms.unscored_changes .. ": " .. GEAR_ENGINE.UnscoredChangesText(upgrade, locale)
+        end
+        lines[#lines + 1] = "   " .. terms.score_model .. ": " .. GEAR_ENGINE.ScoreModelText(upgrade.scoreModel, locale)
         lines[#lines + 1] = "   " .. terms.benchmark_impact .. ": " .. GEAR_ENGINE.BenchmarkImpactText(upgrade.benchmarkImpacts, locale)
         if upgrade.effectDecision and upgrade.effectDecision.canCompare then
             lines[#lines + 1] = "   " .. terms.effect_choice .. ": " .. GEAR_ENGINE.EffectDecisionText(upgrade, locale)
@@ -8447,7 +8660,7 @@ function Addon:CreateGearAdviceRow(parent, index)
     local reason = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     reason:SetPoint("TOPLEFT", candidateButton, "TOPRIGHT", 8, -24)
     reason:SetPoint("RIGHT", row, "RIGHT", -8, 0)
-    reason:SetHeight(78)
+    reason:SetHeight(118)
     reason:SetJustifyH("LEFT")
     reason:SetJustifyV("TOP")
 
@@ -8535,14 +8748,17 @@ function Addon:RefreshGearComparison(profile, engine, index)
         .. "  " .. GEAR_ENGINE.DecisionMetricColor(upgrade) .. GEAR_ENGINE.DecisionMetricText(upgrade, locale) .. "|r  · "
         .. LForLocale(locale, "advice_evidence", LForLocale(locale, "advice_evidence_" .. tostring(upgrade.dataCompleteness or upgrade.evidence or "low"))))
     local details = {
-        LForLocale(locale, "advice_gains", GEAR_ENGINE.DeltaText(upgrade.statGains, locale)),
-        LForLocale(locale, "advice_losses", GEAR_ENGINE.DeltaText(upgrade.statLosses, locale)),
-        LForLocale(locale, "advice_impact", GEAR_ENGINE.BenchmarkImpactText(upgrade.benchmarkImpacts, locale)),
+        LForLocale(locale, "advice_why", GEAR_ENGINE.RecommendationReasonText(upgrade, locale, 4)),
     }
-    if upgrade.effectDecision and upgrade.effectDecision.canCompare then
+    if #(upgrade.scoreBreakdown and upgrade.scoreBreakdown.unscoredChanges or {}) > 0 then
+        details[#details + 1] = LForLocale(locale, "advice_unscored", GEAR_ENGINE.UnscoredChangesText(upgrade, locale, 4))
+    end
+    details[#details + 1] = LForLocale(locale, "advice_impact", GEAR_ENGINE.BenchmarkImpactText(upgrade.benchmarkImpacts, locale))
+    details[#details + 1] = LForLocale(locale, "advice_model", GEAR_ENGINE.ScoreModelText(upgrade.scoreModel, locale))
+    if upgrade.effectDecision and upgrade.effectDecision.canCompare and upgrade.decisionKind ~= "effect_choice" then
         details[#details + 1] = LForLocale(locale, "advice_effect_choice", GEAR_ENGINE.EffectDecisionText(upgrade, locale))
     end
-    if #(upgrade.setImpacts or {}) > 0 then
+    if #(upgrade.setImpacts or {}) > 0 and upgrade.decisionKind ~= "set_threshold" then
         details[#details + 1] = LForLocale(locale, "advice_set_impact", GEAR_ENGINE.SetImpactText(upgrade, locale))
     end
     self.exportFrame.compareDetails:SetText(table.concat(details, "\n"))
@@ -8597,19 +8813,15 @@ function Addon:RefreshGearAdvice(profile, engine)
         row.name:SetText(ItemColoredName(upgrade.candidate))
         row.gain:SetText(GEAR_ENGINE.DecisionMetricColor(upgrade) .. GEAR_ENGINE.DecisionMetricText(upgrade, locale) .. "|r\n"
             .. GEAR_ENGINE.RecommendationVerdictLabel(upgrade.verdict, locale))
-        local reasons = {}
-        if upgrade.decisionKind == "visible_stats" or #(upgrade.statGains or {}) > 0 or #(upgrade.statLosses or {}) > 0 then
-            reasons[#reasons + 1] = LForLocale(locale, "advice_gains", GEAR_ENGINE.DeltaText(upgrade.statGains, locale, 2))
-            reasons[#reasons + 1] = LForLocale(locale, "advice_losses", GEAR_ENGINE.DeltaText(upgrade.statLosses, locale, 2))
-        end
-        if upgrade.effectDecision and upgrade.effectDecision.canCompare then
-            reasons[#reasons + 1] = LForLocale(locale, "advice_effect_choice", GEAR_ENGINE.EffectDecisionText(upgrade, locale))
-        end
-        if #(upgrade.setImpacts or {}) > 0 then
-            reasons[#reasons + 1] = LForLocale(locale, "advice_set_impact", GEAR_ENGINE.SetImpactText(upgrade, locale))
+        local reasons = {
+            LForLocale(locale, "advice_why", GEAR_ENGINE.RecommendationReasonText(upgrade, locale, 2)),
+        }
+        if #(upgrade.scoreBreakdown and upgrade.scoreBreakdown.unscoredChanges or {}) > 0 then
+            reasons[#reasons + 1] = LForLocale(locale, "advice_unscored", GEAR_ENGINE.UnscoredChangesText(upgrade, locale, 2))
         end
         reasons[#reasons + 1] = LForLocale(locale, "advice_impact", GEAR_ENGINE.BenchmarkImpactText(upgrade.benchmarkImpacts, locale, 1))
             .. " · " .. LForLocale(locale, "advice_evidence", LForLocale(locale, "advice_evidence_" .. tostring(upgrade.dataCompleteness or upgrade.evidence or "low")))
+        reasons[#reasons + 1] = LForLocale(locale, "advice_model", GEAR_ENGINE.ScoreModelContextText(upgrade.scoreModel, locale))
         row.reason:SetText(table.concat(reasons, "\n"))
         row:Show()
     end
@@ -8621,7 +8833,7 @@ function Addon:RefreshGearAdvice(profile, engine)
         self.exportFrame.adviceRowsContent:SetHeight(math.max(220, (#upgrades * GEAR_ENGINE.ADVICE_ROW_STEP) + 8))
     end
     if self.exportFrame.adviceContent.SetHeight then
-        self.exportFrame.adviceContent:SetHeight(math.max(712, (#upgrades * GEAR_ENGINE.ADVICE_ROW_STEP) + 496))
+        self.exportFrame.adviceContent:SetHeight(math.max(796, (#upgrades * GEAR_ENGINE.ADVICE_ROW_STEP) + 560))
     end
     return #upgrades
 end
@@ -9238,7 +9450,7 @@ function Addon:CreateExportFrame()
     adviceCaveat:SetText(L("advice_caveat"))
 
     local comparePanel = CreateFrame("Frame", nil, adviceContent, BackdropTemplate())
-    SetFrameSize(comparePanel, 486, 142)
+    SetFrameSize(comparePanel, 486, 206)
     comparePanel:SetPoint("TOPLEFT", adviceContent, "TOPLEFT", 2, -336)
     if comparePanel.SetBackdrop then
         comparePanel:SetBackdrop({
@@ -9295,7 +9507,7 @@ function Addon:CreateExportFrame()
     local compareDetails = comparePanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     compareDetails:SetPoint("TOPLEFT", 120, -66)
     compareDetails:SetPoint("RIGHT", comparePanel, "RIGHT", -8, 0)
-    compareDetails:SetHeight(68)
+    compareDetails:SetHeight(132)
     compareDetails:SetJustifyH("LEFT")
     compareDetails:SetJustifyV("TOP")
 
@@ -9314,7 +9526,7 @@ function Addon:CreateExportFrame()
 
     local adviceRowsContent = CreateFrame("Frame", nil, adviceContent)
     SetFrameSize(adviceRowsContent, 490, 220)
-    adviceRowsContent:SetPoint("TOPLEFT", adviceContent, "TOPLEFT", 0, -488)
+    adviceRowsContent:SetPoint("TOPLEFT", adviceContent, "TOPLEFT", 0, -552)
 
     local adviceEmpty = adviceRowsContent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     adviceEmpty:SetPoint("TOPLEFT", 4, -4)
@@ -9843,6 +10055,7 @@ if _G.TBCGearExporterTestMode then
         DeltaText = GEAR_ENGINE.DeltaText,
         EvidenceLabel = GEAR_ENGINE.EvidenceLabel,
         ScoreModelLabel = GEAR_ENGINE.ScoreModelLabel,
+        ScoreModelContextText = GEAR_ENGINE.ScoreModelContextText,
         ScoreModelText = GEAR_ENGINE.ScoreModelText,
         RecommendationVerdictLabel = GEAR_ENGINE.RecommendationVerdictLabel,
         VerdictSummary = GEAR_ENGINE.VerdictSummary,
@@ -9922,6 +10135,8 @@ if _G.TBCGearExporterTestMode then
         BuildActiveSets = GEAR_ENGINE.BuildActiveSets,
         HasSetImpact = GEAR_ENGINE.HasSetImpact,
         ItemRelevantStatMap = GEAR_ENGINE.ItemRelevantStatMap,
+        ItemRawStatMap = GEAR_ENGINE.ItemRawStatMap,
+        BuildUnscoredDeltas = GEAR_ENGINE.BuildUnscoredDeltas,
         BuildStatDeltas = GEAR_ENGINE.BuildStatDeltas,
         RecommendationEvidence = GEAR_ENGINE.RecommendationEvidence,
         BenchmarkDeltaValue = GEAR_ENGINE.BenchmarkDeltaValue,
@@ -9951,7 +10166,10 @@ if _G.TBCGearExporterTestMode then
         AppendSetImpactsJson = GEAR_ENGINE.AppendSetImpactsJson,
         AppendActiveSetsJson = GEAR_ENGINE.AppendActiveSetsJson,
         AppendRouteGapsJson = GEAR_ENGINE.AppendRouteGapsJson,
+        AppendScoreBreakdownJson = GEAR_ENGINE.AppendScoreBreakdownJson,
         AppendGearRecommendationsJson = GEAR_ENGINE.AppendGearRecommendationsJson,
+        AppendGearRecommendationsMarkdown = GEAR_ENGINE.AppendGearRecommendationsMarkdown,
+        AppendGearRecommendationsText = GEAR_ENGINE.AppendGearRecommendationsText,
         TalentEffectLabel = GEAR_ENGINE.TalentEffectLabel,
         TalentMapSummary = GEAR_ENGINE.TalentMapSummary,
         GearRoleLabel = GEAR_ENGINE.GearRoleLabel,
@@ -9967,6 +10185,10 @@ if _G.TBCGearExporterTestMode then
         ActiveSetsText = GEAR_ENGINE.ActiveSetsText,
         EffectDecisionText = GEAR_ENGINE.EffectDecisionText,
         SetImpactText = GEAR_ENGINE.SetImpactText,
+        SignedCompactNumber = GEAR_ENGINE.SignedCompactNumber,
+        ScoreBreakdownText = GEAR_ENGINE.ScoreBreakdownText,
+        UnscoredChangesText = GEAR_ENGINE.UnscoredChangesText,
+        RecommendationReasonText = GEAR_ENGINE.RecommendationReasonText,
         DecisionMetricText = GEAR_ENGINE.DecisionMetricText,
         DecisionMetricColor = GEAR_ENGINE.DecisionMetricColor,
         GearMatchedStatsText = GEAR_ENGINE.GearMatchedStatsText,
