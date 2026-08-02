@@ -224,7 +224,7 @@ local AI_OUTPUT_REQUESTS = {
     "Summarize likely class/spec roles represented by the saved items.",
     "Use current_talents when available to anchor the main-spec recommendation, while still calling out useful offspec items.",
     "Use chart_stats for high-level totals by source, category, quality, equip slot, item level, and stat totals before drilling into individual items.",
-    "For each plausible role, rank strong keepers, weak slots, and upgrade priorities. Explain every proposed swap from upgrades[].score_breakdown (delta x weight = contribution), including why unscored_changes were excluded, then check score_model, benchmark_impacts, data_completeness, and both item links.",
+    "For each plausible role, rank strong keepers, weak slots, and upgrade priorities. Explain every proposed swap from upgrades[].score_breakdown (delta x weight = contribution), including why unscored_changes were excluded, then check talent_context_impacts, raw_observed, talent_bonus, effective_observed, score_model, benchmark_impacts, data_completeness, and both item links.",
     "Use candidate_evaluations to explain why every other evaluated gear item was not selected, including benchmark gates, low score, same-slot ranking, role/class mismatch, loadout conflicts, weaker effects, and unscorable data.",
     "Treat ordered_stat_heuristic and cross_phase_shared_ep results only as ranked candidates, never definitive upgrades. A WoWSims reference gear route is not proof that candidate scoring was simulated.",
     "For tank roles, compare mitigation/progression and threat/farm modes separately; never collapse both views into one ranking.",
@@ -282,7 +282,7 @@ local AI_OUTPUT_REQUESTS_ZHCN = {
     "总结这些已保存物品最可能对应的职业天赋/职责。",
     "如果 current_talents 可用，请用当前天赋锚定主天赋建议，同时指出有价值的副天赋物品。",
     "在逐件分析前，请先使用 character_stats、chart_stats 和 strategy_book 按当前天赋、职业、种族、队伍/团队环境、命中、暴击、防御、免伤、仇恨、治疗、续航和输出价值做整体对比。",
-    "针对每个可能职责，列出值得保留的强力装备、薄弱部位和升级优先级；每条换装建议必须用 upgrades[].score_breakdown（属性差 x 权重 = 评分贡献）解释原因，并说明 unscored_changes 为什么没有计分，再核对 score_model、benchmark_impacts、data_completeness 和新旧物品链接。",
+    "针对每个可能职责，列出值得保留的强力装备、薄弱部位和升级优先级；每条换装建议必须用 upgrades[].score_breakdown（属性差 x 权重 = 评分贡献）解释原因，并说明 unscored_changes 为什么没有计分，再核对 talent_context_impacts、raw_observed、talent_bonus、effective_observed、score_model、benchmark_impacts、data_completeness 和新旧物品链接。",
     "使用 candidate_evaluations 解释其他每件已评估装备为什么没有入选，包括属性门槛、评分过低、同栏位排名、职责/职业不符、武器组合冲突、效果较弱和无法可靠评分。",
     "ordered_stat_heuristic 与 cross_phase_shared_ep 只能作为候选排序，不能写成确定性升级；WoWSims 参考装备路线不等于候选装备经过模拟。",
     "坦克职责必须分别比较减伤/开荒与仇恨/Farm模式，不要把两种视角合并成同一份排名。",
@@ -310,7 +310,7 @@ local AI_OUTPUT_REQUESTS_ZHTW = {
     "總結這些已儲存物品最可能對應的職業天賦/職責。",
     "如果 current_talents 可用，請用目前天賦錨定主天賦建議，同時指出有價值的副天賦物品。",
     "在逐件分析前，請先使用 character_stats、chart_stats 和 strategy_book 按目前天賦、職業、種族、隊伍/團隊環境、命中、致命、防禦、減傷、仇恨、治療、續航和輸出價值做整體比較。",
-    "針對每個可能職責，列出值得保留的強力裝備、薄弱部位和升級優先順序；每條換裝建議必須用 upgrades[].score_breakdown（屬性差 x 權重 = 評分貢獻）解釋原因，並說明 unscored_changes 為什麼沒有計分，再核對 score_model、benchmark_impacts、data_completeness 和新舊物品連結。",
+    "針對每個可能職責，列出值得保留的強力裝備、薄弱部位和升級優先順序；每條換裝建議必須用 upgrades[].score_breakdown（屬性差 x 權重 = 評分貢獻）解釋原因，並說明 unscored_changes 為什麼沒有計分，再核對 talent_context_impacts、raw_observed、talent_bonus、effective_observed、score_model、benchmark_impacts、data_completeness 和新舊物品連結。",
     "使用 candidate_evaluations 解釋其他每件已評估裝備為什麼沒有入選，包括屬性門檻、評分過低、同欄位排名、職責/職業不符、武器組合衝突、效果較弱和無法可靠評分。",
     "ordered_stat_heuristic 與 cross_phase_shared_ep 只能作為候選排序，不能寫成確定性升級；WoWSims 參考裝備路線不等於候選裝備經過模擬。",
     "坦克職責必須分別比較減傷/開荒與仇恨/Farm模式，不要把兩種視角合併成同一份排名。",
@@ -423,8 +423,8 @@ GEAR_ENGINE.TBC_RATING = {
     resiliencePerCritPercent = 39.4231,
 }
 
-GEAR_ENGINE.ADVICE_ROW_HEIGHT = 156
-GEAR_ENGINE.ADVICE_ROW_STEP = 160
+GEAR_ENGINE.ADVICE_ROW_HEIGHT = 196
+GEAR_ENGINE.ADVICE_ROW_STEP = 200
 
 GEAR_ENGINE.ROLE_FIT_SIGNALS = {
     healer = {
@@ -1115,7 +1115,11 @@ local TALENT_EFFECT_RULES = {
             { key = "intimidation", names = { "Intimidation", "胁迫", "脅迫" }, labels = { enUS = "Intimidation", zhCN = "胁迫", zhTW = "脅迫" }, tags = { "pet_synergy", "control" } },
             { key = "the_beast_within", names = { "The Beast Within", "野兽之心", "野獸之心" }, labels = { enUS = "The Beast Within", zhCN = "野兽之心", zhTW = "野獸之心" }, tags = { "ranged_dps", "pet_burst" } },
             { key = "careful_aim", names = { "Careful Aim", "仔细瞄准", "仔細瞄準" }, labels = { enUS = "Careful Aim", zhCN = "仔细瞄准", zhTW = "仔細瞄準" }, tags = { "ranged_dps", "intellect" }, multipliers = { ITEM_MOD_INTELLECT_SHORT = 1.08, ITEM_MOD_RANGED_ATTACK_POWER_SHORT = 1.08 } },
-            { key = "lightning_reflexes", names = { "Lightning Reflexes", "闪电反射", "閃電反射" }, labels = { enUS = "Lightning Reflexes", zhCN = "闪电反射", zhTW = "閃電反射" }, tags = { "ranged_dps", "agility" }, multipliers = { ITEM_MOD_AGILITY_SHORT = 1.10 } },
+            { key = "surefooted", names = { "Surefooted", "稳固", "穩固" }, labels = { enUS = "Surefooted", zhCN = "稳固", zhTW = "穩固" }, tags = { "ranged_dps", "hit" }, benchmarkBonuses = { ranged_hit = 3 } },
+            { key = "lightning_reflexes", names = { "Lightning Reflexes", "闪电反射", "閃電反射" }, labels = { enUS = "Lightning Reflexes", zhCN = "闪电反射", zhTW = "閃電反射" }, tags = { "ranged_dps", "agility" }, multipliers = { ITEM_MOD_AGILITY_SHORT = 1.15 } },
+            { key = "expose_weakness", names = { "Expose Weakness", "破甲虚弱", "破甲虛弱" }, labels = { enUS = "Expose Weakness", zhCN = "破甲虚弱", zhTW = "破甲虛弱" }, tags = { "ranged_dps", "raid_support", "agility" }, contextualConversions = {
+                { key = "expose_weakness_attack_power", sourceToken = "ITEM_MOD_AGILITY_SHORT", coefficient = 0.25, labels = { enUS = "Expose Weakness AP per physical attacker while active", zhCN = "破甲虚弱生效时每名物理攻击者的攻强", zhTW = "破甲虛弱生效時每名物理攻擊者的攻強" } },
+            } },
         },
     },
     ROGUE = {
@@ -1592,6 +1596,7 @@ GEAR_ENGINE.REPORT_TERMS = {
         model_phase_ep = "source-backed static P2 EP", model_cross_phase_shared_ep = "cross-phase/shared EP estimate", model_ordered_stat_heuristic = "ordered-stat heuristic",
         model_source = "source context", formula_net = "net", formula_no_delta = "no weighted visible-stat change", unscored_changes = "Not scored",
         unscored_no_weight = "no weight for this role", unscored_wrong_slot = "not used by this role in this slot",
+        talent_context = "Talent context", context_not_scored = "context only; not converted to EP", talent_bonus = "talent",
         model_not_definitive = "ranked estimate only; definitive upgrade labels disabled",
         slot = "Slot", current = "Current", suggested = "Candidate", score = "Score", evidence = "Item data", verdict = "Decision",
         gains = "Gains", losses = "Gives up", high = "High", medium = "Medium", low = "Low",
@@ -1638,6 +1643,7 @@ GEAR_ENGINE.REPORT_TERMS = {
         model_phase_ep = "有明确来源的 P2 静态 EP", model_cross_phase_shared_ep = "跨阶段 / 共用 EP 估算", model_ordered_stat_heuristic = "属性顺序启发式",
         model_source = "来源环境", formula_net = "净值", formula_no_delta = "没有加权可见属性变化", unscored_changes = "未计分",
         unscored_no_weight = "当前职责没有权重", unscored_wrong_slot = "当前职责在此栏位不使用",
+        talent_context = "天赋联动", context_not_scored = "仅作情境参考，未折算进 EP", talent_bonus = "天赋",
         model_not_definitive = "仅作候选排序；已禁用确定性升级结论",
         slot = "栏位", current = "当前装备", suggested = "候选装备", score = "评分变化", evidence = "物品数据", verdict = "结论",
         gains = "获得", losses = "失去", high = "高", medium = "中", low = "低",
@@ -1684,6 +1690,7 @@ GEAR_ENGINE.REPORT_TERMS = {
         model_phase_ep = "有明確來源的 P2 靜態 EP", model_cross_phase_shared_ep = "跨階段 / 共用 EP 估算", model_ordered_stat_heuristic = "屬性順序啟發式",
         model_source = "來源環境", formula_net = "淨值", formula_no_delta = "沒有加權可見屬性變化", unscored_changes = "未計分",
         unscored_no_weight = "目前職責沒有權重", unscored_wrong_slot = "目前職責在此欄位不使用",
+        talent_context = "天賦聯動", context_not_scored = "僅作情境參考，未折算進 EP", talent_bonus = "天賦",
         model_not_definitive = "僅作候選排序；已停用確定性升級結論",
         slot = "欄位", current = "目前裝備", suggested = "候選裝備", score = "評分變化", evidence = "物品資料", verdict = "結論",
         gains = "獲得", losses = "失去", high = "高", medium = "中", low = "低",
@@ -2412,7 +2419,13 @@ function GEAR_ENGINE.BenchmarkImpactText(impacts, locale, maxImpacts)
         if tostring(impact.unit or ""):find("%", 1, true) then
             signedDelta = signedDelta .. "%"
         end
-        parts[#parts + 1] = tostring(label) .. " " .. signedDelta .. " (" .. tostring(terms["impact_" .. tostring(impact.effect)] or impact.effect) .. ")"
+        local projection = ""
+        if type(impact.observed) == "number" and type(impact.projected) == "number" and type(impact.target) == "number" then
+            projection = "; " .. CompactNumber(impact.observed, 2) .. " -> " .. CompactNumber(impact.projected, 2)
+                .. "/" .. CompactNumber(impact.target, 2) .. tostring(impact.unit or "")
+        end
+        parts[#parts + 1] = tostring(label) .. " " .. signedDelta .. " ("
+            .. tostring(terms["impact_" .. tostring(impact.effect)] or impact.effect) .. projection .. ")"
     end
     return #parts > 0 and table.concat(parts, "; ") or terms.no_benchmark_impact
 end
@@ -3707,7 +3720,7 @@ local function BuildAIPrompt(profile, scope, filter, itemCount)
             "当前天赋：" .. talentSummary .. "。",
             "请优先使用 current_talents.tree_points、current_talents.trees[].points_spent 和每个已点天赋的 points_spent/rank 来判断当前天赋点数。",
             "银行内容是最后一次保存的快照。背包/银行来源只代表库存位置，不代表物品已经装备。",
-            "请使用 character_stats、chart_stats、strategy_book、gear_recommendations、当前装备、物品属性、物品等级、品质、装备栏位、来源位置和 wowhead_url 字段。每条建议先读取 score_breakdown，按属性差 x 权重 = 评分贡献解释净值，再核对 score_model、talent_mapping、phase2_strategy、active_sets、known_effect、effect_decision、set_impacts、route_gaps、verdict、benchmark_impacts 与 data_completeness；已收录效果用于情境选择，不等同 EP。ordered_stat_heuristic 和 cross_phase_shared_ep 只能视为候选排序。不要把参考装备路线说成已模拟，也不要编造未收录的附魔、宝石、套装或触发效果。",
+            "请使用 character_stats、chart_stats、strategy_book、gear_recommendations、当前装备、物品属性、物品等级、品质、装备栏位、来源位置和 wowhead_url 字段。每条建议先读取 score_breakdown，按属性差 x 权重 = 评分贡献解释净值，再核对 talent_context_impacts、raw_observed、talent_bonus、effective_observed、score_model、talent_mapping、phase2_strategy、active_sets、known_effect、effect_decision、set_impacts、route_gaps、verdict、benchmark_impacts 与 data_completeness；天赋情境值和已收录效果不等同 EP。ordered_stat_heuristic 和 cross_phase_shared_ep 只能视为候选排序。不要把参考装备路线说成已模拟，也不要编造未收录的附魔、宝石、套装或触发效果。",
             "请考虑该职业可能的天赋/职责，不要只假设一个专精。",
             "",
             "职业职责分析视角：",
@@ -3722,7 +3735,7 @@ local function BuildAIPrompt(profile, scope, filter, itemCount)
             "目前天賦：" .. talentSummary .. "。",
             "請優先使用 current_talents.tree_points、current_talents.trees[].points_spent 和每個已點天賦的 points_spent/rank 來判斷目前天賦點數。",
             "銀行內容是最後一次儲存的快照。背包/銀行來源只代表庫存位置，不代表物品已經裝備。",
-            "請使用 character_stats、chart_stats、strategy_book、gear_recommendations、目前裝備、物品屬性、物品等級、品質、裝備欄位、來源位置和 wowhead_url 欄位。每條建議先讀取 score_breakdown，按屬性差 x 權重 = 評分貢獻解釋淨值，再核對 score_model、talent_mapping、phase2_strategy、active_sets、known_effect、effect_decision、set_impacts、route_gaps、verdict、benchmark_impacts 與 data_completeness；已收錄效果用於情境選擇，不等同 EP。ordered_stat_heuristic 和 cross_phase_shared_ep 只能視為候選排序。不要把參考裝備路線說成已模擬，也不要編造未收錄的附魔、寶石、套裝或觸發效果。",
+            "請使用 character_stats、chart_stats、strategy_book、gear_recommendations、目前裝備、物品屬性、物品等級、品質、裝備欄位、來源位置和 wowhead_url 欄位。每條建議先讀取 score_breakdown，按屬性差 x 權重 = 評分貢獻解釋淨值，再核對 talent_context_impacts、raw_observed、talent_bonus、effective_observed、score_model、talent_mapping、phase2_strategy、active_sets、known_effect、effect_decision、set_impacts、route_gaps、verdict、benchmark_impacts 與 data_completeness；天賦情境值和已收錄效果不等同 EP。ordered_stat_heuristic 和 cross_phase_shared_ep 只能視為候選排序。不要把參考裝備路線說成已模擬，也不要編造未收錄的附魔、寶石、套裝或觸發效果。",
             "請考慮該職業可能的天賦/職責，不要只假設一個專精。",
             "",
             "職業職責分析視角：",
@@ -3737,7 +3750,7 @@ local function BuildAIPrompt(profile, scope, filter, itemCount)
             "Current talents: " .. talentSummary .. ".",
             "Use current_talents.tree_points, current_talents.trees[].points_spent, and each selected talent points_spent/rank to anchor the current talent distribution.",
             "Bank contents are the last saved snapshot. Treat bag and bank source labels as inventory location, not proof that an item is equipped.",
-            "Use character_stats, chart_stats, strategy_book, gear_recommendations, current equipment, item stats, item level, quality, equip slot, source location, and wowhead_url fields. For every recommendation, read score_breakdown first and explain delta x weight = contribution before checking score_model, talent_mapping, phase2_strategy, active_sets, known_effect, effect_decision, set_impacts, route_gaps, verdict, benchmark_impacts, and data_completeness. Curated effects support contextual choices and are not EP values. Treat ordered_stat_heuristic and cross_phase_shared_ep as candidate ranking only; never describe a reference gear route as a simulated comparison or invent unlisted enchants, gems, set bonuses, or proc effects.",
+            "Use character_stats, chart_stats, strategy_book, gear_recommendations, current equipment, item stats, item level, quality, equip slot, source location, and wowhead_url fields. For every recommendation, read score_breakdown first and explain delta x weight = contribution before checking talent_context_impacts, raw_observed, talent_bonus, effective_observed, score_model, talent_mapping, phase2_strategy, active_sets, known_effect, effect_decision, set_impacts, route_gaps, verdict, benchmark_impacts, and data_completeness. Talent context and curated effects are not EP values. Treat ordered_stat_heuristic and cross_phase_shared_ep as candidate ranking only; never describe a reference gear route as a simulated comparison or invent unlisted enchants, gems, set bonuses, or proc effects.",
             "Consider plausible class talents/specs instead of assuming one role.",
             "",
             "Class role lenses:",
@@ -4323,10 +4336,6 @@ local function RoleConfidence(role, talents)
         confidence = confidence + 20
     end
 
-    if confidence > 100 then
-        confidence = 100
-    end
-
     return confidence
 end
 
@@ -4372,7 +4381,7 @@ end
 
 local function BuildTalentRoleMap(classToken, talents, role)
     local result = {
-        version = 2,
+        version = 3,
         selectedCount = 0,
         selectedPoints = 0,
         representedCount = 0,
@@ -4384,6 +4393,9 @@ local function BuildTalentRoleMap(classToken, talents, role)
         effects = {},
         weightMultipliers = {},
         weightModifiers = {},
+        benchmarkBonuses = {},
+        benchmarkModifiers = {},
+        contextualConversions = {},
     }
 
     for tabIndex = 1, #(talents and talents.tabs or {}) do
@@ -4432,6 +4444,24 @@ local function BuildTalentRoleMap(classToken, talents, role)
                         local multiplier = 1 + ((maximumMultiplier - 1) * progress)
                         result.weightMultipliers[token] = (result.weightMultipliers[token] or 1) * multiplier
                     end
+                    for benchmarkKey, maximumBonus in pairs(rule.benchmarkBonuses or {}) do
+                        local progress = entry.maxRank > 0 and (rank / entry.maxRank) or 1
+                        local bonus = (tonumber(maximumBonus) or 0) * progress
+                        result.benchmarkBonuses[benchmarkKey] = (result.benchmarkBonuses[benchmarkKey] or 0) + bonus
+                    end
+                    for conversionIndex = 1, #(rule.contextualConversions or {}) do
+                        local conversion = rule.contextualConversions[conversionIndex]
+                        result.contextualConversions[#result.contextualConversions + 1] = {
+                            key = conversion.key,
+                            sourceToken = conversion.sourceToken,
+                            coefficient = conversion.coefficient,
+                            labels = conversion.labels,
+                            talentKey = rule.key,
+                            talentLabels = rule.labels,
+                            rank = rank,
+                            maxRank = entry.maxRank,
+                        }
+                    end
                 end
             end
         end
@@ -4445,6 +4475,16 @@ local function BuildTalentRoleMap(classToken, talents, role)
     end
     table.sort(result.weightModifiers, function(left, right)
         return tostring(left.token) < tostring(right.token)
+    end)
+    for benchmarkKey, bonus in pairs(result.benchmarkBonuses) do
+        result.benchmarkModifiers[#result.benchmarkModifiers + 1] = {
+            key = benchmarkKey,
+            bonus = RoundedStatNumber(bonus),
+        }
+        result.benchmarkBonuses[benchmarkKey] = RoundedStatNumber(bonus)
+    end
+    table.sort(result.benchmarkModifiers, function(left, right)
+        return tostring(left.key) < tostring(right.key)
     end)
     result.affinityScore = result.alignedPoints + (#result.effects * 3)
     result.coverage = result.selectedCount > 0 and RoundedStatNumber(result.mappedCount / result.selectedCount) or 0
@@ -4578,17 +4618,39 @@ local function BenchmarkObservedValue(key, observed)
     return nil
 end
 
-local function BenchmarkStatus(key, observed)
-    local benchmark = TBC_BENCHMARKS[key]
-    local value = BenchmarkObservedValue(key, observed)
+function GEAR_ENGINE.RoleCapForBenchmark(role, key)
+    for index = 1, #(role and role.caps or {}) do
+        local cap = role.caps[index]
+        if cap and cap.key == key then
+            return cap
+        end
+    end
+    return nil
+end
+
+function GEAR_ENGINE.TalentBenchmarkBonus(talentMap, key)
+    return tonumber(talentMap and talentMap.benchmarkBonuses and talentMap.benchmarkBonuses[key]) or 0
+end
+
+local function BenchmarkStatus(key, observed, role, talentMap)
+    local reference = TBC_BENCHMARKS[key]
+    local roleCap = GEAR_ENGINE.RoleCapForBenchmark(role, key)
+    local target = tonumber(roleCap and roleCap.target) or tonumber(reference and reference.value)
+    local rawValue = BenchmarkObservedValue(key, observed)
+    local talentBonus = GEAR_ENGINE.TalentBenchmarkBonus(talentMap, key)
+    local targetAlreadyAdjusted = roleCap and (roleCap.kind == "talent_cap" or roleCap.kind == "raid_cap")
+    if targetAlreadyAdjusted then
+        talentBonus = 0
+    end
+    local value = type(rawValue) == "number" and RoundedStatNumber(rawValue + talentBonus) or nil
     local status = "unknown"
 
-    if type(value) == "number" and benchmark then
+    if type(value) == "number" and type(target) == "number" then
         if key == "avoidance_table" then
             status = "context_required"
-        elseif value >= benchmark.value then
+        elseif value >= target then
             status = "meets_or_exceeds"
-        elseif value >= (benchmark.value * 0.9) then
+        elseif value >= (target * 0.9) then
             status = "near"
         else
             status = "below"
@@ -4597,20 +4659,25 @@ local function BenchmarkStatus(key, observed)
 
     return {
         key = key,
-        label = benchmark and benchmark.label or key,
+        label = roleCap and roleCap.labels and roleCap.labels.enUS or reference and reference.label or key,
+        labels = roleCap and roleCap.labels or nil,
         observed = value,
-        target = benchmark and benchmark.value or nil,
-        unit = benchmark and benchmark.unit or nil,
+        effectiveObserved = value,
+        rawObserved = rawValue,
+        talentBonus = RoundedStatNumber(talentBonus),
+        target = target,
+        unit = roleCap and roleCap.unit or reference and reference.unit or nil,
+        kind = roleCap and roleCap.kind or nil,
         status = status,
-        note = benchmark and benchmark.note or nil,
+        note = roleCap and roleCap.note or reference and reference.note or nil,
     }
 end
 
-local function BuildRoleBenchmarks(role, observed)
+local function BuildRoleBenchmarks(role, observed, talentMap)
     local benchmarks = {}
 
     for index = 1, #(role.benchmarkKeys or {}) do
-        benchmarks[#benchmarks + 1] = BenchmarkStatus(role.benchmarkKeys[index], observed)
+        benchmarks[#benchmarks + 1] = BenchmarkStatus(role.benchmarkKeys[index], observed, role, talentMap)
     end
 
     return benchmarks
@@ -4667,7 +4734,7 @@ local function BuildStrategyBook(profile, chartStats)
             researchEvidence = role.routeEvidence or role.evidence or "guide",
             talentMap = talentMap,
             observed = observed,
-            benchmarks = BuildRoleBenchmarks(role, observed),
+            benchmarks = BuildRoleBenchmarks(role, observed, talentMap),
             notes = {
                 "Mapped from class, race, current talent distribution, live character stats, and currently equipped gear stats.",
                 "Use confidence as a role-lens hint, not a final spec declaration.",
@@ -5215,6 +5282,37 @@ function GEAR_ENGINE.ItemRawStatMap(item)
     return values
 end
 
+function GEAR_ENGINE.BuildTalentContextImpacts(currentItem, candidateItem, talentMap)
+    local current = GEAR_ENGINE.ItemRawStatMap(currentItem)
+    local candidate = GEAR_ENGINE.ItemRawStatMap(candidateItem)
+    local impacts = {}
+    for index = 1, #(talentMap and talentMap.contextualConversions or {}) do
+        local conversion = talentMap.contextualConversions[index]
+        local token = GEAR_ENGINE.ComparisonStatToken(conversion and conversion.sourceToken)
+        local rawDelta = token and ((candidate[token] or 0) - (current[token] or 0)) or 0
+        if rawDelta ~= 0 then
+            local multiplier = tonumber(talentMap.weightMultipliers and talentMap.weightMultipliers[token]) or 1
+            local adjustedDelta = rawDelta * multiplier
+            impacts[#impacts + 1] = {
+                key = conversion.key,
+                labels = conversion.labels,
+                talentKey = conversion.talentKey,
+                talentLabels = conversion.talentLabels,
+                sourceToken = token,
+                sourceDelta = RoundedStatNumber(rawDelta),
+                sourceMultiplier = RoundedStatNumber(multiplier),
+                adjustedSourceDelta = RoundedStatNumber(adjustedDelta),
+                coefficient = RoundedStatNumber(conversion.coefficient),
+                value = RoundedStatNumber(adjustedDelta * (tonumber(conversion.coefficient) or 0)),
+                rank = conversion.rank,
+                maxRank = conversion.maxRank,
+                scored = false,
+            }
+        end
+    end
+    return impacts
+end
+
 function GEAR_ENGINE.BuildUnscoredDeltas(currentItem, candidateItem, weights, role, scoredComponents)
     local current = GEAR_ENGINE.ItemRawStatMap(currentItem)
     local candidate = GEAR_ENGINE.ItemRawStatMap(candidateItem)
@@ -5563,23 +5661,22 @@ function GEAR_ENGINE.BuildPhase2CapStatuses(role)
     local statuses = {}
     for index = 1, #(role and role.caps or {}) do
         local cap = role.caps[index]
-        local observed = BenchmarkObservedValue(cap.key, role and role.observed or {})
-        local status = "unknown"
-        if cap.kind == "context" then
-            status = "context_required"
-        elseif type(observed) == "number" and type(cap.target) == "number" then
-            if observed >= cap.target then
-                status = "meets_or_exceeds"
-            elseif observed >= cap.target * 0.9 then
-                status = "near"
-            else
-                status = "below"
+        local benchmark
+        for benchmarkIndex = 1, #(role and role.benchmarks or {}) do
+            if role.benchmarks[benchmarkIndex].key == cap.key then
+                benchmark = role.benchmarks[benchmarkIndex]
+                break
             end
         end
+        benchmark = benchmark or BenchmarkStatus(cap.key, role and role.observed or {}, role, role and role.talentMap)
+        local status = cap.kind == "context" and "context_required" or benchmark.status
         statuses[#statuses + 1] = {
             key = cap.key,
             labels = cap.labels,
-            observed = observed,
+            observed = benchmark.observed,
+            effectiveObserved = benchmark.effectiveObserved,
+            rawObserved = benchmark.rawObserved,
+            talentBonus = benchmark.talentBonus,
             target = cap.target,
             unit = cap.unit,
             kind = cap.kind,
@@ -5810,6 +5907,7 @@ function GEAR_ENGINE.CompareItems(profile, currentItem, candidateItem, strategyB
     local candidateScore, matchedStats = GEAR_ENGINE.ItemRoleScore(candidateItem, role, weights)
     local scoreGain = candidateScore - currentScore
     local statGains, statLosses, scoreComponents, visibleScoreTotal, unscoredChanges = GEAR_ENGINE.BuildStatDeltas(currentItem, candidateItem, weights, role)
+    local talentContextImpacts = GEAR_ENGINE.BuildTalentContextImpacts(currentItem, candidateItem, role.talentMap)
     local evidence = GEAR_ENGINE.RecommendationEvidence(currentItem, candidateItem, statGains, statLosses)
     local benchmarkImpacts = GEAR_ENGINE.BuildBenchmarkImpacts(role, statGains, statLosses)
     local currentSlot = GEAR_ENGINE.EquipmentSlotKey(currentItem)
@@ -5865,6 +5963,7 @@ function GEAR_ENGINE.CompareItems(profile, currentItem, candidateItem, strategyB
         statGains = statGains,
         statLosses = statLosses,
         benchmarkImpacts = benchmarkImpacts,
+        talentContextImpacts = talentContextImpacts,
         effectDecision = effectDecision,
         setImpacts = setImpacts,
         breaksActiveSetBonus = breaksActiveSetBonus,
@@ -6089,7 +6188,7 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
     end
 
     return {
-        version = 16,
+        version = 17,
         generatedAt = Now(),
         roleKey = role.key,
         roleLabel = role.label,
@@ -6284,6 +6383,18 @@ local function AppendTalentRoleMapJson(lines, indent, talentMap, comma)
     AppendJsonObjectArray(lines, indent + 2, "weight_modifiers", talentMap.weightModifiers, {
         { name = "token", value = "token" },
         { name = "multiplier", value = "multiplier" },
+    }, true)
+    AppendJsonObjectArray(lines, indent + 2, "benchmark_modifiers", talentMap.benchmarkModifiers, {
+        { name = "key", value = "key" },
+        { name = "bonus", value = "bonus" },
+    }, true)
+    AppendJsonObjectArray(lines, indent + 2, "contextual_conversions", talentMap.contextualConversions, {
+        { name = "key", value = "key" },
+        { name = "talent_key", value = "talentKey" },
+        { name = "source_token", value = "sourceToken" },
+        { name = "coefficient", value = "coefficient" },
+        { name = "rank", value = "rank" },
+        { name = "max_rank", value = "maxRank" },
     }, false)
     AppendIndented(lines, indent, "}" .. (comma and "," or ""))
 end
@@ -6369,6 +6480,9 @@ local function AppendStrategyBookJson(lines, indent, strategyBook, comma)
             { name = "key", value = "key" },
             { name = "label", value = "label" },
             { name = "observed", value = "observed" },
+            { name = "raw_observed", value = "rawObserved" },
+            { name = "talent_bonus", value = "talentBonus" },
+            { name = "effective_observed", value = "effectiveObserved" },
             { name = "target", value = "target" },
             { name = "unit", value = "unit" },
             { name = "status", value = "status" },
@@ -6477,6 +6591,9 @@ function GEAR_ENGINE.AppendPhase2StrategyJson(lines, indent, phase2, comma)
             .. " " .. JsonField("label_en", cap.labels and cap.labels.enUS, true)
             .. " " .. JsonField("label_zh_cn", cap.labels and cap.labels.zhCN, true)
             .. " " .. JsonField("observed", cap.observed, true)
+            .. " " .. JsonField("raw_observed", cap.rawObserved, true)
+            .. " " .. JsonField("talent_bonus", cap.talentBonus or 0, true)
+            .. " " .. JsonField("effective_observed", cap.effectiveObserved or cap.observed, true)
             .. " " .. JsonField("target", cap.target, true)
             .. " " .. JsonField("unit", cap.unit, true)
             .. " " .. JsonField("kind", cap.kind, true)
@@ -6664,6 +6781,17 @@ function GEAR_ENGINE.AppendCandidateEvaluationsJson(lines, indent, evaluations, 
             { name = "projected", value = "projected" },
             { name = "target", value = "target" },
             { name = "effect", value = "effect" },
+        }, true)
+        AppendJsonObjectArray(lines, indent + 4, "talent_context_impacts", comparison and comparison.talentContextImpacts or {}, {
+            { name = "key", value = "key" },
+            { name = "talent_key", value = "talentKey" },
+            { name = "source_token", value = "sourceToken" },
+            { name = "source_delta", value = "sourceDelta" },
+            { name = "source_multiplier", value = "sourceMultiplier" },
+            { name = "adjusted_source_delta", value = "adjustedSourceDelta" },
+            { name = "coefficient", value = "coefficient" },
+            { name = "value", value = "value" },
+            { name = "scored", value = "scored" },
         }, false)
         AppendIndented(lines, indent + 2, "}" .. (index < #(evaluations or {}) and "," or ""))
     end
@@ -6720,6 +6848,9 @@ function GEAR_ENGINE.AppendGearRecommendationsJson(lines, indent, engine, comma)
         { name = "key", value = "key" },
         { name = "label", value = "label" },
         { name = "observed", value = "observed" },
+        { name = "raw_observed", value = "rawObserved" },
+        { name = "talent_bonus", value = "talentBonus" },
+        { name = "effective_observed", value = "effectiveObserved" },
         { name = "target", value = "target" },
         { name = "unit", value = "unit" },
         { name = "status", value = "status" },
@@ -6785,6 +6916,17 @@ function GEAR_ENGINE.AppendGearRecommendationsJson(lines, indent, engine, comma)
             { name = "projected", value = "projected" },
             { name = "target", value = "target" },
             { name = "effect", value = "effect" },
+        }, true)
+        AppendJsonObjectArray(lines, indent + 6, "talent_context_impacts", upgrade.talentContextImpacts, {
+            { name = "key", value = "key" },
+            { name = "talent_key", value = "talentKey" },
+            { name = "source_token", value = "sourceToken" },
+            { name = "source_delta", value = "sourceDelta" },
+            { name = "source_multiplier", value = "sourceMultiplier" },
+            { name = "adjusted_source_delta", value = "adjustedSourceDelta" },
+            { name = "coefficient", value = "coefficient" },
+            { name = "value", value = "value" },
+            { name = "scored", value = "scored" },
         }, false)
         AppendIndented(lines, indent + 4, "}" .. (index < #(engine.upgrades or {}) and "," or ""))
     end
@@ -6823,6 +6965,17 @@ function GEAR_ENGINE.Phase2EvidenceLabel(engine, locale)
     return evidence == "guide" and "职业攻略路线" or "WoWSims 参考装备路线 + 职业攻略"
 end
 
+function GEAR_ENGINE.BenchmarkObservedText(benchmark, locale)
+    local observed = tonumber(benchmark and (benchmark.effectiveObserved or benchmark.observed))
+    local raw = tonumber(benchmark and benchmark.rawObserved)
+    local talentBonus = tonumber(benchmark and benchmark.talentBonus) or 0
+    if raw and talentBonus ~= 0 and observed then
+        return CompactNumber(raw, 2) .. " + " .. CompactNumber(talentBonus, 2) .. " "
+            .. GEAR_ENGINE.ReportTerms(locale).talent_bonus .. " = " .. CompactNumber(observed, 2)
+    end
+    return observed and CompactNumber(observed, 2) or "?"
+end
+
 function GEAR_ENGINE.Phase2CapText(engine, locale)
     local values = {}
     local localized = ANALYSIS_LOCALIZATION[PromptLocale(locale or ClientLocale())]
@@ -6830,7 +6983,7 @@ function GEAR_ENGINE.Phase2CapText(engine, locale)
         local cap = engine.phase2.caps[index]
         local label = GEAR_ENGINE.LocalizedDataLabel(cap.labels, locale, cap.key)
         local status = localized and localized.statuses and localized.statuses[cap.status] or cap.status
-        local observed = type(cap.observed) == "number" and CompactNumber(cap.observed, 2) or "?"
+        local observed = GEAR_ENGINE.BenchmarkObservedText(cap, locale)
         local target = type(cap.target) == "number" and CompactNumber(cap.target, 2) or "?"
         values[#values + 1] = tostring(label) .. " " .. observed .. "/" .. target .. tostring(cap.unit or "") .. " (" .. tostring(status or "unknown") .. ")"
     end
@@ -6875,7 +7028,7 @@ function GEAR_ENGINE.GearBenchmarkText(engine, locale)
         local gap = engine.benchmarkGaps[index]
         local label = localized and localized.benchmarks and localized.benchmarks[gap.key] or gap.label or gap.key
         local status = localized and localized.statuses and localized.statuses[gap.status] or gap.status
-        values[#values + 1] = tostring(label) .. " " .. CompactNumber(gap.observed or 0, 2) .. "/" .. CompactNumber(gap.target or 0, 2)
+        values[#values + 1] = tostring(label) .. " " .. GEAR_ENGINE.BenchmarkObservedText(gap, locale) .. "/" .. CompactNumber(gap.target or 0, 2)
             .. " (" .. tostring(status or "unknown") .. ")"
     end
     return #values > 0 and table.concat(values, "; ") or LForLocale(locale or ClientLocale(), "advice_no_gaps")
@@ -7004,6 +7157,40 @@ function GEAR_ENGINE.UnscoredChangesText(upgrade, locale, maxChanges)
     return #parts > 0 and table.concat(parts, "; ") or terms.none
 end
 
+function GEAR_ENGINE.TalentContextImpactsText(upgrade, locale, maxImpacts)
+    local terms = GEAR_ENGINE.ReportTerms(locale)
+    local impacts = upgrade and upgrade.talentContextImpacts or {}
+    local parts = {}
+    local limit = math.min(#impacts, maxImpacts or #impacts)
+    for index = 1, limit do
+        local impact = impacts[index]
+        local label = GEAR_ENGINE.LocalizedDataLabel(impact.labels, locale, impact.key)
+        local sourceLabel = GEAR_ENGINE.LocalizedStatLabel({ token = impact.sourceToken }, locale)
+        parts[#parts + 1] = tostring(label) .. ": "
+            .. GEAR_ENGINE.SignedCompactNumber(impact.sourceDelta, 2) .. " " .. sourceLabel
+            .. " x " .. CompactNumber(impact.sourceMultiplier, 3)
+            .. " x " .. CompactNumber(impact.coefficient, 3)
+            .. " = " .. GEAR_ENGINE.SignedCompactNumber(impact.value, 2)
+            .. " (" .. terms.context_not_scored .. ")"
+    end
+    if #impacts > limit then
+        parts[#parts + 1] = string.format(terms.more, #impacts - limit)
+    end
+    return #parts > 0 and table.concat(parts, "; ") or terms.none
+end
+
+function GEAR_ENGINE.ComparisonEvidenceText(comparison, locale, maxComponents)
+    local terms = GEAR_ENGINE.ReportTerms(locale)
+    local parts = { GEAR_ENGINE.ScoreBreakdownText(comparison, locale, maxComponents or 2) }
+    if #(comparison and comparison.scoreBreakdown and comparison.scoreBreakdown.unscoredChanges or {}) > 0 then
+        parts[#parts + 1] = terms.unscored_changes .. ": " .. GEAR_ENGINE.UnscoredChangesText(comparison, locale, 2)
+    end
+    if #(comparison and comparison.talentContextImpacts or {}) > 0 then
+        parts[#parts + 1] = terms.talent_context .. ": " .. GEAR_ENGINE.TalentContextImpactsText(comparison, locale, 1)
+    end
+    return table.concat(parts, " · ")
+end
+
 function GEAR_ENGINE.RecommendationReasonText(upgrade, locale, maxComponents)
     local terms = GEAR_ENGINE.ReportTerms(locale)
     if upgrade and upgrade.decisionKind == "effect_choice" then
@@ -7034,15 +7221,16 @@ function GEAR_ENGINE.CandidateEvaluationReasonText(evaluation, locale, maxCompon
     local reason = labels[status] or tostring(status)
     if status == "benchmark_gate" and comparison then
         return reason .. ": " .. GEAR_ENGINE.BenchmarkImpactText(comparison.benchmarkImpacts, locale, 2)
+            .. " · " .. GEAR_ENGINE.ComparisonEvidenceText(comparison, locale, maxComponents or 2)
     end
     if status == "below_threshold" or status == "lower_ranked_same_slot" then
-        return comparison and (reason .. " · " .. GEAR_ENGINE.ScoreBreakdownText(comparison, locale, maxComponents or 2)) or reason
+        return comparison and (reason .. " · " .. GEAR_ENGINE.ComparisonEvidenceText(comparison, locale, maxComponents or 2)) or reason
     end
     if status == "effect_inferior" and comparison then
         return reason .. ": " .. GEAR_ENGINE.EffectDecisionText(comparison, locale)
     end
     if status == "recommended" and comparison then
-        return reason .. " · " .. GEAR_ENGINE.RecommendationReasonText(comparison, locale, maxComponents or 2)
+        return reason .. " · " .. GEAR_ENGINE.ComparisonEvidenceText(comparison, locale, maxComponents or 2)
     end
     return reason
 end
@@ -7119,6 +7307,9 @@ function GEAR_ENGINE.AppendGearRecommendationsMarkdown(lines, engine, locale)
         if #(upgrade.scoreBreakdown and upgrade.scoreBreakdown.unscoredChanges or {}) > 0 then
             lines[#lines + 1] = "- " .. terms.unscored_changes .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.UnscoredChangesText(upgrade, locale))
         end
+        if #(upgrade.talentContextImpacts or {}) > 0 then
+            lines[#lines + 1] = "- " .. terms.talent_context .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.TalentContextImpactsText(upgrade, locale))
+        end
         lines[#lines + 1] = "- " .. terms.score_model .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.ScoreModelText(upgrade.scoreModel, locale))
         lines[#lines + 1] = "- " .. terms.benchmark_impact .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.BenchmarkImpactText(upgrade.benchmarkImpacts, locale))
         if upgrade.effectDecision and upgrade.effectDecision.canCompare then
@@ -7178,6 +7369,9 @@ function GEAR_ENGINE.AppendGearRecommendationsText(lines, engine, locale)
         lines[#lines + 1] = "   " .. terms.score_reason .. ": " .. GEAR_ENGINE.RecommendationReasonText(upgrade, locale)
         if #(upgrade.scoreBreakdown and upgrade.scoreBreakdown.unscoredChanges or {}) > 0 then
             lines[#lines + 1] = "   " .. terms.unscored_changes .. ": " .. GEAR_ENGINE.UnscoredChangesText(upgrade, locale)
+        end
+        if #(upgrade.talentContextImpacts or {}) > 0 then
+            lines[#lines + 1] = "   " .. terms.talent_context .. ": " .. GEAR_ENGINE.TalentContextImpactsText(upgrade, locale)
         end
         lines[#lines + 1] = "   " .. terms.score_model .. ": " .. GEAR_ENGINE.ScoreModelText(upgrade.scoreModel, locale)
         lines[#lines + 1] = "   " .. terms.benchmark_impact .. ": " .. GEAR_ENGINE.BenchmarkImpactText(upgrade.benchmarkImpacts, locale)
@@ -7513,7 +7707,7 @@ local function BuildStatsAnalysisText(profile, chartStats, strategyBook)
             lines[#lines + 1] = LForLocale(locale, "analysis_benchmark",
                 AnalysisBenchmarkLabel(benchmark, locale),
                 AnalysisBenchmarkStatus(benchmark and benchmark.status, locale),
-                AnalysisValue(benchmark and benchmark.observed, nil, locale),
+                GEAR_ENGINE.BenchmarkObservedText(benchmark, locale),
                 AnalysisValue(benchmark and benchmark.target, nil, locale),
                 AnalysisBenchmarkUnit(benchmark and benchmark.unit, locale))
         end
@@ -8833,7 +9027,7 @@ function Addon:CreateGearAdviceRow(parent, index)
     local reason = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     reason:SetPoint("TOPLEFT", candidateButton, "TOPRIGHT", 8, -24)
     reason:SetPoint("RIGHT", row, "RIGHT", -8, 0)
-    reason:SetHeight(118)
+    reason:SetHeight(158)
     reason:SetJustifyH("LEFT")
     reason:SetJustifyV("TOP")
 
@@ -8926,6 +9120,10 @@ function Addon:RefreshGearComparison(profile, engine, index)
     if #(upgrade.scoreBreakdown and upgrade.scoreBreakdown.unscoredChanges or {}) > 0 then
         details[#details + 1] = LForLocale(locale, "advice_unscored", GEAR_ENGINE.UnscoredChangesText(upgrade, locale, 4))
     end
+    if #(upgrade.talentContextImpacts or {}) > 0 then
+        details[#details + 1] = GEAR_ENGINE.ReportTerms(locale).talent_context .. ": "
+            .. GEAR_ENGINE.TalentContextImpactsText(upgrade, locale, 2)
+    end
     details[#details + 1] = LForLocale(locale, "advice_impact", GEAR_ENGINE.BenchmarkImpactText(upgrade.benchmarkImpacts, locale))
     details[#details + 1] = LForLocale(locale, "advice_model", GEAR_ENGINE.ScoreModelText(upgrade.scoreModel, locale))
     if upgrade.effectDecision and upgrade.effectDecision.canCompare and upgrade.decisionKind ~= "effect_choice" then
@@ -8992,6 +9190,10 @@ function Addon:RefreshGearAdvice(profile, engine)
         if #(upgrade.scoreBreakdown and upgrade.scoreBreakdown.unscoredChanges or {}) > 0 then
             reasons[#reasons + 1] = LForLocale(locale, "advice_unscored", GEAR_ENGINE.UnscoredChangesText(upgrade, locale, 2))
         end
+        if #(upgrade.talentContextImpacts or {}) > 0 then
+            reasons[#reasons + 1] = GEAR_ENGINE.ReportTerms(locale).talent_context .. ": "
+                .. GEAR_ENGINE.TalentContextImpactsText(upgrade, locale, 1)
+        end
         reasons[#reasons + 1] = LForLocale(locale, "advice_impact", GEAR_ENGINE.BenchmarkImpactText(upgrade.benchmarkImpacts, locale, 1))
             .. " · " .. LForLocale(locale, "advice_evidence", LForLocale(locale, "advice_evidence_" .. tostring(upgrade.dataCompleteness or upgrade.evidence or "low")))
         reasons[#reasons + 1] = LForLocale(locale, "advice_model", GEAR_ENGINE.ScoreModelContextText(upgrade.scoreModel, locale))
@@ -9014,7 +9216,7 @@ function Addon:RefreshGearAdvice(profile, engine)
         if #otherCandidates > shown then
             lines[#lines + 1] = string.format(GEAR_ENGINE.ReportTerms(locale).more, #otherCandidates - shown)
         end
-        otherHeight = 24 + (shown * 46) + (#otherCandidates > shown and 18 or 0)
+        otherHeight = 24 + (shown * 64) + (#otherCandidates > shown and 18 or 0)
         self.exportFrame.adviceOther:ClearAllPoints()
         self.exportFrame.adviceOther:SetPoint("TOPLEFT", self.exportFrame.adviceRowsContent, "TOPLEFT", 4,
             -((#upgrades * GEAR_ENGINE.ADVICE_ROW_STEP) + (#upgrades == 0 and 42 or 8)))
@@ -9032,7 +9234,7 @@ function Addon:RefreshGearAdvice(profile, engine)
         self.exportFrame.adviceRowsContent:SetHeight(math.max(220, (#upgrades * GEAR_ENGINE.ADVICE_ROW_STEP) + otherHeight + 16))
     end
     if self.exportFrame.adviceContent.SetHeight then
-        self.exportFrame.adviceContent:SetHeight(math.max(796, (#upgrades * GEAR_ENGINE.ADVICE_ROW_STEP) + otherHeight + 560))
+        self.exportFrame.adviceContent:SetHeight(math.max(836, (#upgrades * GEAR_ENGINE.ADVICE_ROW_STEP) + otherHeight + 600))
     end
     return #upgrades
 end
@@ -9649,7 +9851,7 @@ function Addon:CreateExportFrame()
     adviceCaveat:SetText(L("advice_caveat"))
 
     local comparePanel = CreateFrame("Frame", nil, adviceContent, BackdropTemplate())
-    SetFrameSize(comparePanel, 486, 206)
+    SetFrameSize(comparePanel, 486, 246)
     comparePanel:SetPoint("TOPLEFT", adviceContent, "TOPLEFT", 2, -336)
     if comparePanel.SetBackdrop then
         comparePanel:SetBackdrop({
@@ -9706,7 +9908,7 @@ function Addon:CreateExportFrame()
     local compareDetails = comparePanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     compareDetails:SetPoint("TOPLEFT", 120, -66)
     compareDetails:SetPoint("RIGHT", comparePanel, "RIGHT", -8, 0)
-    compareDetails:SetHeight(132)
+    compareDetails:SetHeight(172)
     compareDetails:SetJustifyH("LEFT")
     compareDetails:SetJustifyV("TOP")
 
@@ -9725,7 +9927,7 @@ function Addon:CreateExportFrame()
 
     local adviceRowsContent = CreateFrame("Frame", nil, adviceContent)
     SetFrameSize(adviceRowsContent, 490, 220)
-    adviceRowsContent:SetPoint("TOPLEFT", adviceContent, "TOPLEFT", 0, -552)
+    adviceRowsContent:SetPoint("TOPLEFT", adviceContent, "TOPLEFT", 0, -592)
 
     local adviceEmpty = adviceRowsContent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     adviceEmpty:SetPoint("TOPLEFT", 4, -4)
@@ -10310,6 +10512,8 @@ if _G.TBCGearExporterTestMode then
         TalentRuleFor = TalentRuleFor,
         BuildTalentRoleMap = BuildTalentRoleMap,
         TalentEffectRank = GEAR_ENGINE.TalentEffectRank,
+        TalentBenchmarkBonus = GEAR_ENGINE.TalentBenchmarkBonus,
+        RoleCapForBenchmark = GEAR_ENGINE.RoleCapForBenchmark,
         BuildCritImmunity = GEAR_ENGINE.BuildCritImmunity,
         BuildRoleObservedStats = BuildRoleObservedStats,
         BenchmarkObservedValue = BenchmarkObservedValue,
@@ -10344,6 +10548,7 @@ if _G.TBCGearExporterTestMode then
         HasSetImpact = GEAR_ENGINE.HasSetImpact,
         ItemRelevantStatMap = GEAR_ENGINE.ItemRelevantStatMap,
         ItemRawStatMap = GEAR_ENGINE.ItemRawStatMap,
+        BuildTalentContextImpacts = GEAR_ENGINE.BuildTalentContextImpacts,
         BuildUnscoredDeltas = GEAR_ENGINE.BuildUnscoredDeltas,
         BuildStatDeltas = GEAR_ENGINE.BuildStatDeltas,
         RecommendationEvidence = GEAR_ENGINE.RecommendationEvidence,
@@ -10385,6 +10590,7 @@ if _G.TBCGearExporterTestMode then
         Phase2ModeLabel = GEAR_ENGINE.Phase2ModeLabel,
         AvailableModesText = GEAR_ENGINE.AvailableModesText,
         Phase2EvidenceLabel = GEAR_ENGINE.Phase2EvidenceLabel,
+        BenchmarkObservedText = GEAR_ENGINE.BenchmarkObservedText,
         Phase2CapText = GEAR_ENGINE.Phase2CapText,
         Phase2PresetText = GEAR_ENGINE.Phase2PresetText,
         Phase2Goal = GEAR_ENGINE.Phase2Goal,
@@ -10397,6 +10603,8 @@ if _G.TBCGearExporterTestMode then
         SignedCompactNumber = GEAR_ENGINE.SignedCompactNumber,
         ScoreBreakdownText = GEAR_ENGINE.ScoreBreakdownText,
         UnscoredChangesText = GEAR_ENGINE.UnscoredChangesText,
+        TalentContextImpactsText = GEAR_ENGINE.TalentContextImpactsText,
+        ComparisonEvidenceText = GEAR_ENGINE.ComparisonEvidenceText,
         RecommendationReasonText = GEAR_ENGINE.RecommendationReasonText,
         CandidateEvaluationReasonText = GEAR_ENGINE.CandidateEvaluationReasonText,
         OtherCandidateEvaluations = GEAR_ENGINE.OtherCandidateEvaluations,

@@ -1,6 +1,6 @@
 # Phase 2 Strategy Database
 
-TBC Gear Exporter v0.5.3 includes Phase 2 / Tier 5 strategy database version 8 and recommendation engine version 16, used by the in-game P2 Guide, explainable candidate ranking, full candidate audits, and AI/JSON exports.
+TBC Gear Exporter v0.5.4 includes Phase 2 / Tier 5 strategy database version 8 and recommendation engine version 17, used by the in-game P2 Guide, explainable candidate ranking, full candidate audits, and AI/JSON exports.
 
 ## Database Scale
 
@@ -98,6 +98,8 @@ Curated item effects are also mode-specific gates. If the equipped item's known 
 3. Weapon DPS, speed, set bonuses, school-specific effects, pet survival, and proc behavior remain explicit comparison caveats when the item API does not expose enough information.
 4. Hunter visible-stat comparisons use the pinned WoWSims **P1** BM/SV EP table normalized to 1 agility: generic attack power 0.46, ranged attack power 0.40, hit 0.12, crit 0.92, haste 0.788, and ranged weapon DPS 1.75. Reusing it for P2 and Marksmanship is explicitly labeled a cross-phase/shared estimate.
 5. A generic one-hand weapon is compared with both current weapons only when the character is already dual wielding weapons. Shields, held-in-off-hand items, explicit main-hand weapons, and two-hand setups do not create a false off-hand route.
+6. Tracked cap checks use the role's declared target and preserve raw paper-doll value, detected talent bonus, and effective value separately. For a Survival Hunter with 3/3 Surefooted, 7.93% paper-doll hit is evaluated as 10.93% against the 9% target.
+7. Hunter talent context recognizes Surefooted, Lightning Reflexes, and Expose Weakness. Lightning Reflexes scales item Agility by its actual 15%; Expose Weakness reports 25% of the talent-adjusted Agility delta as attack power per physical attacker while the debuff is active, but does not convert that raid value into personal EP.
 
 ## Sources And Reproducibility
 
@@ -108,6 +110,7 @@ Curated item effects are also mode-specific gates. If the equipped item's known 
 - [Wowhead Phase 2 specialization guide index](https://www.wowhead.com/tbc/news/best-in-slot-guides-for-every-class-specialization-updated-for-phase-2-tbc-381617) supplies role-specific acquisition, alternative, set-bonus, and healer context.
 - [Wowhead Holy Paladin Phase 2 gear guide](https://www.wowhead.com/tbc/guide/classes/paladin/holy/healer-bis-gear-pve-phase-2), [the Tier 5 set overview](https://www.wowhead.com/tbc/guide/tier-5-set-overview-burning-crusade-classic), and linked item/set pages in the database supply the spell-cycle routes, Tier 5 thresholds, and 14 curated effect records.
 - [Wowhead Hunter stat priority](https://www.wowhead.com/tbc/guide/classes/hunter/dps-stat-priority-attributes-pve) supplies the TBC agility, hit, crit, and ranged attack-power context used to interpret the simulator weights.
+- [Wowhead Hunter talent guide](https://www.wowhead.com/tbc/guide/classes/hunter/dps-talent-builds-pve) and [Expose Weakness spell record](https://www.wowhead.com/tbc/spell=34503/expose-weakness) supply the 3% Surefooted hit, 15% Lightning Reflexes Agility, and 25%-of-Agility Expose Weakness mechanics.
 - [Wowhead Feral tank stat priority](https://www.wowhead.com/tbc/guide/classes/druid/feral/tank-stat-priority-attributes-pve) supplies the defense/resilience equivalence and 39.4 resilience per 1% critical-hit reduction reference.
 - [Wowhead Feral tank talents](https://www.wowhead.com/tbc/guide/classes/druid/feral/tank-talent-builds-pve) supplies the 3% reduction from 3/3 Survival of the Fittest.
 - [Wowhead Feral tank gear set](https://www.wowhead.com/tbc/gear-set/pve-feral-tank-131518) supplies the 415 defense-skill and 103 resilience hard-cap references for a 3/3 Survival of the Fittest bear.
