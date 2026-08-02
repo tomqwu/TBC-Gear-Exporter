@@ -62,7 +62,7 @@ The current comparison path is:
 7. Evaluate curated set thresholds in the current full equipped set, marking a broken bonus as a tradeoff and a newly completed threshold as a contextual decision.
 8. Reject swaps that worsen an unmet tracked gate.
 9. Reconcile the score delta against a per-stat formula and record every changed but unscored visible stat with either a missing-role-weight or role/slot-applicability reason.
-10. Rank one candidate per slot and report the formula, excluded changes, effect choice, set impact, route gaps, cap impact, model kind, and item-data completeness.
+10. Rank one candidate per slot, retain an audit outcome for every other evaluated gear item, and report the formula, excluded changes, rejection/ranking reason, effect choice, set impact, route gaps, cap impact, model kind, and item-data completeness.
 
 Item level and quality do not add score. They are display and filtering fields, not performance stats.
 
@@ -85,6 +85,7 @@ Three independent fields must not be conflated:
 | `score_model` | How was the candidate score produced? |
 | `score_breakdown` | Which signed stat deltas and active weights produced the visible-stat score, and does their net reconcile with `score_gain`? |
 | `unscored_changes` | Which visible stat changes were excluded because the role has no weight for them or the role does not use them in that equipment slot? |
+| `candidate_evaluations` | Why was each evaluated gear item recommended, ranked below another same-slot candidate, blocked by a benchmark, or rejected by a compatibility/reliability gate? |
 | `route_evidence` | Where did the reference gear route come from? |
 | `data_completeness` | How much comparable visible stat data was available for this item pair? |
 | `known_effect` / `effect_decision` | Is a source-linked item effect applicable, and which selected mode does it fit? |
