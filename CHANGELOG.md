@@ -4,6 +4,14 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+## [0.5.3] - 2026-08-02
+
+- Add a candidate audit ledger so every evaluated gear item keeps a concrete outcome instead of disappearing behind aggregate rejection counts.
+- Show localized **Other Candidate Decisions** in Gear Advice, Markdown, and plain text, with machine-readable `candidate_evaluations` in JSON and AI Text.
+- Explain benchmark gates, sub-threshold scores, lower same-slot ranking, role/class mismatch, illegal weapon layouts, weaker known effects, unscorable data, and unsupported slots separately.
+- Add a four-candidate Yamede Hunter regression: Spiteblade is selected, hit-losing legs are gate-blocked, a weaker off-hand is lower-ranked, and a tiny head upgrade remains below the recommendation threshold.
+- Upgrade the recommendation engine to version 16; all 105 tests pass with 99.01% executable-line coverage.
+
 ## [0.5.2] - 2026-08-02
 
 - Explain every visible-stat recommendation as `stat delta x active weight = contribution`, including the reconciled net score shown in the GUI, Markdown, plain text, AI Text, and JSON.
