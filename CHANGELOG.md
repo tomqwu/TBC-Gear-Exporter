@@ -4,6 +4,17 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+## [0.5.4] - 2026-08-02
+
+- Fix talent-adjusted cap checks by storing raw paper-doll values, detected talent bonuses, effective values, and role-specific targets as separate benchmark fields.
+- Recognize Hunter Surefooted, Lightning Reflexes, and Expose Weakness in English, simplified Chinese, and traditional Chinese; 3/3 Surefooted now contributes its actual 3% hit and 5/5 Lightning Reflexes applies its actual 15% Agility multiplier.
+- Explain Expose Weakness Agility changes as contextual attack power per physical attacker while active, explicitly outside the personal EP score.
+- Fix the real Yamede Survival case: 7.93% paper-doll hit plus 3% Surefooted is 10.93% effective hit, and losing 19 hit rating leaves about 9.73%, so Danger Intent Leggings are no longer incorrectly blocked by the 9% gate.
+- Use each role's declared cap contract across all 28 role models instead of reporting a conflicting global target.
+- Include the complete score formula, excluded stats, talent context, and projected cap math for rejected and lower-ranked candidates in the GUI and every export format.
+- Expand recommendation rows, the selected comparison panel, and other-candidate spacing for the longer localized evidence without text overlap.
+- Upgrade the recommendation engine to version 17; all 107 tests pass with 99.01% executable-line coverage.
+
 ## [0.5.3] - 2026-08-02
 
 - Add a candidate audit ledger so every evaluated gear item keeps a concrete outcome instead of disappearing behind aggregate rejection counts.

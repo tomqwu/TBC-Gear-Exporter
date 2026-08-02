@@ -28,7 +28,7 @@ It scans current equipment, visible bags, bank containers, talents, and characte
 - Provides Phase 2 records for all 9 TBC classes and 28 PvE specializations, with localized roles, cap assumptions, three modes, routes, reference talents, and an explicit scoring-model contract. A role record is not presented as a validated simulator model.
 - Tracks 32 P2/T5 reference sets and 526 target slots against current equipment plus saved bags and bank, with real missing-item icons, localized links, item levels, tooltips, and Wowhead URLs.
 - Exports every selected talent with rank, icon, and tree alignment, while reporting representation coverage separately from the smaller subset with actual calculation rules.
-- Compares compatible saved gear against current equipment and labels current results as estimated candidates, tradeoffs, or manual checks; no present role may claim a definitive upgrade. Each swap shows net gained/lost stats, benchmark impact, score-model provenance, and item-data completeness.
+- Compares compatible saved gear against current equipment and labels current results as estimated candidates, tradeoffs, or manual checks; no present role may claim a definitive upgrade. Every evaluated item keeps its formula or rejection reason, while cap checks separate raw paper-doll values, talent bonuses, effective values, and role targets.
 - Opens to a localized Overview GUI page with compact inventory, talent, stat, quality, category, and role snapshots.
 - Shows an icon-based Gear Advice page with role switching and a visual current-to-candidate workbench: large real item icons, tooltips, quality-colored names, estimated ranking, stat tradeoffs, model type, item-data completeness, and benchmark checks.
 - Shows a localized P2 Guide page with tank mitigation/threat, healer throughput/longevity, and DPS cap/output mode switching, plus current cap status, route goal, target-set progress, route evidence, and score-model type.
@@ -38,7 +38,7 @@ It scans current equipment, visible bags, bank containers, talents, and characte
 - Filters by quality, including rare-or-better, epic-only, and epic gear-only views.
 - Exports as AI Text, JSON, Markdown, or plain text; AI Text/JSON retain the engineered prompt and full data, while the fully localized readable formats open directly to current equipment, recommendations, role judgment, detailed analysis, and candidate inventory.
 - Shows a visual item browser with saved item icons, colored names, counts, item levels, locations, quality/type labels, and item-link tooltips.
-- Generates a class-aware AI prompt that tells external tools to inspect `score_model`, `route_evidence`, `data_completeness`, talent model coverage, caps, target progress, and role-specific comparisons without turning a heuristic rank or reference route into simulated certainty.
+- Generates a class-aware AI prompt that tells external tools to inspect `score_model`, `route_evidence`, `data_completeness`, talent model coverage, talent context, caps, target progress, and role-specific comparisons without turning a heuristic rank or reference route into simulated certainty.
 - Supports English, simplified Chinese, and traditional Chinese client UI text.
 
 ### AI-Ready Export
