@@ -1151,7 +1151,7 @@ end)
 
 test("Phase 2 database covers every TBC class and PvE specialization", function()
     local db = assert(_G.TBCGearExporterP2DB)
-    assertEquals(db.version, 7)
+    assertEquals(db.version, 8)
     assertEquals(db.phase, 2)
     assertEquals(db.patch, "2.5.6")
     assertEquals(#db.sources, 2)
@@ -1215,8 +1215,65 @@ test("Phase 2 database validates score models separately from gear routes", func
     assertEquals(summary.simulatorRoutes, 18)
     assertEquals(summary.guideRoutes, 10)
     assertEquals(summary.definitiveModels, 0)
-    assertEquals(summary.itemEffects, 9)
-    assertEquals(summary.sets, 1)
+    assertEquals(summary.itemEffects, 14)
+    assertEquals(summary.sets, 17)
+    assertEquals(summary.tier5Sets, 17)
+    assertEquals(summary.tier5Roles, 28)
+end)
+
+test("Tier 5 definitions cover every class role without cross-class leakage", function()
+    local db = assert(_G.TBCGearExporterP2DB)
+    local setCount = 0
+    local itemOwners = {}
+    for setKey, set in pairs(db.sets) do
+        setCount = setCount + 1
+        assertEquals(set.tier, 5)
+        assertEquals(#set.itemIDs, 5)
+        assertEquals(#set.bonuses, 2)
+        assertEquals(set.bonuses[1].pieces, 2)
+        assertEquals(set.bonuses[2].pieces, 4)
+        assertTrue(type(set.labels.enUS) == "string")
+        assertTrue(type(set.labels.zhCN) == "string")
+        assertTrue(type(set.labels.zhTW) == "string")
+        for index = 1, #set.itemIDs do
+            assertFalse(itemOwners[set.itemIDs[index]], "duplicate Tier 5 item " .. tostring(set.itemIDs[index]))
+            itemOwners[set.itemIDs[index]] = setKey
+        end
+    end
+    assertEquals(setCount, 17)
+
+    local covered = 0
+    for classToken, class in pairs(db.classes) do
+        for index = 1, #class.roles do
+            local role = class.roles[index]
+            assertEquals(role.classToken, classToken)
+            local matchingSets = 0
+            for _, set in pairs(db.sets) do
+                if set.classTokens[classToken] and set.roleKeys[role.key] then
+                    matchingSets = matchingSets + 1
+                end
+            end
+            assertTrue(matchingSets > 0, classToken .. "." .. role.key .. " needs Tier 5 coverage")
+            covered = covered + 1
+        end
+    end
+    assertEquals(covered, 28)
+
+    local druidRestoration = assert(db.GetRole("DRUID", "restoration_healer"))
+    local shamanRestoration = assert(db.GetRole("SHAMAN", "restoration_healer"))
+    local nordrassil = assert(db.GetSet("nordrassil_raiment"))
+    local cataclysm = assert(db.GetSet("cataclysm_raiment"))
+    assertTrue(private.DefinitionAppliesToRole(nordrassil, druidRestoration))
+    assertFalse(private.DefinitionAppliesToRole(nordrassil, shamanRestoration))
+    assertTrue(private.DefinitionAppliesToRole(cataclysm, shamanRestoration))
+    assertFalse(private.DefinitionAppliesToRole(cataclysm, druidRestoration))
+
+    assertContains(db.GetSet("nordrassil_harness").bonuses[1].labels.enUS, "2.0 sec")
+    assertContains(db.GetSet("cataclysm_harness").bonuses[1].labels.enUS, "1.5 sec")
+    assertContains(db.GetSet("cataclysm_raiment").bonuses[2].labels.enUS, "0.50 sec for 10 sec")
+    assertContains(db.GetSet("crystalforge_raiment").bonuses[2].labels.enUS, "0.50 sec for 10 sec")
+    assertContains(db.GetSet("crystalforge_battlegear").bonuses[2].labels.enUS, "244 to 257")
+    assertContains(db.GetSet("avatar_regalia").bonuses[2].labels.enUS, "within 15 sec")
 end)
 
 test("pinned Phase 2 EP imports preserve source values and provenance", function()
@@ -1523,7 +1580,7 @@ test("Yamede dual wield evaluates generic one-hand candidates against both weapo
     assertEquals(private.EquipmentSlotKey(spiteblade), "MAINHAND")
 
     local engine = private.BuildGearRecommendations(profile, { spiteblade }, strategy, role.key, "balanced")
-    assertEquals(engine.version, 12)
+    assertEquals(engine.version, 13)
     assertEquals(engine.candidateCount, 1)
     assertEquals(#engine.upgrades, 1)
     local upgrade = engine.upgrades[1]
@@ -2740,7 +2797,7 @@ test("item comparison switches role weights and rejects mismatched slots", funct
     assertEquals(private.FindStrategyRole(nil, "missing").key, "general_inventory")
 
     local damageEngine = private.BuildGearRecommendations(profile, { candidate }, strategy, "retribution_dps")
-    assertEquals(damageEngine.version, 12)
+    assertEquals(damageEngine.version, 13)
     assertEquals(damageEngine.roleKey, "retribution_dps")
     assertEquals(#damageEngine.availableRoles, 3)
     assertEquals(damageEngine.talentMap.effects[1].key, "crusade")
@@ -2818,7 +2875,7 @@ test("holy paladin role fit rejects physical crit bracers before upgrade scoring
     assertFalse(incidentalIntellectFit.suitable, "incidental intellect must not make physical gear healer-suitable")
 
     local engine = private.BuildGearRecommendations(profile, { physicalCandidate, healingCandidate }, strategy, "holy_healer")
-    assertEquals(engine.version, 12)
+    assertEquals(engine.version, 13)
     assertEquals(engine.candidateCount, 1)
     assertEquals(engine.roleRejectedCount, 1)
     assertEquals(#engine.upgrades, 1)
@@ -3015,7 +3072,7 @@ test("protection paladin strategy compares visible gains and losses without inve
     assertEquals(role.observed.gearStatHighlights[1].value, 20)
     assertFalse(role.observed.gearStatHighlights[1].value == 30, "candidate stamina must not leak into current gear highlights")
 
-    assertEquals(engine.version, 12)
+    assertEquals(engine.version, 13)
     assertEquals(#engine.upgrades, 1)
     assertEquals(engine.upgrades[1].evidence, "high")
     assertEquals(engine.upgrades[1].verdict, "estimate")
@@ -3637,7 +3694,7 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(allExport, "\"loadout_rejected_count\":")
     assertContains(allExport, "\"unscorable_rejected_count\":")
     assertContains(allExport, "\"phase2_strategy\": {")
-    assertContains(allExport, "\"database_version\": 7")
+    assertContains(allExport, "\"database_version\": 8")
     assertContains(allExport, "\"phase\": 2")
     assertContains(allExport, "\"mode_key\": \"balanced\"")
     assertContains(allExport, "\"mode_label_zh_cn\": \"均衡\"")
@@ -3938,7 +3995,7 @@ test("RefreshExport no-ops without frame and updates edit box with frame", funct
     assertContains(Addon.exportFrame.compareVerdict.text, "物品数据")
     assertTrue(Addon.exportFrame.adviceContent.height >= 634)
     local _, adviceBreaks = Addon.exportFrame.adviceSummary.text:gsub("\n", "\n")
-    assertEquals(adviceBreaks, 4)
+    assertEquals(adviceBreaks, 5)
     assertEquals(#Addon.exportFrame.adviceRows, 2)
     assertEquals(Addon.exportFrame.adviceRows[1].height, 116)
     assertEquals(Addon.exportFrame.adviceRows[1].reason.height, 78)
@@ -4064,7 +4121,7 @@ test("CreateExportFrame wires UI controls and scripts", function()
     assertTrue(exportFrame.adviceSummary ~= nil)
     assertTrue(exportFrame.adviceCaveat ~= nil)
     assertEquals(exportFrame.adviceSummary.width, 478)
-    assertEquals(exportFrame.adviceSummary.height, 108)
+    assertEquals(exportFrame.adviceSummary.height, 132)
     assertEquals(exportFrame.adviceSummary.justifyV, "TOP")
     assertEquals(exportFrame.adviceCaveat.width, 478)
     assertEquals(exportFrame.adviceCaveat.height, 64)
@@ -4072,14 +4129,14 @@ test("CreateExportFrame wires UI controls and scripts", function()
     assertTrue(exportFrame.comparePanel ~= nil)
     assertTrue(exportFrame.comparePanel.backdrop ~= nil)
     assertEquals(exportFrame.comparePanel.height, 142)
-    assertEquals(exportFrame.comparePanel.points[1][5], -310)
+    assertEquals(exportFrame.comparePanel.points[1][5], -336)
     assertTrue(exportFrame.compareCurrentButton ~= nil)
     assertTrue(exportFrame.compareCandidateButton ~= nil)
     assertTrue(exportFrame.compareNames ~= nil)
     assertTrue(exportFrame.compareVerdict ~= nil)
     assertTrue(exportFrame.compareDetails ~= nil)
     assertTrue(exportFrame.adviceRowsContent ~= nil)
-    assertEquals(exportFrame.adviceRowsContent.points[1][5], -462)
+    assertEquals(exportFrame.adviceRowsContent.points[1][5], -488)
     assertTrue(exportFrame.itemListContent ~= nil)
     assertTrue(exportFrame.analysisContent ~= nil)
     assertTrue(exportFrame.analysisText ~= nil)
@@ -4552,7 +4609,7 @@ test("Thatdruid report uses the talent-aware combined crit benchmark", function(
     local strategy = private.BuildStrategyBook(profile, private.BuildChartStats({}))
     local bear = private.FindStrategyRole(strategy, "bear_tank")
     assertEquals(strategy.version, 6)
-    assertEquals(strategy.phaseDatabase.version, 7)
+    assertEquals(strategy.phaseDatabase.version, 8)
     assertEquals(bear.observed.tank.critReduction, 5.03)
     assertEquals(bear.observed.tank.critImmunity.gap, 0.57)
     assertEquals(private.BenchmarkObservedValue("crit_immunity", bear.observed), 5.03)
@@ -4825,7 +4882,7 @@ test("known effects are role-gated and compare by the selected healing cycle", f
     assertTrue(private.BuildEffectDecision(nil, absolute, role, "holy_light").preferCandidate)
 
     local holyEngine = private.BuildGearRecommendations(profile, { absolute }, strategy, role.key, "holy_light")
-    assertEquals(holyEngine.version, 12)
+    assertEquals(holyEngine.version, 13)
     assertEquals(#holyEngine.upgrades, 1)
     assertEquals(holyEngine.upgrades[1].candidate.itemID, 30063)
     assertEquals(holyEngine.effectDecisionCount, 1)
@@ -4898,6 +4955,101 @@ test("set thresholds turn off-piece gains into tradeoffs and surface four-piece 
     assertTrue(members[30135])
 end)
 
+test("protection Paladin five-piece Tier 5 is visible and respects exact bonus thresholds", function()
+    local db = assert(_G.TBCGearExporterP2DB)
+    local role = assert(db.GetRole("PALADIN", "protection_tank"))
+    local tierItems = {
+        HolyGear(30125, "Crystalforge Faceguard", "INVTYPE_HEAD", { { token = "ITEM_MOD_STAMINA_SHORT", value = 40 } }),
+        HolyGear(30127, "Crystalforge Shoulderguards", "INVTYPE_SHOULDER", { { token = "ITEM_MOD_STAMINA_SHORT", value = 30 } }),
+        HolyGear(30123, "Crystalforge Chestguard", "INVTYPE_CHEST", { { token = "ITEM_MOD_STAMINA_SHORT", value = 50 } }),
+        HolyGear(30124, "Crystalforge Handguards", "INVTYPE_HAND", { { token = "ITEM_MOD_STAMINA_SHORT", value = 35 } }),
+        HolyGear(30126, "Crystalforge Legguards", "INVTYPE_LEGS", { { token = "ITEM_MOD_STAMINA_SHORT", value = 45 } }),
+    }
+    local profile = { classEnglish = "PALADIN", locale = "zhCN", equipped = { items = tierItems } }
+    local active = private.BuildActiveSets(profile, role, "balanced")
+    assertEquals(#active, 1)
+    assertEquals(active[1].setKey, "crystalforge_armor")
+    assertEquals(active[1].setID, 628)
+    assertEquals(active[1].count, 5)
+    assertEquals(active[1].total, 5)
+    assertEquals(active[1].bonuses[1].pieces, 2)
+    assertTrue(active[1].bonuses[1].active)
+    assertEquals(active[1].bonuses[1].modeAffinity, 1)
+    assertEquals(active[1].bonuses[2].pieces, 4)
+    assertTrue(active[1].bonuses[2].active)
+    assertEquals(active[1].bonuses[2].modeAffinity, 2)
+
+    local engine = { activeSets = active }
+    assertContains(private.ActiveSetsText(engine, "zhCN"), "晶铸护甲 5/5 (2件生效, 4件生效)")
+    assertContains(private.ActiveSetsText(engine, "zhTW"), "晶鑄護甲 5/5 (2件生效, 4件生效)")
+    assertContains(private.ActiveSetsText(engine, "enUS"), "Crystalforge Armor 5/5 (2pc active, 4pc active)")
+    assertEquals(private.ActiveSetsText({}, "zhCN"), "无")
+
+    local jsonLines = {}
+    private.AppendActiveSetsJson(jsonLines, 0, active, true)
+    local json = table.concat(jsonLines, "\n")
+    assertContains(json, "\"active_sets\": [")
+    assertContains(json, "\"set_key\": \"crystalforge_armor\"")
+    assertContains(json, "\"set_id\": 628")
+    assertContains(json, "\"equipped_pieces\": 5")
+    assertContains(json, "\"active\": true")
+    assertEquals(jsonLines[#jsonLines], "],")
+
+    local offPiece = HolyGear(99920, "Off-piece Handguards", "INVTYPE_HAND", {
+        { token = "ITEM_MOD_STAMINA_SHORT", value = 50 },
+    })
+    local fiveToFour = private.BuildSetImpacts(profile, tierItems[4], offPiece, role, "mitigation")
+    assertEquals(#fiveToFour, 0)
+
+    local fourPieceProfile = { classEnglish = "PALADIN", locale = "zhCN", equipped = {
+        items = { tierItems[1], tierItems[2], tierItems[3], tierItems[4] },
+    } }
+    local fourToThree = private.BuildSetImpacts(fourPieceProfile, tierItems[4], offPiece, role, "mitigation")
+    assertEquals(#fourToThree, 1)
+    assertEquals(fourToThree[1].pieces, 4)
+    assertEquals(fourToThree[1].before, 4)
+    assertEquals(fourToThree[1].after, 3)
+    assertEquals(fourToThree[1].effect, "breaks_active_bonus")
+    assertEquals(fourToThree[1].modeAffinity, 3)
+end)
+
+test("protection tank trinket effects change decisions with strategy mode", function()
+    local role = assert(_G.TBCGearExporterP2DB.GetRole("PALADIN", "protection_tank"))
+    local icon = HolyGear(29370, "Icon of the Silver Crescent", "INVTYPE_TRINKET", {
+        { token = "ITEM_MOD_SPELL_POWER_SHORT", value = 43 },
+    })
+    local rocket = HolyGear(23836, "Goblin Rocket Launcher", "INVTYPE_TRINKET", {
+        { token = "ITEM_MOD_STAMINA_SHORT", value = 45 },
+    })
+    local profile = { classEnglish = "PALADIN", locale = "zhCN", equipped = { items = { icon } } }
+    local strategy = { roles = { role } }
+
+    local balanced = private.CompareItems(profile, icon, rocket, strategy, role.key, nil, "balanced")
+    assertTrue(balanced.effectDecision.preferCurrent)
+    assertFalse(balanced.effectDecision.preferCandidate)
+    assertEquals(balanced.decisionKind, "effect_tradeoff")
+    assertEquals(balanced.verdict, "tradeoff")
+    assertTrue(private.RecommendationSelectionPriority(balanced) < balanced.scoreGain)
+
+    local threat = private.BuildEffectDecision(icon, rocket, role, "threat")
+    assertTrue(threat.preferCurrent)
+    assertEquals(threat.currentAffinity, 3)
+    assertEquals(threat.candidateAffinity, 1)
+    local mitigation = private.CompareItems(profile, icon, rocket, strategy, role.key, nil, "mitigation")
+    assertTrue(mitigation.effectDecision.preferCandidate)
+    assertEquals(mitigation.effectDecision.currentAffinity, 0)
+    assertEquals(mitigation.effectDecision.candidateAffinity, 3)
+    assertEquals(mitigation.decisionKind, "effect_choice")
+    assertEquals(mitigation.verdict, "review")
+
+    local effectLines = {}
+    private.AppendKnownEffectJson(effectLines, 0, "known_effect", mitigation.effectDecision.candidateEffect, false)
+    local effectJson = table.concat(effectLines, "\n")
+    assertContains(effectJson, "Engineering (350)")
+    assertContains(effectJson, "Goblin Engineering")
+    assertContains(effectJson, "opener, not a tanking cooldown")
+end)
+
 test("guide route gaps and machine exports preserve evidence without inventing EP", function()
     local role = assert(_G.TBCGearExporterP2DB.GetRole("PALADIN", "holy_healer"))
     local current = HolyGear(25644, "Blessed Book of Nagrand", "INVTYPE_RELIC")
@@ -4927,7 +5079,7 @@ test("guide route gaps and machine exports preserve evidence without inventing E
     local lines = {}
     private.AppendGearRecommendationsJson(lines, 0, engine, false)
     local json = table.concat(lines, "\n")
-    assertContains(json, "\"version\": 12")
+    assertContains(json, "\"version\": 13")
     assertContains(json, "\"effect_decision_count\": 1")
     assertContains(json, "\"route_gaps\": [")
     assertContains(json, "\"known_effect\": {")
@@ -4984,7 +5136,7 @@ test("hidden trinket effects are excluded instead of scored as upgrades", functi
     assertEquals(private.RecommendationVerdictLabel(comparison.verdict, "zhCN"), "效果无法量化")
 
     local engine = private.BuildGearRecommendations(profile, { shard }, { roles = { role } }, role.key)
-    assertEquals(engine.version, 12)
+    assertEquals(engine.version, 13)
     assertEquals(engine.unscorableRejectedCount, 1)
     assertEquals(engine.loadoutRejectedCount, 0)
     assertEquals(#engine.upgrades, 0)

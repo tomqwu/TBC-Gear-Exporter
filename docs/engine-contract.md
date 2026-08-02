@@ -1,6 +1,6 @@
 # Gear Engine Contract
 
-This document defines what TBC Gear Exporter database version 7 actually computes. It is the release gate for future engine claims.
+This document defines what TBC Gear Exporter database version 8 actually computes. It is the release gate for future engine claims.
 
 ## Current Maturity
 
@@ -65,7 +65,7 @@ The current comparison path is:
 
 Item level and quality do not add score. They are display and filtering fields, not performance stats.
 
-Database version 7 contains a deliberately bounded contextual layer: nine source-linked item effects and the Crystalforge Raiment 2/4-piece thresholds. These rules can gate roles, choose between spell-cycle items, and protect active set bonuses, but they do not produce numeric EP.
+Database version 8 contains a deliberately bounded contextual layer: 14 source-linked item effects and all 17 Tier 5 class sets with localized 2/4-piece thresholds. Every one of the 28 class-role combinations has a Tier 5 definition. Set rules require both class and role ownership, and active set counts are evaluated against the full equipped loadout. These rules can choose between strategy-mode items and protect active bonuses, but they do not produce numeric EP.
 
 The engine does not currently model unlisted set bonuses or item effects, gems, enchants, socket bonuses, proc rates, weapon speed rules, school-specific spell coefficients, full rotations, encounter timelines, party buff uptime, pet uptime, healing assignments, or global whole-loadout interactions. It is not a combat simulator or a global loadout optimizer.
 
@@ -73,7 +73,7 @@ The engine does not currently model unlisted set bonuses or item effects, gems, 
 
 Every selected talent is exported with tree, rank, icon, and alignment when the client API supplies it. That is **representation coverage**.
 
-Only a curated subset has a calculation rule that modifies weights or a tracked formula. That is **model coverage**. Database version 7 reports both values separately; it does not count an exported but unmodeled talent as modeled.
+Only a curated subset has a calculation rule that modifies weights or a tracked formula. That is **model coverage**. Database version 8 reports both values separately; it does not count an exported but unmodeled talent as modeled.
 
 ## Evidence Contract
 
@@ -85,6 +85,7 @@ Three independent fields must not be conflated:
 | `route_evidence` | Where did the reference gear route come from? |
 | `data_completeness` | How much comparable visible stat data was available for this item pair? |
 | `known_effect` / `effect_decision` | Is a source-linked item effect applicable, and which selected mode does it fit? |
+| `active_sets` | Which supported Tier 5 sets are equipped, and are their 2/4-piece bonuses active? |
 | `set_impacts` | Does the proposed swap cross a curated equipped-set threshold? |
 | `route_gaps` | Which items from the selected guide/reference route are not in current gear, bags, or bank? |
 

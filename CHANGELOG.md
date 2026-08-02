@@ -4,6 +4,17 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-08-01
+
+- Add all 17 Tier 5 class sets and their localized 2/4-piece effects, covering every one of the 28 class-role combinations in the Phase 2 strategy database.
+- Gate sets by both class and role so shared role keys, especially Restoration Druid and Restoration Shaman, cannot use each other's set rules.
+- Show `active_sets` in Gear Advice, the P2 Guide, Markdown, plain text, AI Text, and JSON, including equipped counts, active thresholds, strategy-mode affinity, and source URLs.
+- Evaluate exact set transitions: replacing one piece from a five-piece loadout preserves four-piece, while dropping from four to three is a protected tradeoff.
+- Add sourced contextual rules for Goblin Rocket Launcher, Scarab of Displacement, Figurine of the Colossus, Icon of the Silver Crescent, and Moroes' Lucky Pocket Watch.
+- Make contextual tank-item decisions mode-aware, preventing a mitigation pull tool from being presented as a clean balanced/threat upgrade over a threat trinket.
+- Expand database validation to enforce five unique items, localized 2/4-piece bonuses, valid class ownership, and complete 28-role Tier 5 coverage.
+- Upgrade the database to version 8, the recommendation engine to version 13, and the suite to 99 tests with 99.01% executable-line coverage.
+
 ## [0.4.9] - 2026-08-01
 
 - Add a source-linked item-effect layer for nine key TBC healer relics/trinkets and role-gate known tank/DPS effects before recommendation scoring.

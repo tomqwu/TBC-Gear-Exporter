@@ -3,7 +3,7 @@
 ## Title: TBC Gear Exporter
 ## Notes: Scans current gear, bags, bank, talents, and stats; recommends role-aware upgrades.
 ## Author: Codex
-## Version: 0.4.9
+## Version: 0.5.0
 ## SavedVariables: TBCGearExporterDB
 ## X-Curse-Project-ID: 1567147
 
