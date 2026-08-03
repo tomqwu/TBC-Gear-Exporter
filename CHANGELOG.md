@@ -4,6 +4,16 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+## [0.5.7] - 2026-08-03
+
+- Replace the Gear Advice page's fixed summary, caveat, comparison, recommendation-row, and other-candidate heights with measured plus conservative locale-aware wrapping.
+- Reflow every advice section from the actual bottom of the previous section so long Chinese formulas, benchmark projections, effect scenarios, and model limitations cannot overlap the next block.
+- Give selected-item evidence the full panel width beneath the real item icons and expand the comparison panel to contain all rendered details.
+- Expand each recommendation row independently and place later recommendations from the preceding row's measured height instead of the former 236/240-pixel assumption.
+- Reset the Gear Advice scroll position when entering the tab from another view, preventing a reopened page from starting halfway through its summary.
+- Add the real Strongge Protection Paladin Scarab of Displacement comparison as a long Chinese layout regression with structural panel, row, and content-boundary assertions.
+- Retain strategy database version 9 and recommendation engine version 19; all 120 tests pass with 99.03% executable-line coverage.
+
 ## [0.5.6] - 2026-08-03
 
 - Treat defense rating consistently after either the combined-crit or defense-skill immunity benchmark is met, preserving partial avoidance value without applying the contextual shield-table boost twice.
