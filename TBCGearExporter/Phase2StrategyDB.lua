@@ -1,9 +1,9 @@
 local DB = {
-    version = 8,
+    version = 9,
     phase = 2,
     phaseLabel = "TBC Anniversary Phase 2 (Tier 5)",
     patch = "2.5.6",
-    updatedAt = "2026-08-01",
+    updatedAt = "2026-08-02",
     content = { "Serpentshrine Cavern", "Tempest Keep: The Eye", "Arena Season 2", "Ogri'la", "Sha'tari Skyguard" },
     slotOrder = { "HEAD", "NECK", "SHOULDER", "BACK", "CHEST", "WRIST", "HANDS", "WAIST", "LEGS", "FEET", "FINGER1", "FINGER2", "TRINKET1", "TRINKET2", "MAINHAND", "OFFHAND", "RANGED" },
     sources = {
@@ -98,11 +98,9 @@ local function TankModes(threat)
         [S.block] = 0.70,
         [S.resilience] = 0.50,
         [S.hit] = 1.28,
-        [S.spellHit] = 1.28,
         [S.expertise] = 1.30,
         [S.attackPower] = 1.18,
         [S.feralAttackPower] = 1.18,
-        [S.spellPower] = 1.22,
         [S.weaponDps] = 1.15,
     }
     for token, multiplier in pairs(threat or {}) do
@@ -358,47 +356,57 @@ ItemEffect(30621, {
     key = "prism_of_inner_calm",
     kind = "harmful_crit_threat_reduction",
     archetypes = { melee = true, ranged = true, caster = true },
-    modeAffinity = { balanced = 1, output = 1, threat = 3 },
+    modeAffinity = { balanced = 1, cap = 1, output = 3 },
     labels = Labels("Reduces threat from harmful critical strikes", "降低伤害性暴击产生的威胁", "降低傷害性致命一擊產生的威脅"),
 })
 ItemEffect(23836, {
     key = "goblin_rocket_launcher",
     kind = "engineering_stamina_pull_tool",
+    decisionDimension = "effective_health_pull_tool",
     roleKeys = { protection_tank = true, warrior_protection = true },
     modeAffinity = { balanced = 1, mitigation = 3, threat = 1 },
     labels = Labels("Stamina-focused pull tool; launches a ranged rocket but knocks the user down", "耐力向远程开怪工具；发射火箭时会击倒使用者", "耐力向遠程開怪工具；發射火箭時會擊倒使用者"),
+    scenarioLabels = Labels("Progression effective health or a ranged opener; the long cast and knockdown are not an in-combat tank cooldown", "开荒有效生命或远程起手；长施法与击倒使其不能作为战斗中坦克减伤技能", "開荒有效生命或遠程起手；長施法與擊倒使其不能作為戰鬥中坦克減傷技能"),
     requirements = { "Engineering (350)", "Goblin Engineering", "Long cast makes the active effect an opener, not a tanking cooldown" },
 })
 ItemEffect(30629, {
     key = "scarab_of_displacement",
     kind = "defense_rating_cooldown",
+    decisionDimension = "defense_loadout",
     archetypes = { tank = true },
     modeAffinity = { balanced = 2, mitigation = 3, threat = 1 },
     labels = Labels("Grants 165 defense rating and reduces attack power by 330 for 15 sec; 3 min cooldown", "使用后 15 秒内获得 165 防御等级并降低 330 攻击强度；冷却 3 分钟", "使用後 15 秒內獲得 165 防禦等級並降低 330 攻擊強度；冷卻 3 分鐘"),
+    scenarioLabels = Labels("Defense-cap, resistance-set, or loadout-rebalancing tool; excess defense must be evaluated against the full set", "免暴、抗性装或整套配装重平衡工具；超额防御必须结合全套装备判断", "免暴、抗性裝或整套配裝重平衡工具；超額防禦必須結合全套裝備判斷"),
     requirements = { "Rebalance the full loadout around its passive defense rating", "Attack-power penalty matters to physical-threat tanks" },
 })
 ItemEffect(27529, {
     key = "figurine_of_the_colossus",
     kind = "block_healing_cooldown",
+    decisionDimension = "block_sustain",
     roleKeys = { protection_tank = true, warrior_protection = true },
     modeAffinity = { balanced = 2, mitigation = 2, threat = 2 },
     labels = Labels("Each blocked attack heals 120 for 20 sec; 2 min cooldown", "使用后 20 秒内每次格挡恢复 120 点生命；冷却 2 分钟", "使用後 20 秒內每次格擋恢復 120 點生命；冷卻 2 分鐘"),
+    scenarioLabels = Labels("Survival against many frequent blockable attacks or AoE farming; much weaker against sparse or non-blockable damage", "适合大量高频可格挡攻击或群拉刷怪；面对稀疏攻击或不可格挡伤害时价值显著降低", "適合大量高頻可格擋攻擊或群拉刷怪；面對稀疏攻擊或不可格擋傷害時價值顯著降低"),
     requirements = { "Shield equipped", "Best against many frequent blockable attacks" },
 })
 ItemEffect(29370, {
     key = "icon_of_the_silver_crescent",
     kind = "spell_power_cooldown",
+    decisionDimension = "spell_threat_burst",
     roleKeys = { protection_tank = true },
     archetypes = { caster = true },
     modeAffinity = { balanced = 2, mitigation = 0, threat = 3, cap = 1, output = 3 },
     labels = Labels("Grants 155 spell damage for 20 sec; 2 min cooldown", "使用后 20 秒内获得 155 法术伤害；冷却 2 分钟", "使用後 20 秒內獲得 155 法術傷害；冷卻 2 分鐘"),
+    scenarioLabels = Labels("Single-target snap threat, pull windows, or threat resets; provides no direct mitigation", "适合单体起手仇恨、拉怪窗口或仇恨重置；不提供直接减伤", "適合單體起手仇恨、拉怪窗口或仇恨重置；不提供直接減傷"),
 })
 ItemEffect(28528, {
     key = "moroes_lucky_pocket_watch",
     kind = "dodge_cooldown",
+    decisionDimension = "avoidance_cooldown",
     archetypes = { tank = true },
     modeAffinity = { balanced = 3, mitigation = 3, threat = 1 },
     labels = Labels("Grants 300 dodge rating for 10 sec; 2 min cooldown", "使用后 10 秒内获得 300 躲闪等级；冷却 2 分钟", "使用後 10 秒內獲得 300 閃躲等級；冷卻 2 分鐘"),
+    scenarioLabels = Labels("Short avoidance cooldown for dangerous physical windows; does not help unavoidable or spell damage", "适合危险物理伤害窗口的短时闪避技能；无法应对不可躲避伤害或法术伤害", "適合危險物理傷害窗口的短時閃躲技能；無法應對不可閃躲傷害或法術傷害"),
 })
 
 Tier5Set("nordrassil_regalia", 643, "DRUID", Labels("Nordrassil Regalia", "诺达希尔平衡套装", "諾達希爾平衡套裝"),

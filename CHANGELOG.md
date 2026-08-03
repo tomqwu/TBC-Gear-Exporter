@@ -4,6 +4,29 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+## [0.5.5] - 2026-08-02
+
+- Fix strategy-mode weight application: mode multipliers now scale only weights the selected role actually declares, and generic hit/crit/haste multipliers fall through to the role's school-specific weights instead of inventing a generic weight from unit scales.
+- Fix Feral Bear and Protection Warrior Threat / farm mode gaining invented spell-hit and spell-power weights, which could rank caster pieces above genuine threat gear; Protection Paladin keeps its declared 1.32/1.30 spell-power/spell-hit threat boosts.
+- Fix Retribution Maximum output mode lowering the haste valuation from 1.17 to an invented 1.10; melee haste now correctly rises to about 1.29 and Hunter generic/ranged crit and haste weights stay in sync.
+- Score negative visible stats symmetrically: a stat malus now subtracts from candidate and equipped scores, so shedding a cursed stat counts as a gain and every score breakdown reconciles against its formula.
+- Convert paper-doll expertise from points to percent (one point removes 0.25% boss dodge) before checking the 6.5% expertise benchmark; melee with around 26 expertise rating no longer report as expertise-capped, and the below-cap weight boost fires correctly.
+- Add class weapon and relic proficiency gates so candidates a class cannot wield, such as Druid swords, Paladin daggers, Hunter maces, wands on non-casters, and cross-class librams/idols/totems, are rejected before ranking.
+- Score `equipped_gear` JSON entries with the active role's slot gating so a hunter's melee-weapon score no longer includes weapon DPS and matches the role-aware scores used elsewhere in the same export.
+- Give Prism of Inner Calm reachable mode affinities (balanced, cap recovery, maximum output); its previous `threat` affinity did not exist for any applicable DPS role, which silently disabled equipped-effect protection in Cap recovery mode.
+- Localize the remaining English "never" and "none" fragments in Chinese Markdown, plain-text, Overview, and Gear Advice surfaces; JSON keeps the stable `never` sentinel for machine consumers.
+- Fix swapped mana-regen assignment: `mana_regen_casting` and `mana_regen_not_casting` now follow the client API's return order (while-not-casting first).
+- Refresh the Items tab rows on click so they match the recomputed status count, and derive resilience crit-reduction from the single pinned WoWSims constant.
+- Stop crediting physical hit rating toward the spell-hit benchmark: generic hit/crit/haste ratings are physical-only in TBC, so they no longer inherit spell-school weights, and a Retribution chest's +23 hit no longer scores 2.24 per point for a Protection Paladin closing a spell-hit gap.
+- Benchmark-gap and talent weight boosts now scale only weights the role declares, matching the mode-multiplier rule; a cap gap cannot invent a weight for a stat outside the role model.
+- Protect the tank shield: for tank roles with a block model (Protection Warrior/Paladin), a non-shield off-hand candidate is rejected with the new `shield_required` status instead of appearing as a tradeoff, because block chance, block value, and 102.4% table coverage vanish with the shield without ever showing up as an item stat delta.
+- Keep four decimal places on exported and displayed stat weights so `delta x weight = contribution` reproduces the printed result; `-475 armor x 0.03 = -14.68` now renders as `x 0.0309`.
+- Document that empty sockets carry a fixed nominal placeholder weight in candidate scoring while gem choices themselves remain out of scope.
+- Add context-aware known-effect decisions: equal mode affinity no longer makes different-use trinkets look equivalent, and the GUI/exports show localized scenarios, decision dimensions, affinity deltas, and a non-green `effect_context` tradeoff.
+- Compare ring and trinket candidates against both equipped items, preserving a threat trinket when the candidate is a better replacement for the other slot; mode-specific candidate ranking now uses the full affinity delta.
+- Fix the P2 guide's all-class priority panel initialization and expand comparison/advice rows for localized scenario evidence without text overlap.
+- Upgrade the strategy database to version 9 and the recommendation engine to version 18; all 120 tests pass with 99.08% executable-line coverage.
+
 ## [0.5.4] - 2026-08-02
 
 - Fix talent-adjusted cap checks by storing raw paper-doll values, detected talent bonuses, effective values, and role-specific targets as separate benchmark fields.

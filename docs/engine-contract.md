@@ -1,6 +1,6 @@
 # Gear Engine Contract
 
-This document defines what TBC Gear Exporter database version 8 actually computes. It is the release gate for future engine claims.
+This document defines what TBC Gear Exporter database version 9 actually computes. It is the release gate for future engine claims.
 
 ## Current Maturity
 
@@ -53,18 +53,18 @@ Separately, 18 roles have a WoWSims reference gear route and 10 use a class-guid
 
 The current comparison path is:
 
-1. Resolve class compatibility, equipment slot, and legal one-hand/two-hand layout.
+1. Resolve class compatibility (armor tier, shields, weapon proficiency, and relic ownership), equipment slot, and legal one-hand/two-hand layout. A tank role with a declared block model additionally rejects replacing an equipped shield with a non-shield off-hand (`shield_required`), because block chance and combat-table coverage are not visible as item stat deltas.
 2. Reject items whose visible stats or curated known effect conflicts with the selected role archetype.
 3. Normalize item-stat aliases exposed by the TBC Anniversary API.
 4. Apply the declared static EP table or ordered-stat heuristic to visible stats only.
-5. Apply tracked cap-gap, selected key-talent, and strategy-mode multipliers. Preserve raw paper-doll values, detected talent bonuses, effective values, and role-specific targets separately.
-6. Compare curated item effects categorically for the selected strategy mode; effect affinity is never added to EP, and a candidate with an explicitly weaker known effect is excluded from that mode's recommendations.
+5. Apply tracked cap-gap, selected key-talent, and strategy-mode multipliers. All three multiplier layers scale only weights the role already declares — a generic hit/crit/haste multiplier falls through to the role's physical school-specific weights — and never invent a weight from generic unit scales. Generic hit/crit/haste ratings are physical-only stats in TBC: they never inherit spell-school weights and do not count toward the spell-hit benchmark. Preserve raw paper-doll values, detected talent bonuses, effective values, and role-specific targets separately; paper-doll expertise points are converted to percent (0.25% per point) before cap comparison.
+6. Compare curated item effects categorically for the selected strategy mode; effect affinity is never added to EP. A candidate with an explicitly weaker known effect is excluded from that replacement path. Equal affinity across different decision dimensions is an `effect_context` scenario tradeoff, not a numeric upgrade. Ring and trinket candidates are evaluated against both equipped items, and same-slot candidates rank by the full affinity delta before visible score.
 7. Evaluate curated set thresholds in the current full equipped set, marking a broken bonus as a tradeoff and a newly completed threshold as a contextual decision.
 8. Reject swaps that worsen an unmet tracked gate.
-9. Reconcile the score delta against a per-stat formula and record every changed but unscored visible stat with either a missing-role-weight or role/slot-applicability reason.
+9. Reconcile the score delta against a per-stat formula and record every changed but unscored visible stat with either a missing-role-weight or role/slot-applicability reason. Stat values participate with their sign: a weighted malus subtracts from an item's score instead of being silently dropped.
 10. Rank one candidate per slot, retain an audit outcome for every other evaluated gear item, and report the formula, excluded changes, talent context, rejection/ranking reason, effect choice, set impact, route gaps, projected cap impact, model kind, and item-data completeness.
 
-Item level and quality do not add score. They are display and filtering fields, not performance stats.
+Item level and quality do not add score. They are display and filtering fields, not performance stats. Empty sockets carry a fixed nominal placeholder weight (4 per socket) so a socketed item is not treated as statless; the placeholder appears in the score formula like any other component, while gem choices, socket bonuses, and enchants remain outside the evaluator. Exported stat weights keep four decimal places so each recorded `delta x weight` reproduces its recorded contribution.
 
 Database version 8 contains a deliberately bounded contextual layer: 14 source-linked item effects and all 17 Tier 5 class sets with localized 2/4-piece thresholds. Every one of the 28 class-role combinations has a Tier 5 definition. Set rules require both class and role ownership, and active set counts are evaluated against the full equipped loadout. These rules can choose between strategy-mode items and protect active bonuses, but they do not produce numeric EP.
 
@@ -89,7 +89,7 @@ Three independent fields must not be conflated:
 | `unscored_changes` | Which visible stat changes were excluded because the role has no weight for them or the role does not use them in that equipment slot? |
 | `raw_observed` / `talent_bonus` / `effective_observed` | How did the engine turn the paper-doll value plus detected talent contribution into the value tested against the role cap? |
 | `talent_context_impacts` | Which talent-driven contextual values changed but were deliberately not converted into EP? |
-| `candidate_evaluations` | Why was each evaluated gear item recommended, ranked below another same-slot candidate, blocked by a benchmark, or rejected by a compatibility/reliability gate? |
+| `candidate_evaluations` | Why was each evaluated gear item recommended, ranked below another same-slot candidate, blocked by a benchmark, or rejected by a compatibility/reliability gate? Each entry retains the actual equipped item and structured effect decision used for that comparison. |
 | `route_evidence` | Where did the reference gear route come from? |
 | `data_completeness` | How much comparable visible stat data was available for this item pair? |
 | `known_effect` / `effect_decision` | Is a source-linked item effect applicable, and which selected mode does it fit? |
