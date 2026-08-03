@@ -4,6 +4,17 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+## [0.5.8] - 2026-08-03
+
+- Add a shared PvP / Arena strategy mode to all 28 class-role models instead of forcing PvP equipment through the boss-level PvE evaluator.
+- Auto-detect a PvP loadout only when equipped gear has at least 80 resilience across at least three pieces; one-off tank or utility PvP pieces remain in the selected PvE view.
+- Switch PvP comparisons to same-level 5% physical and 4% spell-hit references, devalue hit after the PvP target, and explicitly score resilience, stamina, and caster spell penetration.
+- Treat any candidate that gives up resilience in PvP mode as a visible tradeoff, accept pure-resilience PvP items as role-compatible, and hide PvE simulator target sets from the PvP route page.
+- Export the detected and active gear contexts, automatic/manual mode source, resilience total, and resilience-piece count to JSON, Markdown, text, Stats Analysis, Gear Advice, and the P2 Guide.
+- Expand both strategy-mode control groups from three buttons to four using a two-column layout, preserving readable English and Chinese labels.
+- Add Blizzard's resilience overview and the Wowhead TBC PvP guide index to the database provenance, plus a Boaky Demonology Warlock regression proving PvP gear no longer chases the 16% raid-boss spell-hit target.
+- Upgrade the strategy database to version 10, strategy-book schema to version 7, and recommendation engine to version 20; all 122 tests pass with 99.05% executable-line coverage.
+
 ## [0.5.7] - 2026-08-03
 
 - Replace the Gear Advice page's fixed summary, caveat, comparison, recommendation-row, and other-candidate heights with measured plus conservative locale-aware wrapping.

@@ -1,18 +1,18 @@
 # Phase 2 Strategy Database
 
-TBC Gear Exporter v0.5.7 includes Phase 2 / Tier 5 strategy database version 9 and recommendation engine version 19, used by the in-game P2 Guide, explainable candidate ranking, full candidate audits, and AI/JSON exports.
+TBC Gear Exporter v0.5.8 includes Phase 2 / Tier 5 strategy database version 10, strategy-book schema version 7, and recommendation engine version 20, used by the in-game P2 Guide, explainable candidate ranking, full candidate audits, PvP context detection, and AI/JSON exports.
 
 ## Database Scale
 
 - 9 playable TBC classes.
 - 28 PvE specializations: 3 tanks, 5 healers, 11 melee/ranged physical DPS roles, and 9 caster DPS roles.
-- 3 switchable analysis modes for every role.
+- 4 switchable analysis modes for every role, including the shared PvP / Arena context.
 - 32 reference gear presets with 526 non-empty target item slots: 29 WoWSims routes plus 3 Holy Paladin guide routes.
 - 17-slot target-set tracking against current equipment plus saved bags and bank.
 - 14 source-linked contextual item effects and all 17 Tier 5 class sets with localized 2-piece and 4-piece thresholds.
 - Complete Tier 5 representation for all 28 class-role combinations, with class and role ownership checked independently.
 - English, simplified Chinese, and traditional Chinese role, mode, cap, and route labels.
-- Database version 9, including the score-model contract for every role, exact pinned P2 static EP tables for Balance, Retribution, and Arcane, a clearly downgraded shared P1 Hunter estimate, and no definitive upgrade verdicts.
+- Database version 10, including the score-model contract for every role, exact pinned P2 static EP tables for Balance, Retribution, and Arcane, a clearly downgraded shared P1 Hunter estimate, source-labeled PvP context rules, and no definitive upgrade verdicts.
 
 The source of truth is [`TBCGearExporter/Phase2StrategyDB.lua`](../TBCGearExporter/Phase2StrategyDB.lua). Every role records its score-model kind and limitations in addition to its talent-tree rule, archetype, priorities, stat tokens, caps, modes, route goal, reference talent string where available, presets, route evidence, and guide URL. The exact support boundary and all 28 role maturity levels are in [the engine contract](engine-contract.md).
 
@@ -22,19 +22,22 @@ The source of truth is [`TBCGearExporter/Phase2StrategyDB.lua`](../TBCGearExport
 | --- | --- |
 | WoWSims reference gear route + class guide | A P2/T5 item-ID route is available for target tracking. This does not calibrate candidate scoring. |
 | Class guide route | No WoWSims target route is attached; the guide supplies route context only. |
+| Blizzard resilience mechanics + Wowhead PvP guides | PvP mode uses sourced general mechanics and same-level targets, but remains a matchup-aware heuristic rather than a simulator or PvP BiS database. |
 
 Route evidence, score-model provenance, item-data completeness, curated effect decisions, and set impacts are independent. The addon does not call any current weighted result a definitive upgrade. It never silently invents unlisted set-bonus values, proc rates, encounter timelines, rotations, gems, or enchants.
 
 ## Strategy Modes
 
-| Archetype | Balanced | Specialized mode 1 | Specialized mode 2 |
-| --- | --- | --- | --- |
-| Tank | Required gates, survival, threat | Mitigation / progression: effective health, armor, avoidance, crit immunity | Threat / farm: hit, expertise, weapon or spell threat, tempo |
-| Healer | Throughput and longevity | Burst throughput: healing, crit/haste, intellect | Mana longevity: mp5, spirit, intellect, fight length |
-| Holy Paladin | Mixed Flash of Light / Holy Light | Flash of Light: efficiency and sustained casting | Holy Light: burst and mana-cost management |
-| DPS | Caps, set value, output | Cap recovery: hit and expertise | Maximum output: primary power, crit, haste |
+| Archetype | Balanced | Specialized mode 1 | Specialized mode 2 | PvP / Arena |
+| --- | --- | --- | --- | --- |
+| Tank | Required gates, survival, threat | Mitigation / progression: effective health, armor, avoidance, crit immunity | Threat / farm: hit, expertise, weapon or spell threat, tempo | Same-level hit, resilience, stamina, control and utility |
+| Healer | Throughput and longevity | Burst throughput: healing, crit/haste, intellect | Mana longevity: mp5, spirit, intellect, fight length | Resilience, stamina, healing pressure, mana, control survival |
+| Holy Paladin | Mixed Flash of Light / Holy Light | Flash of Light: efficiency and sustained casting | Holy Light: burst and mana-cost management | Resilience, stamina, healing pressure, mana, control survival |
+| DPS | Caps, set value, output | Cap recovery: hit and expertise | Maximum output: primary power, crit, haste | Same-level hit, resilience, stamina, control; spell penetration for casters |
 
-Mode selection changes the role weights used by every item comparison. The same three localized controls appear on Gear Advice and the P2 Guide, and changing one immediately recalculates both pages and the export. Readable reports name the selected view and all available views; AI/JSON exports retain their keys and weights so external tools can reproduce the intended lens. Tank mitigation/progression and threat/farm remain separate rankings rather than being averaged together. Threat / farm deliberately lowers survival weights while raising offensive weights; unresolved hard gates still prevent unsafe suggestions.
+Mode selection changes the role weights used by every item comparison. The same four localized controls appear on Gear Advice and the P2 Guide, and changing one immediately recalculates both pages and the export. Readable reports name the selected view and all available views; AI/JSON exports retain their keys and weights so external tools can reproduce the intended lens. Tank mitigation/progression and threat/farm remain separate rankings rather than being averaged together. Threat / farm deliberately lowers survival weights while raising offensive weights; unresolved hard gates still prevent unsafe suggestions.
+
+PvP context detection is intentionally conservative and language-independent. It selects PvP / Arena automatically only when the equipped loadout has at least 80 resilience across at least three pieces. A single resilience tank item or PvP trinket does not switch a PvE character. PvP mode uses 5% same-level physical hit and 4% same-level spell hit as baseline references, devalues hit after the target, gives resilience and stamina explicit weight, adds spell penetration for caster roles, and marks every resilience-losing candidate as a tradeoff. PvE simulator target sets are hidden in this mode because they are not PvP route evidence.
 
 Curated item effects are also mode-specific gates. If the equipped item's known effect has higher affinity for the selected mode, the candidate is excluded from that mode's recommendations even when its visible-stat heuristic is positive. The same candidate can reappear when another mode prefers its effect. This prevents a mitigation-oriented pull tool from being displayed as a balanced or threat upgrade solely because it has stamina.
 
@@ -107,9 +110,11 @@ Curated item effects are also mode-specific gates. If the equipped item's known 
 ## Sources And Reproducibility
 
 - [WoWSims TBC](https://github.com/wowsims/tbc-new), pinned to commit `3fc6a414979d62186f75d51ab6f6dd5d44f35b9c`, supplies the adapted P2/T5 item-ID presets and reference talent strings where available.
-- [Pinned WoWSims Balance source](https://github.com/wowsims/tbc-new/blob/3fc6a414979d62186f75d51ab6f6dd5d44f35b9c/ui/druid/balance/presets.ts), [Arcane source](https://github.com/wowsims/tbc-new/blob/3fc6a414979d62186f75d51ab6f6dd5d44f35b9c/ui/mage/dps/presets.ts), and [Retribution source](https://github.com/wowsims/tbc-new/blob/3fc6a414979d62186f75d51ab6f6dd5d44f35b9c/ui/paladin/retribution/presets.ts) supply the exact P2 static EP tables retained by database version 9.
+- [Pinned WoWSims Balance source](https://github.com/wowsims/tbc-new/blob/3fc6a414979d62186f75d51ab6f6dd5d44f35b9c/ui/druid/balance/presets.ts), [Arcane source](https://github.com/wowsims/tbc-new/blob/3fc6a414979d62186f75d51ab6f6dd5d44f35b9c/ui/mage/dps/presets.ts), and [Retribution source](https://github.com/wowsims/tbc-new/blob/3fc6a414979d62186f75d51ab6f6dd5d44f35b9c/ui/paladin/retribution/presets.ts) supply the exact P2 static EP tables retained by database version 10.
 - [Pinned WoWSims Hunter source](https://github.com/wowsims/tbc-new/blob/3fc6a414979d62186f75d51ab6f6dd5d44f35b9c/ui/hunter/dps/presets.ts) identifies the reused Hunter values as P1 BM/SV EP presets.
-- [Pinned WoWSims TBC combat-rating constants](https://github.com/wowsims/tbc/blob/9e7504dca2e5253fb9ddff566c66c00e11679376/sim/core/constants.go) supply the level-70 rating conversions retained by database version 9.
+- [Pinned WoWSims TBC combat-rating constants](https://github.com/wowsims/tbc/blob/9e7504dca2e5253fb9ddff566c66c00e11679376/sim/core/constants.go) supply the level-70 rating conversions retained by database version 10.
+- [Blizzard's Burning Crusade Classic honor-system update](https://worldofwarcraft.blizzard.com/en-us/news/23670022/honor-system-updates-for-burning-crusade-classic) supplies the primary-source resilience behavior used to distinguish PvP survivability from PvE throughput.
+- [Wowhead's TBC PvP guide index](https://www.wowhead.com/tbc/guides/pvp) supplies the class-guide context behind same-level hit, resilience, stamina, spell penetration, and matchup caveats.
 - [Wowhead Phase 2 specialization guide index](https://www.wowhead.com/tbc/news/best-in-slot-guides-for-every-class-specialization-updated-for-phase-2-tbc-381617) supplies role-specific acquisition, alternative, set-bonus, and healer context.
 - [Wowhead Protection Paladin Phase 2 gear guide](https://www.wowhead.com/tbc/guide/classes/paladin/tank-bis-gear-pve-phase-2) and the linked [Figurine of the Colossus](https://www.wowhead.com/tbc/item=27529), [Icon of the Silver Crescent](https://www.wowhead.com/tbc/item=29370), and [Scarab of Displacement](https://www.wowhead.com/tbc/item=30629) records supply the survivability, threat, defense/loadout, and activation scenarios used by the context-aware trinket rules.
 - [Wowhead Holy Paladin Phase 2 gear guide](https://www.wowhead.com/tbc/guide/classes/paladin/holy/healer-bis-gear-pve-phase-2), [the Tier 5 set overview](https://www.wowhead.com/tbc/guide/tier-5-set-overview-burning-crusade-classic), and linked item/set pages in the database supply the spell-cycle routes, Tier 5 thresholds, and 14 curated effect records.

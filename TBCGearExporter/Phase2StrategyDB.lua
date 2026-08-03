@@ -1,9 +1,9 @@
 local DB = {
-    version = 9,
+    version = 10,
     phase = 2,
     phaseLabel = "TBC Anniversary Phase 2 (Tier 5)",
     patch = "2.5.6",
-    updatedAt = "2026-08-02",
+    updatedAt = "2026-08-03",
     content = { "Serpentshrine Cavern", "Tempest Keep: The Eye", "Arena Season 2", "Ogri'la", "Sha'tari Skyguard" },
     slotOrder = { "HEAD", "NECK", "SHOULDER", "BACK", "CHEST", "WRIST", "HANDS", "WAIST", "LEGS", "FEET", "FINGER1", "FINGER2", "TRINKET1", "TRINKET2", "MAINHAND", "OFFHAND", "RANGED" },
     sources = {
@@ -19,6 +19,18 @@ local DB = {
             label = "Wowhead TBC Anniversary Phase 2 class guides",
             url = "https://www.wowhead.com/tbc/news/best-in-slot-guides-for-every-class-specialization-updated-for-phase-2-tbc-381617",
             use = "P2 acquisition routes, alternatives, set-bonus context, and healer guidance where a mature simulator is unavailable.",
+        },
+        {
+            key = "blizzard_pvp",
+            label = "Blizzard Burning Crusade Classic PvP overview",
+            url = "https://worldofwarcraft.blizzard.com/en-us/news/23670022/honor-system-updates-for-burning-crusade-classic",
+            use = "Primary-source confirmation that resilience is the defining TBC PvP survivability stat and mitigates critical strikes, damage over time, and drain effects.",
+        },
+        {
+            key = "wowhead_pvp",
+            label = "Wowhead TBC PvP guides",
+            url = "https://www.wowhead.com/tbc/guides/pvp",
+            use = "Same-level hit planning, class PvP gearing context, resilience, stamina, spell penetration, and Arena/Battleground tradeoffs.",
         },
     },
     presets = {},
@@ -58,6 +70,7 @@ local S = {
     spellHaste = "ITEM_MOD_HASTE_SPELL_RATING_SHORT",
     spellPower = "ITEM_MOD_SPELL_POWER_SHORT",
     spellDamage = "ITEM_MOD_SPELL_DAMAGE_DONE_SHORT",
+    spellPenetration = "ITEM_MOD_SPELL_PENETRATION_SHORT",
     healing = "ITEM_MOD_SPELL_HEALING_DONE_SHORT",
     mp5 = "ITEM_MOD_MANA_REGENERATION_SHORT",
 }
@@ -87,6 +100,15 @@ local function ScoreModel(kind, sourcePath, sourcePhase, sourceSpec, limitations
     }
 end
 
+local function WithPvPMode(modes)
+    modes[#modes + 1] = Mode("pvp", Labels("PvP / Arena", "PvP / 竞技场", "PvP / 競技場"), {
+        [S.stamina] = 1.20,
+        [S.resilience] = 1.05,
+        [S.spellPenetration] = 1.10,
+    }, { "same_level_hit", "resilience", "stamina", "control_and_utility" })
+    return modes
+end
+
 local function TankModes(threat)
     local threatMultipliers = {
         [S.stamina] = 0.70,
@@ -106,18 +128,18 @@ local function TankModes(threat)
     for token, multiplier in pairs(threat or {}) do
         threatMultipliers[token] = multiplier
     end
-    return {
+    return WithPvPMode({
         Mode("balanced", Labels("Balanced", "均衡", "均衡"), {}, { "caps", "survival", "threat" }),
         Mode("mitigation", Labels("Mitigation / progression", "减伤 / 开荒", "減傷 / 開荒"), {
             [S.stamina] = 1.20, [S.armor] = 1.18, [S.bonusArmor] = 1.18, [S.defense] = 1.14,
             [S.dodge] = 1.14, [S.parry] = 1.12, [S.block] = 1.10, [S.resilience] = 1.10,
         }, { "crit_immunity", "effective_health", "avoidance" }),
         Mode("threat", Labels("Threat / farm", "仇恨 / Farm", "仇恨 / Farm"), threatMultipliers, { "required_caps", "threat", "tempo" }),
-    }
+    })
 end
 
 local function HealerModes()
-    return {
+    return WithPvPMode({
         Mode("balanced", Labels("Balanced", "均衡", "均衡"), {}, { "throughput", "longevity" }),
         Mode("throughput", Labels("Burst throughput", "爆发治疗量", "爆發治療量"), {
             [S.healing] = 1.22, [S.spellCrit] = 1.12, [S.spellHaste] = 1.12, [S.intellect] = 1.06,
@@ -125,11 +147,11 @@ local function HealerModes()
         Mode("longevity", Labels("Mana longevity", "法力续航", "法力續航"), {
             [S.mp5] = 1.28, [S.spirit] = 1.22, [S.intellect] = 1.16, [S.spellCrit] = 1.06,
         }, { "fight_length", "regen", "mana_pool" }),
-    }
+    })
 end
 
 local function HolyPaladinModes()
-    return {
+    return WithPvPMode({
         Mode("balanced", Labels("Mixed healing", "混合治疗", "混合治療"), {}, { "flash_of_light", "holy_light", "longevity" }),
         Mode("flash_of_light", Labels("Flash of Light", "圣光闪现", "聖光閃現"), {
             [S.healing] = 1.18, [S.intellect] = 1.08, [S.spellCrit] = 1.08, [S.mp5] = 1.12,
@@ -137,7 +159,7 @@ local function HolyPaladinModes()
         Mode("holy_light", Labels("Holy Light", "圣光术", "聖光術"), {
             [S.healing] = 1.12, [S.spellCrit] = 1.18, [S.intellect] = 1.12, [S.mp5] = 1.18,
         }, { "holy_light", "burst_throughput", "mana_cost" }),
-    }
+    })
 end
 
 local function DpsModes(powerTokens)
@@ -145,13 +167,13 @@ local function DpsModes(powerTokens)
     for index = 1, #(powerTokens or {}) do
         output[powerTokens[index]] = 1.14
     end
-    return {
+    return WithPvPMode({
         Mode("balanced", Labels("Balanced", "均衡", "均衡"), {}, { "caps", "set_bonus", "output" }),
         Mode("cap", Labels("Cap recovery", "阈值补齐", "閾值補齊"), {
             [S.hit] = 1.35, [S.rangedHit] = 1.35, [S.spellHit] = 1.35, [S.expertise] = 1.30,
         }, { "hit", "expertise" }),
         Mode("output", Labels("Maximum output", "最大输出", "最大輸出"), output, { "power", "crit", "haste" }),
-    }
+    })
 end
 
 local MELEE_CAPS = {
