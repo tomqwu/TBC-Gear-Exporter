@@ -1584,7 +1584,7 @@ test("Yamede dual wield evaluates generic one-hand candidates against both weapo
     assertEquals(private.EquipmentSlotKey(spiteblade), "MAINHAND")
 
     local engine = private.BuildGearRecommendations(profile, { spiteblade }, strategy, role.key, "balanced")
-    assertEquals(engine.version, 18)
+    assertEquals(engine.version, 19)
     assertEquals(engine.candidateCount, 1)
     assertEquals(#engine.upgrades, 1)
     local upgrade = engine.upgrades[1]
@@ -1592,7 +1592,7 @@ test("Yamede dual wield evaluates generic one-hand candidates against both weapo
     assertEquals(upgrade.current.itemID, 28263)
     assertEquals(upgrade.candidate.itemID, 28729)
     assertEquals(upgrade.scoreGain, 4.04)
-    assertEquals(upgrade.verdict, "estimate")
+    assertEquals(upgrade.verdict, "minor")
     assertEquals(upgrade.statGains[1].token, "ITEM_MOD_ATTACK_POWER_SHORT")
     assertEquals(upgrade.statGains[1].value, 24)
     assertEquals(upgrade.statLosses[1].token, "ITEM_MOD_AGILITY_SHORT")
@@ -1670,7 +1670,7 @@ test("Yamede candidate audit explains the three items that were not recommended"
     local strategy = private.BuildStrategyBook(profile, private.BuildChartStats(candidates))
     local role = private.FindStrategyRole(strategy, "beast_mastery")
     local engine = private.BuildGearRecommendations(profile, candidates, strategy, role.key, "balanced")
-    assertEquals(engine.version, 18)
+    assertEquals(engine.version, 19)
     assertEquals(engine.candidateCount, 4)
     assertEquals(#engine.upgrades, 1)
     assertEquals(engine.upgrades[1].candidate.itemID, 28729)
@@ -1772,7 +1772,7 @@ test("Yamede Survival talents adjust the hit cap and explain Expose Weakness", f
     assertEquals(private.BenchmarkObservedText(role.benchmarks[1], "zhCN"), "7.93 + 3 天赋 = 10.93")
 
     local engine = private.BuildGearRecommendations(profile, { spiteblade, dangerLegs }, strategy, role.key, "balanced")
-    assertEquals(engine.version, 18)
+    assertEquals(engine.version, 19)
     assertEquals(engine.gateRejectedCount, 0)
     assertEquals(#engine.upgrades, 2)
     assertContains(private.Phase2CapText(engine, "zhCN"), "7.93 + 3 天赋 = 10.93/9%")
@@ -2860,7 +2860,23 @@ test("strategy book ranks role models from talents gear race and raid context", 
     assertEquals(private.AnalysisValue(14.451999664307, "%"), "14.45%")
     local analysisText, roleCount = private.BuildStatsAnalysisText(profile, chartStats, strategyBook)
     assertEquals(roleCount, #strategyBook.roles)
+    local sections, sectionRoleCount, sectionLocale = private.BuildStatsAnalysisSections(profile, chartStats, strategyBook)
+    assertEquals(sectionRoleCount, #strategyBook.roles)
+    assertEquals(sectionLocale, "zhCN")
+    assertEquals(#sections, 6)
+    assertEquals(sections[1].key, "character")
+    assertEquals(sections[1].title, "角色与天赋")
+    assertEquals(sections[2].title, "实时角色属性")
+    assertEquals(sections[3].title, "种族与队伍环境")
+    assertEquals(sections[4].kind, "role_primary")
+    assertContains(sections[4].title, "野性熊坦")
+    assertEquals(sections[4].icon, "Interface\\Icons\\Ability_Warrior_DefensiveStance")
+    assertEquals(private.Utf8DisplayLength("属性 A"), 4)
+    assertTrue(private.EstimateAnalysisTextLines(string.rep("属性", 20)) >= 2)
     assertContains(analysisText, "属性分析")
+    assertContains(analysisText, "角色与天赋")
+    assertContains(analysisText, "实时角色属性")
+    assertContains(analysisText, "种族与队伍环境")
     assertContains(analysisText, "德鲁伊")
     assertContains(analysisText, "牛头人")
     assertContains(analysisText, "团队")
@@ -3190,7 +3206,7 @@ test("item comparison switches role weights and rejects mismatched slots", funct
     assertEquals(private.FindStrategyRole(nil, "missing").key, "general_inventory")
 
     local damageEngine = private.BuildGearRecommendations(profile, { candidate }, strategy, "retribution_dps")
-    assertEquals(damageEngine.version, 18)
+    assertEquals(damageEngine.version, 19)
     assertEquals(damageEngine.roleKey, "retribution_dps")
     assertEquals(#damageEngine.availableRoles, 3)
     assertEquals(damageEngine.talentMap.effects[1].key, "crusade")
@@ -3271,7 +3287,7 @@ test("holy paladin role fit rejects physical crit bracers before upgrade scoring
     assertFalse(incidentalIntellectFit.suitable, "incidental intellect must not make physical gear healer-suitable")
 
     local engine = private.BuildGearRecommendations(profile, { physicalCandidate, healingCandidate }, strategy, "holy_healer")
-    assertEquals(engine.version, 18)
+    assertEquals(engine.version, 19)
     assertEquals(engine.candidateCount, 1)
     assertEquals(engine.roleRejectedCount, 1)
     assertEquals(engine.candidateEvaluations[1].status, "role_mismatch")
@@ -3471,7 +3487,7 @@ test("protection paladin strategy compares visible gains and losses without inve
     assertEquals(role.observed.gearStatHighlights[1].value, 20)
     assertFalse(role.observed.gearStatHighlights[1].value == 30, "candidate stamina must not leak into current gear highlights")
 
-    assertEquals(engine.version, 18)
+    assertEquals(engine.version, 19)
     assertEquals(#engine.upgrades, 1)
     assertEquals(engine.upgrades[1].evidence, "high")
     assertEquals(engine.upgrades[1].verdict, "estimate")
@@ -3543,7 +3559,7 @@ test("benchmark impacts distinguish gaps caps and contextual shield totals", fun
     assertEquals(#impacts, 3)
     assertEquals(impacts[1].effect, "cap_buffer")
     assertEquals(impacts[2].effect, "helps_gap")
-    assertEquals(impacts[3].delta, -0.62)
+    assertEquals(impacts[3].delta, -0.47)
     assertEquals(impacts[3].effect, "context_risk")
 end)
 
@@ -3563,12 +3579,13 @@ test("benchmark impacts flag cap risk gap regression and contextual progress", f
     })
     assertEquals(impacts[1].effect, "cap_risk")
     assertEquals(impacts[2].effect, "worsens_gap")
-    assertEquals(impacts[3].effect, "context_help")
+    assertEquals(impacts[3].effect, "context_risk")
 end)
 
 test("recommendation verdicts separate upgrades tradeoffs minor gains and manual checks", function()
     assertEquals(private.RecommendationVerdict("low", 40, {}), "review")
     assertEquals(private.RecommendationVerdict("high", 12, {}), "estimate")
+    assertEquals(private.RecommendationVerdict("medium", 2.72, {}), "minor")
     local definitive = { supportsDefinitiveVerdicts = true }
     assertEquals(private.RecommendationVerdict("high", 12, {}, definitive), "upgrade")
     assertEquals(private.RecommendationVerdict("medium", 7.99, {}, definitive), "minor")
@@ -3731,8 +3748,8 @@ test("Strongge style neck swap reports net spell power and a defense tradeoff", 
             "ITEM_MOD_HIT_SPELL_RATING_SHORT", "ITEM_MOD_INTELLECT_SHORT", "ITEM_MOD_MANA_REGENERATION_SHORT",
         },
         benchmarks = {
-            { key = "defense_crit_immunity", label = "Defense", status = "meets_or_exceeds" },
-            { key = "avoidance_table", label = "Shield Table", status = "context_required" },
+            { key = "crit_immunity", label = "Combined Crit", status = "meets_or_exceeds", observed = 5.72, target = 5.6, unit = "% crit reduction" },
+            { key = "avoidance_table", label = "Shield Table", status = "context_required", observed = 58.86, target = 102.4, unit = "%" },
             { key = "spell_hit", label = "Spell Hit", status = "below" },
         },
     }
@@ -3757,8 +3774,8 @@ test("Strongge style tank trinkets are scenario tradeoffs while the ring is a mi
             "ITEM_MOD_DODGE_RATING_SHORT", "ITEM_MOD_PARRY_RATING_SHORT", "ITEM_MOD_BLOCK_RATING_SHORT",
         },
         benchmarks = {
-            { key = "defense_crit_immunity", label = "Defense", status = "meets_or_exceeds" },
-            { key = "avoidance_table", label = "Shield Table", status = "context_required" },
+            { key = "crit_immunity", label = "Combined Crit", status = "meets_or_exceeds", observed = 5.72, target = 5.6, unit = "% crit reduction" },
+            { key = "avoidance_table", label = "Shield Table", status = "context_required", observed = 58.86, target = 102.4, unit = "%" },
         },
     }
     local profile = {
@@ -3807,9 +3824,21 @@ test("Strongge style tank trinkets are scenario tradeoffs while the ring is a mi
     assertEquals(private.DecisionMetricText(bySlot.TRINKET, "zhCN"), "场景取舍")
     assertContains(private.EffectDecisionText(bySlot.TRINKET, "zhCN"), "大量高频可格挡攻击")
     assertContains(private.EffectDecisionText(bySlot.TRINKET, "zhCN"), "整套配装重平衡")
-    assertEquals(bySlot.FINGER.verdict, "estimate")
+    assertEquals(bySlot.FINGER.verdict, "minor")
     assertEquals(bySlot.FINGER.evidence, "medium")
+    assertEquals(bySlot.FINGER.scoreGain, 2.73)
+    assertEquals(private.RoundedStatNumber(engine.roleWeights.ITEM_MOD_DEFENSE_SKILL_RATING_SHORT), 0.91)
+    assertEquals(#bySlot.FINGER.benchmarkImpacts, 2)
+    assertEquals(bySlot.FINGER.benchmarkImpacts[1].key, "crit_immunity")
+    assertEquals(bySlot.FINGER.benchmarkImpacts[1].delta, 0.05)
+    assertEquals(bySlot.FINGER.benchmarkImpacts[2].key, "avoidance_table")
+    assertEquals(bySlot.FINGER.benchmarkImpacts[2].delta, 0.15)
+    local ringImpact = private.BenchmarkImpactText(bySlot.FINGER.benchmarkImpacts, "zhCN")
+    assertContains(ringImpact, "综合免暴基准 +0.05%")
+    assertContains(ringImpact, "免伤/格挡表覆盖基准 +0.15%")
+    assertEquals(private.RoundedStatNumber(private.BenchmarkDeltaValue("avoidance_table", "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT", 3)), 0.15)
     assertContains(private.VerdictSummary(engine, "zhCN"), "有取舍 1")
+    assertContains(private.VerdictSummary(engine, "zhCN"), "小幅 1")
 end)
 
 test("Strongge dual trinkets separate visible score from mode-specific effect value", function()
@@ -4479,6 +4508,16 @@ test("RefreshExport no-ops without frame and updates edit box with frame", funct
     assertContains(Addon.exportFrame.analysisText.text, "属性分析")
     assertContains(Addon.exportFrame.analysisText.text, "野性熊坦")
     assertFalse(Addon.exportFrame.analysisText.text:find("Feral Bear Tank", 1, true), "GUI analysis should localize role labels")
+    assertFalse(Addon.exportFrame.analysisText:IsShown())
+    assertEquals(#Addon.exportFrame.analysisPanels, 6)
+    assertTrue(Addon.exportFrame.analysisPanels[1]:IsShown())
+    assertEquals(Addon.exportFrame.analysisPanels[1].title.text, "角色与天赋")
+    assertEquals(Addon.exportFrame.analysisPanels[2].title.text, "实时角色属性")
+    assertContains(Addon.exportFrame.analysisPanels[4].title.text, "野性熊坦")
+    assertTrue(Addon.exportFrame.analysisPanels[1].height > 58)
+    assertEquals(Addon.exportFrame.analysisPanels[4].icon.texture, "Interface\\Icons\\Ability_Warrior_DefensiveStance")
+    assertTrue(Addon.exportFrame.analysisPanels[2].points[1][5] < Addon.exportFrame.analysisPanels[1].points[1][5])
+    assertTrue(Addon.exportFrame.analysisContent.height > 300)
     local sawVisualIcon = false
     for index = 1, #Addon.exportFrame.itemRows do
         local texture = Addon.exportFrame.itemRows[index].icon.texture
@@ -4657,6 +4696,11 @@ test("CreateExportFrame wires UI controls and scripts", function()
     assertTrue(exportFrame.itemListContent ~= nil)
     assertTrue(exportFrame.analysisContent ~= nil)
     assertTrue(exportFrame.analysisText ~= nil)
+    assertFalse(exportFrame.analysisText:IsShown())
+    assertEquals(#exportFrame.analysisPanels, 6)
+    assertFalse(exportFrame.analysisPanels[1]:IsShown())
+    assertTrue(exportFrame.analysisPanels[1].backdrop ~= nil)
+    assertEquals(exportFrame.analysisPanels[1].icon.texture, "Interface\\Icons\\INV_Misc_QuestionMark")
     assertTrue(exportFrame.phase2Content ~= nil)
     assertTrue(exportFrame.phase2Summary ~= nil)
     assertEquals(#exportFrame.phase2ModeButtons, 3)
@@ -5424,7 +5468,7 @@ test("known effects are role-gated and compare by the selected healing cycle", f
     assertTrue(private.BuildEffectDecision(nil, absolute, role, "holy_light").preferCandidate)
 
     local holyEngine = private.BuildGearRecommendations(profile, { absolute }, strategy, role.key, "holy_light")
-    assertEquals(holyEngine.version, 18)
+    assertEquals(holyEngine.version, 19)
     assertEquals(#holyEngine.upgrades, 1)
     assertEquals(holyEngine.upgrades[1].candidate.itemID, 30063)
     assertEquals(holyEngine.effectDecisionCount, 1)
@@ -5660,7 +5704,7 @@ test("guide route gaps and machine exports preserve evidence without inventing E
     local lines = {}
     private.AppendGearRecommendationsJson(lines, 0, engine, false)
     local json = table.concat(lines, "\n")
-    assertContains(json, "\"version\": 18")
+    assertContains(json, "\"version\": 19")
     assertContains(json, "\"effect_decision_count\": 1")
     assertContains(json, "\"route_gaps\": [")
     assertContains(json, "\"known_effect\": {")
@@ -5718,7 +5762,7 @@ test("hidden trinket effects are excluded instead of scored as upgrades", functi
     assertEquals(private.RecommendationVerdictLabel(comparison.verdict, "zhCN"), "效果无法量化")
 
     local engine = private.BuildGearRecommendations(profile, { shard }, { roles = { role } }, role.key)
-    assertEquals(engine.version, 18)
+    assertEquals(engine.version, 19)
     assertEquals(engine.unscorableRejectedCount, 1)
     assertEquals(engine.loadoutRejectedCount, 0)
     assertEquals(engine.candidateEvaluations[1].status, "unscorable")

@@ -1,6 +1,6 @@
 # Phase 2 Strategy Database
 
-TBC Gear Exporter v0.5.5 includes Phase 2 / Tier 5 strategy database version 9 and recommendation engine version 18, used by the in-game P2 Guide, explainable candidate ranking, full candidate audits, and AI/JSON exports.
+TBC Gear Exporter v0.5.6 includes Phase 2 / Tier 5 strategy database version 9 and recommendation engine version 19, used by the in-game P2 Guide, explainable candidate ranking, full candidate audits, and AI/JSON exports.
 
 ## Database Scale
 
@@ -12,7 +12,7 @@ TBC Gear Exporter v0.5.5 includes Phase 2 / Tier 5 strategy database version 9 a
 - 14 source-linked contextual item effects and all 17 Tier 5 class sets with localized 2-piece and 4-piece thresholds.
 - Complete Tier 5 representation for all 28 class-role combinations, with class and role ownership checked independently.
 - English, simplified Chinese, and traditional Chinese role, mode, cap, and route labels.
-- Database version 8, including the score-model contract for every role, exact pinned P2 static EP tables for Balance, Retribution, and Arcane, a clearly downgraded shared P1 Hunter estimate, and no definitive upgrade verdicts.
+- Database version 9, including the score-model contract for every role, exact pinned P2 static EP tables for Balance, Retribution, and Arcane, a clearly downgraded shared P1 Hunter estimate, and no definitive upgrade verdicts.
 
 The source of truth is [`TBCGearExporter/Phase2StrategyDB.lua`](../TBCGearExporter/Phase2StrategyDB.lua). Every role records its score-model kind and limitations in addition to its talent-tree rule, archetype, priorities, stat tokens, caps, modes, route goal, reference talent string where available, presets, route evidence, and guide URL. The exact support boundary and all 28 role maturity levels are in [the engine contract](engine-contract.md).
 
@@ -76,14 +76,15 @@ Curated item effects are also mode-specific gates. If the equipped item's known 
 1. Resolve critical-hit immunity before treating a threat piece as a clean upgrade. The engine targets 5.6% combined boss critical-hit reduction from defense skill above the level-70 base, resilience rating, and applicable talents.
 2. Defense skill contributes 0.04% critical-hit reduction per point above 350. At level 70, 2.3654 defense rating supplies one defense skill, about 59.1 defense rating supplies 1% critical-hit reduction, and 39.4231 resilience rating supplies 1%.
 3. A Feral bear with 3/3 Survival of the Fittest receives 3% from talents and therefore needs the remaining 2.6% from defense and resilience. This corresponds to 415 defense skill with no resilience, or about 103 resilience with no defense rating.
-4. Treat the 102.4% shield combat table as contextual. The standing paper doll does not include boss miss or temporary block effects such as Holy Shield or Shield Block.
-5. Item benchmark impacts convert ratings to their matching units: 15.77 physical hit rating per 1%, 12.62 spell hit rating per 1%, 3.94 expertise rating per expertise point, 18.9231 dodge rating per 1%, 23.6538 parry rating per 1%, and 7.8846 block rating per 1%. The paper-doll expertise value the client reports is expertise points; the engine converts it at 0.25% dodge reduction per point before comparing against the 6.5% expertise benchmark, so 26 expertise points equals the cap.
-6. Once the combined critical-hit reduction target is already met, excess resilience is heavily devalued; defense keeps partial value because it still contributes avoidance. A swap that reduces buffer but remains above target is labeled separately from one that actually falls below target.
-7. Feral Bear Balanced and Mitigation include dodge rating. Strength and critical strike remain lower-priority threat signals and become more important in Threat / farm.
-8. After gates, use Mitigation for progression/effective health, Balanced for general encounters, or Threat for farm and damage-limited pulls.
-9. Resistance presets are encounter sets, never default boss sets.
-10. Known tank trinkets are separated by decision dimension. Figurine of the Colossus is block-driven multi-target sustain, Icon of the Silver Crescent is spell-threat burst, Scarab of Displacement is a defense/loadout tool, and Moroes' Lucky Pocket Watch is an avoidance cooldown. Equal Balanced affinity across different dimensions is a scenario tradeoff, not an upgrade verdict.
-11. Ring and trinket candidates are compared against both equipped items. Mitigation and Threat / farm ranking uses the full curated affinity delta before the visible-stat estimate, so preserving one specialized trinket does not prevent replacing the other.
+4. Each defense skill also supplies 0.04% dodge, parry, block, and attacker miss. The addon's visible avoidance/block subtotal contains the first three only, so it projects defense changes at 0.12% per skill; attacker miss is explained but not invented in the paper-doll subtotal.
+5. Treat the 102.4% shield combat table as contextual. The standing paper doll does not include boss miss or temporary block effects such as Holy Shield or Shield Block.
+6. Item benchmark impacts convert ratings to their matching units: 15.77 physical hit rating per 1%, 12.62 spell hit rating per 1%, 3.94 expertise rating per expertise point, 18.9231 dodge rating per 1%, 23.6538 parry rating per 1%, and 7.8846 block rating per 1%. The paper-doll expertise value the client reports is expertise points; the engine converts it at 0.25% dodge reduction per point before comparing against the 6.5% expertise benchmark, so 26 expertise points equals the cap.
+7. Once the combined critical-hit reduction target is already met, excess resilience is heavily devalued; defense keeps partial value because it still contributes avoidance. A swap that reduces buffer but remains above target is labeled separately from one that actually falls below target.
+8. Feral Bear Balanced and Mitigation include dodge rating. Strength and critical strike remain lower-priority threat signals and become more important in Threat / farm.
+9. After gates, use Mitigation for progression/effective health, Balanced for general encounters, or Threat for farm and damage-limited pulls.
+10. Resistance presets are encounter sets, never default boss sets.
+11. Known tank trinkets are separated by decision dimension. Figurine of the Colossus is block-driven multi-target sustain, Icon of the Silver Crescent is spell-threat burst, Scarab of Displacement is a defense/loadout tool, and Moroes' Lucky Pocket Watch is an avoidance cooldown. Equal Balanced affinity across different dimensions is a scenario tradeoff, not an upgrade verdict.
+12. Ring and trinket candidates are compared against both equipped items. Mitigation and Threat / farm ranking uses the full curated affinity delta before the visible-stat estimate, so preserving one specialized trinket does not prevent replacing the other.
 
 ## Healer Rules
 
