@@ -575,6 +575,7 @@ GEAR_ENGINE.STAT_TOKEN_ALIASES = {
     ITEM_MOD_RESILIENCE_RATING = "ITEM_MOD_RESILIENCE_RATING_SHORT",
     ITEM_MOD_SPELL_DAMAGE_DONE = "ITEM_MOD_SPELL_DAMAGE_DONE_SHORT",
     ITEM_MOD_SPELL_HEALING_DONE = "ITEM_MOD_SPELL_HEALING_DONE_SHORT",
+    ITEM_MOD_SPELL_PENETRATION = "ITEM_MOD_SPELL_PENETRATION_SHORT",
     ITEM_MOD_SPELL_POWER = "ITEM_MOD_SPELL_POWER_SHORT",
     ITEM_MOD_HEALTH_REGEN = "ITEM_MOD_HEALTH_REGEN_SHORT",
 }
@@ -830,6 +831,7 @@ local ANALYSIS_LOCALIZATION = {
             ITEM_MOD_HASTE_RANGED_RATING_SHORT = "远程急速等级",
             ITEM_MOD_HASTE_SPELL_RATING_SHORT = "法术急速等级",
             ITEM_MOD_RESILIENCE_RATING_SHORT = "韧性等级",
+            ITEM_MOD_SPELL_PENETRATION_SHORT = "法术穿透",
             ITEM_MOD_EXPERTISE_RATING_SHORT = "熟练等级",
             ITEM_MOD_SPELL_POWER_SHORT = "法术强度",
             ITEM_MOD_SPELL_DAMAGE_DONE_SHORT = "法术伤害",
@@ -992,6 +994,7 @@ local ANALYSIS_LOCALIZATION = {
             ITEM_MOD_HASTE_RANGED_RATING_SHORT = "遠程加速等級",
             ITEM_MOD_HASTE_SPELL_RATING_SHORT = "法術加速等級",
             ITEM_MOD_RESILIENCE_RATING_SHORT = "韌性等級",
+            ITEM_MOD_SPELL_PENETRATION_SHORT = "法術穿透",
             ITEM_MOD_EXPERTISE_RATING_SHORT = "熟練等級",
             ITEM_MOD_SPELL_POWER_SHORT = "法術強度",
             ITEM_MOD_SPELL_DAMAGE_DONE_SHORT = "法術傷害",
@@ -1304,7 +1307,7 @@ local UI_STRINGS = {
         analysis_roles_title = "Role Strategy",
         analysis_role = "%s - confidence %s, talent points %s",
         analysis_models = "Models: %s",
-        analysis_modes = "Tank recommendation views: %s. Gear Advice recalculates when the selected view changes.",
+        analysis_modes = "Recommendation views: %s. Gear Advice recalculates when the selected view changes.",
         analysis_role_hit = "Observed hit/crit: hit melee %s, spell %s; crit melee %s, spell %s",
         analysis_role_hit_melee = "Observed melee: hit %s, expertise %s, crit %s",
         analysis_role_hit_ranged = "Observed ranged: hit %s, crit %s",
@@ -1450,7 +1453,7 @@ local UI_STRINGS = {
         analysis_roles_title = "职责策略",
         analysis_role = "%s - 置信度 %s，天赋点 %s",
         analysis_models = "模型：%s",
-        analysis_modes = "坦克策略视角：%s；装备建议会按当前选择的视角重新计算。",
+        analysis_modes = "可选策略视角：%s；装备建议会按当前选择的视角重新计算。",
         analysis_role_hit = "实测命中/暴击：近战命中 %s，法术命中 %s；近战暴击 %s，法术暴击 %s",
         analysis_role_hit_melee = "实测近战：命中 %s，熟练 %s，暴击 %s",
         analysis_role_hit_ranged = "实测远程：命中 %s，暴击 %s",
@@ -1596,7 +1599,7 @@ local UI_STRINGS = {
         analysis_roles_title = "職責策略",
         analysis_role = "%s - 信心 %s，天賦點 %s",
         analysis_models = "模型：%s",
-        analysis_modes = "坦克策略視角：%s；裝備建議會按目前選擇的視角重新計算。",
+        analysis_modes = "可選策略視角：%s；裝備建議會按目前選擇的視角重新計算。",
         analysis_role_hit = "實測命中/致命：近戰命中 %s，法術命中 %s；近戰致命 %s，法術致命 %s",
         analysis_role_hit_melee = "實測近戰：命中 %s，熟練 %s，致命 %s",
         analysis_role_hit_ranged = "實測遠程：命中 %s，致命 %s",
@@ -1633,9 +1636,9 @@ GEAR_ENGINE.REPORT_TERMS = {
         top_role = "Primary role", core_stats = "Live core stats", categories = "Categories", top_stats = "Candidate stat totals",
         role_snapshot = "Role Snapshot", role = "Role", confidence = "Confidence", talent_points = "Talent points",
         models = "Models", current_highlights = "Current gear highlights", gear_recommendations = "Gear Recommendations",
-        phase2_strategy = "Phase 2 Strategy", mode = "Strategy mode", available_modes = "Available views", set_goal = "Set / route goal", active_sets = "Active tier sets", target_preset = "Reference gear set",
+        phase2_strategy = "Phase 2 Strategy", mode = "Strategy mode", available_modes = "Available views", gear_context = "Gear context", set_goal = "Set / route goal", active_sets = "Active tier sets", target_preset = "Reference gear set",
         target_progress = "Saved progress", missing_targets = "Next target items", caps = "Caps and gates", research_evidence = "Research evidence",
-        sources = "Sources", no_preset = "No WoWSims reference gear route; use the class guide and treat ranking as an estimate.",
+        sources = "Sources", no_preset = "No WoWSims reference gear route; use the class guide and treat ranking as an estimate.", no_pvp_preset = "PvE simulator targets are hidden in PvP mode; use the PvP guide and compare survivability, control, and offensive tradeoffs.",
         priority_stats = "Priority stats", benchmark_gaps = "Key benchmark checks", route_priorities = "Guide route gaps", caveat = "Limit",
         other_candidates = "Other Candidate Decisions", candidate_recommended = "selected recommendation", candidate_lower_ranked = "another candidate ranked higher for this slot",
         candidate_benchmark_gate = "blocked by an unmet benchmark", candidate_below_threshold = "visible score did not clear the +2 recommendation threshold",
@@ -1644,7 +1647,7 @@ GEAR_ENGINE.REPORT_TERMS = {
         candidate_loadout_mismatch = "conflicts with the equipped weapon layout", candidate_shield_required = "removing the shield would break this tank role's block model", candidate_unsupported_slot = "unsupported equipment slot",
         effect_choice = "Effect choice", set_impact = "Set impact",
         score_model = "Score model", score_reason = "Why", item_data = "Item data completeness",
-        model_phase_ep = "source-backed static P2 EP", model_cross_phase_shared_ep = "cross-phase/shared EP estimate", model_ordered_stat_heuristic = "ordered-stat heuristic",
+        model_phase_ep = "source-backed static P2 EP", model_cross_phase_shared_ep = "cross-phase/shared EP estimate", model_ordered_stat_heuristic = "ordered-stat heuristic", model_pvp_context_heuristic = "PvP context heuristic",
         model_source = "source context", formula_net = "net", formula_no_delta = "no weighted visible-stat change", unscored_changes = "Not scored",
         unscored_no_weight = "no weight for this role", unscored_wrong_slot = "not used by this role in this slot",
         talent_context = "Talent context", context_not_scored = "context only; not converted to EP", talent_bonus = "talent",
@@ -1680,9 +1683,9 @@ GEAR_ENGINE.REPORT_TERMS = {
         top_role = "主要职责", core_stats = "实时核心属性", categories = "物品分类", top_stats = "候选库存属性合计",
         role_snapshot = "职责判断", role = "职责", confidence = "置信度", talent_points = "天赋点",
         models = "分析模型", current_highlights = "当前装备属性重点", gear_recommendations = "换装建议",
-        phase2_strategy = "P2 配装攻略", mode = "策略模式", available_modes = "可切换视角", set_goal = "套装 / 路线目标", active_sets = "当前套装", target_preset = "参考目标套装",
+        phase2_strategy = "P2 配装攻略", mode = "策略模式", available_modes = "可切换视角", gear_context = "装备场景", set_goal = "套装 / 路线目标", active_sets = "当前套装", target_preset = "参考目标套装",
         target_progress = "本地收集进度", missing_targets = "下一批目标物品", caps = "属性阈值与硬门槛", research_evidence = "研究证据",
-        sources = "资料来源", no_preset = "该专精没有 WoWSims 参考装备路线；请结合职业攻略，并把排序视为估算。",
+        sources = "资料来源", no_preset = "该专精没有 WoWSims 参考装备路线；请结合职业攻略，并把排序视为估算。", no_pvp_preset = "PvP 模式已隐藏 PvE 模拟器目标；请结合 PvP 攻略，并比较生存、控制与输出取舍。",
         priority_stats = "优先属性", benchmark_gaps = "关键基准检查", route_priorities = "攻略路线缺口", caveat = "分析限制",
         other_candidates = "其他候选结论", candidate_recommended = "已选为建议", candidate_lower_ranked = "同栏位有排名更高的候选",
         candidate_benchmark_gate = "被尚未达标的属性门槛拦截", candidate_below_threshold = "可见属性评分未达到 +2 推荐阈值",
@@ -1691,7 +1694,7 @@ GEAR_ENGINE.REPORT_TERMS = {
         candidate_loadout_mismatch = "与当前武器组合冲突", candidate_shield_required = "移除盾牌会破坏该坦克职责的格挡模型", candidate_unsupported_slot = "不支持的装备栏位",
         effect_choice = "效果选择", set_impact = "套装影响",
         score_model = "评分模型", score_reason = "原因", item_data = "物品数据完整度",
-        model_phase_ep = "有明确来源的 P2 静态 EP", model_cross_phase_shared_ep = "跨阶段 / 共用 EP 估算", model_ordered_stat_heuristic = "属性顺序启发式",
+        model_phase_ep = "有明确来源的 P2 静态 EP", model_cross_phase_shared_ep = "跨阶段 / 共用 EP 估算", model_ordered_stat_heuristic = "属性顺序启发式", model_pvp_context_heuristic = "PvP 场景启发式",
         model_source = "来源环境", formula_net = "净值", formula_no_delta = "没有加权可见属性变化", unscored_changes = "未计分",
         unscored_no_weight = "当前职责没有权重", unscored_wrong_slot = "当前职责在此栏位不使用",
         talent_context = "天赋联动", context_not_scored = "仅作情境参考，未折算进 EP", talent_bonus = "天赋",
@@ -1727,9 +1730,9 @@ GEAR_ENGINE.REPORT_TERMS = {
         top_role = "主要職責", core_stats = "即時核心屬性", categories = "物品分類", top_stats = "候選庫存屬性合計",
         role_snapshot = "職責判斷", role = "職責", confidence = "信心", talent_points = "天賦點",
         models = "分析模型", current_highlights = "目前裝備屬性重點", gear_recommendations = "換裝建議",
-        phase2_strategy = "P2 配裝攻略", mode = "策略模式", available_modes = "可切換視角", set_goal = "套裝 / 路線目標", active_sets = "目前套裝", target_preset = "參考目標套裝",
+        phase2_strategy = "P2 配裝攻略", mode = "策略模式", available_modes = "可切換視角", gear_context = "裝備場景", set_goal = "套裝 / 路線目標", active_sets = "目前套裝", target_preset = "參考目標套裝",
         target_progress = "本地收集進度", missing_targets = "下一批目標物品", caps = "屬性門檻與硬條件", research_evidence = "研究證據",
-        sources = "資料來源", no_preset = "該專精沒有 WoWSims 參考裝備路線；請結合職業攻略，並把排序視為估算。",
+        sources = "資料來源", no_preset = "該專精沒有 WoWSims 參考裝備路線；請結合職業攻略，並把排序視為估算。", no_pvp_preset = "PvP 模式已隱藏 PvE 模擬器目標；請結合 PvP 攻略，並比較生存、控制與輸出取捨。",
         priority_stats = "優先屬性", benchmark_gaps = "關鍵基準檢查", route_priorities = "攻略路線缺口", caveat = "分析限制",
         other_candidates = "其他候選結論", candidate_recommended = "已選為建議", candidate_lower_ranked = "同欄位有排名更高的候選",
         candidate_benchmark_gate = "被尚未達標的屬性門檻攔截", candidate_below_threshold = "可見屬性評分未達到 +2 推薦門檻",
@@ -1738,7 +1741,7 @@ GEAR_ENGINE.REPORT_TERMS = {
         candidate_loadout_mismatch = "與目前武器組合衝突", candidate_shield_required = "移除盾牌會破壞該坦克職責的格擋模型", candidate_unsupported_slot = "不支援的裝備欄位",
         effect_choice = "效果選擇", set_impact = "套裝影響",
         score_model = "評分模型", score_reason = "原因", item_data = "物品資料完整度",
-        model_phase_ep = "有明確來源的 P2 靜態 EP", model_cross_phase_shared_ep = "跨階段 / 共用 EP 估算", model_ordered_stat_heuristic = "屬性順序啟發式",
+        model_phase_ep = "有明確來源的 P2 靜態 EP", model_cross_phase_shared_ep = "跨階段 / 共用 EP 估算", model_ordered_stat_heuristic = "屬性順序啟發式", model_pvp_context_heuristic = "PvP 場景啟發式",
         model_source = "來源環境", formula_net = "淨值", formula_no_delta = "沒有加權可見屬性變化", unscored_changes = "未計分",
         unscored_no_weight = "目前職責沒有權重", unscored_wrong_slot = "目前職責在此欄位不使用",
         talent_context = "天賦聯動", context_not_scored = "僅作情境參考，未折算進 EP", talent_bonus = "天賦",
@@ -1806,6 +1809,7 @@ local STAT_LABELS = {
     ITEM_MOD_CRIT_RATING_SHORT = "Crit Rating",
     ITEM_MOD_HASTE_RATING_SHORT = "Haste Rating",
     ITEM_MOD_RESILIENCE_RATING_SHORT = "Resilience Rating",
+    ITEM_MOD_SPELL_PENETRATION_SHORT = "Spell Penetration",
     ITEM_MOD_EXPERTISE_RATING_SHORT = "Expertise Rating",
     ITEM_MOD_ATTACK_POWER_SHORT = "Attack Power",
     ITEM_MOD_RANGED_ATTACK_POWER_SHORT = "Ranged Attack Power",
@@ -1854,6 +1858,7 @@ local STAT_ORDER = {
     "ITEM_MOD_HIT_MELEE_RATING_SHORT",
     "ITEM_MOD_HIT_RANGED_RATING_SHORT",
     "ITEM_MOD_HIT_SPELL_RATING_SHORT",
+    "ITEM_MOD_SPELL_PENETRATION_SHORT",
     "ITEM_MOD_CRIT_RATING_SHORT",
     "ITEM_MOD_CRIT_MELEE_RATING_SHORT",
     "ITEM_MOD_CRIT_RANGED_RATING_SHORT",
@@ -4758,6 +4763,191 @@ local function BuildRoleBenchmarks(role, observed, talentMap)
     return benchmarks
 end
 
+GEAR_ENGINE.PVP_CONTEXT_DETECTION = {
+    minimumResilience = 80,
+    minimumResiliencePieces = 3,
+}
+
+GEAR_ENGINE.PVP_BENCHMARKS = {
+    melee_special_hit = {
+        target = 5,
+        labels = { enUS = "Same-level PvP melee hit", zhCN = "同级玩家近战命中", zhTW = "同級玩家近戰命中" },
+        note = "Same-level player target. Talents, racials, and opponent avoidance still require matchup review.",
+    },
+    ranged_hit = {
+        target = 5,
+        labels = { enUS = "Same-level PvP ranged hit", zhCN = "同级玩家远程命中", zhTW = "同級玩家遠程命中" },
+        note = "Same-level player target. Talents, racials, and opponent avoidance still require matchup review.",
+    },
+    spell_hit = {
+        target = 4,
+        labels = { enUS = "Same-level PvP spell hit", zhCN = "同级玩家法术命中", zhTW = "同級玩家法術命中" },
+        note = "Baseline PvP spell-hit plan against same-level players; school resistance, racials, and talents remain matchup-specific.",
+    },
+}
+
+function GEAR_ENGINE.CopyStrategyTable(source)
+    local copy = {}
+    for key, value in pairs(source or {}) do
+        copy[key] = value
+    end
+    return copy
+end
+
+function GEAR_ENGINE.DetectGearContext(profile)
+    local resilience = 0
+    local resiliencePieces = 0
+    local equippedGearCount = 0
+    local equippedItems = profile and profile.equipped and profile.equipped.items or {}
+
+    for index = 1, #equippedItems do
+        local item = equippedItems[index]
+        local slotKey = GEAR_ENGINE.EquipmentSlotKey(item)
+        if slotKey and slotKey ~= "SHIRT" and slotKey ~= "TABARD" then
+            equippedGearCount = equippedGearCount + 1
+            local itemResilience = 0
+            for statIndex = 1, #(item and item.stats or {}) do
+                local stat = item.stats[statIndex]
+                if GEAR_ENGINE.NormalizeStatToken(stat and stat.token) == "ITEM_MOD_RESILIENCE_RATING_SHORT" then
+                    itemResilience = itemResilience + (tonumber(stat.value) or 0)
+                end
+            end
+            if itemResilience > 0 then
+                resiliencePieces = resiliencePieces + 1
+                resilience = resilience + itemResilience
+            end
+        end
+    end
+
+    local liveResilience = tonumber(GEAR_ENGINE.RatingValue(profile and profile.characterStats, "resilience"))
+    if liveResilience and liveResilience > resilience then
+        resilience = liveResilience
+    end
+    local thresholds = GEAR_ENGINE.PVP_CONTEXT_DETECTION
+    local pvpDetected = resilience >= thresholds.minimumResilience
+        and resiliencePieces >= thresholds.minimumResiliencePieces
+    local key = pvpDetected and "pvp" or (resiliencePieces > 0 and "mixed" or "pve")
+    local confidence = pvpDetected and math.min(100, math.floor((resilience / thresholds.minimumResilience) * 45 + resiliencePieces * 8))
+        or (key == "mixed" and math.min(70, math.floor(resiliencePieces * 12 + resilience / 5)) or 100)
+
+    return {
+        key = key,
+        confidence = confidence,
+        equippedResilience = RoundedStatNumber(resilience),
+        resiliencePieceCount = resiliencePieces,
+        equippedGearCount = equippedGearCount,
+        recommendedMode = pvpDetected and "pvp" or nil,
+        detection = "equipped_resilience_density",
+        minimumResilience = thresholds.minimumResilience,
+        minimumResiliencePieces = thresholds.minimumResiliencePieces,
+    }
+end
+
+function GEAR_ENGINE.GearContextText(context, locale)
+    context = context or {}
+    locale = PromptLocale(locale or ClientLocale())
+    local detected = context.key or "pve"
+    local active = context.analysisKey or (context.modeKey == "pvp" and "pvp" or "pve")
+    local modeSource = context.modeSource
+    local resilience = CompactNumber(context.equippedResilience or 0, 2)
+    local pieces = tostring(context.resiliencePieceCount or 0)
+    local labels = {
+        enUS = {
+            pvp = "PvP gear detected", mixed = "Mixed PvE/PvP gear detected", pve = "No full PvP set detected",
+            active_pvp = "PvP / Arena analysis", active_pve = "PvE / boss analysis",
+            auto = "auto-selected", manual = "manually selected", suffix = "%s resilience across %s pieces",
+        },
+        zhCN = {
+            pvp = "检测到 PvP 装备", mixed = "检测到 PvE/PvP 混合装备", pve = "未检测到成套 PvP 装备",
+            active_pvp = "PvP / 竞技场分析", active_pve = "PvE / 首领分析",
+            auto = "自动选择", manual = "手动选择", suffix = "韧性 %s，%s 件装备提供韧性",
+        },
+        zhTW = {
+            pvp = "偵測到 PvP 裝備", mixed = "偵測到 PvE/PvP 混合裝備", pve = "未偵測到成套 PvP 裝備",
+            active_pvp = "PvP / 競技場分析", active_pve = "PvE / 首領分析",
+            auto = "自動選擇", manual = "手動選擇", suffix = "韌性 %s，%s 件裝備提供韌性",
+        },
+    }
+    local terms = labels[locale] or labels.enUS
+    local source = modeSource == "auto" and terms.auto or (modeSource == "manual" and terms.manual or nil)
+    local activeLabel = terms["active_" .. active] or tostring(active)
+    if source then
+        local open, close = locale == "enUS" and " (" or "（", locale == "enUS" and ")" or "）"
+        activeLabel = activeLabel .. open .. source .. close
+    end
+    return tostring(terms[detected] or detected) .. " · " .. activeLabel .. " · "
+        .. string.format(terms.suffix, resilience, pieces)
+end
+
+function GEAR_ENGINE.PvPBenchmarkStatus(benchmark, definition)
+    local copy = GEAR_ENGINE.CopyStrategyTable(benchmark)
+    local observed = tonumber(copy.effectiveObserved or copy.observed)
+    copy.target = definition.target
+    copy.labels = definition.labels
+    copy.label = definition.labels.enUS
+    copy.unit = "% hit"
+    copy.kind = "pvp_cap"
+    copy.note = definition.note
+    if observed then
+        copy.status = observed >= definition.target and "meets_or_exceeds"
+            or (observed >= definition.target * 0.9 and "near" or "below")
+    else
+        copy.status = "unknown"
+    end
+    return copy
+end
+
+function GEAR_ENGINE.ContextualizeRole(role, modeKey)
+    if not role or modeKey ~= "pvp" or role.contextKey == "pvp" then
+        return role
+    end
+
+    local contextual = GEAR_ENGINE.CopyStrategyTable(role)
+    contextual.contextKey = "pvp"
+    contextual.benchmarks = {}
+    contextual.caps = {}
+    for index = 1, #(role.benchmarks or {}) do
+        local benchmark = role.benchmarks[index]
+        local definition = GEAR_ENGINE.PVP_BENCHMARKS[benchmark.key]
+        if definition then
+            local pvpBenchmark = GEAR_ENGINE.PvPBenchmarkStatus(benchmark, definition)
+            contextual.benchmarks[#contextual.benchmarks + 1] = pvpBenchmark
+            contextual.caps[#contextual.caps + 1] = {
+                key = pvpBenchmark.key,
+                target = pvpBenchmark.target,
+                unit = pvpBenchmark.unit,
+                kind = pvpBenchmark.kind,
+                labels = pvpBenchmark.labels,
+                note = pvpBenchmark.note,
+            }
+        end
+    end
+
+    contextual.presets = {}
+    contextual.setGoal = "Preserve PvP survivability, control utility, and same-level hit before trading resilience for offense"
+    contextual.setGoalLabels = {
+        enUS = contextual.setGoal,
+        zhCN = "先保留 PvP 生存、控制功能与同级命中，再决定是否用韧性换输出",
+        zhTW = "先保留 PvP 生存、控制功能與同級命中，再決定是否用韌性換輸出",
+    }
+    contextual.guideUrl = "https://www.wowhead.com/tbc/guides/pvp"
+    contextual.routeEvidence = "pvp_guide"
+    contextual.researchEvidence = "pvp_guide"
+    contextual.scoreModel = {
+        version = 1,
+        kind = "pvp_context_heuristic",
+        sourceKey = "wowhead_pvp",
+        sourcePath = "https://www.wowhead.com/tbc/guides/pvp",
+        sourcePhase = 2,
+        sourceSpec = role.label,
+        supportsDefinitiveVerdicts = false,
+        limitations = {
+            "Arena bracket, composition, opponent, control plan, and hidden item/set effects remain matchup-specific.",
+        },
+    }
+    return contextual
+end
+
 local function StrategyClassRoles(classToken)
     local phaseRoles = P2_STRATEGY_DB.GetClassRoles and P2_STRATEGY_DB.GetClassRoles(ClassToken(classToken))
     if phaseRoles and #phaseRoles > 0 then
@@ -4774,6 +4964,7 @@ local function BuildStrategyBook(profile, chartStats)
     local race = characterStats and characterStats.race or GetPlayerRaceInfo()
     local group = characterStats and characterStats.group or GetGroupContext()
     local roles = {}
+    local gearContext = GEAR_ENGINE.DetectGearContext(profile)
     local sourceRoles = StrategyClassRoles(classToken)
 
     for index = 1, #sourceRoles do
@@ -4832,7 +5023,7 @@ local function BuildStrategyBook(profile, chartStats)
     end)
 
     return {
-        version = 6,
+        version = 7,
         generatedAt = Now(),
         classToken = classToken,
         raceToken = race and race.english or "UNKNOWN",
@@ -4840,6 +5031,7 @@ local function BuildStrategyBook(profile, chartStats)
         raceNotes = race and race.notes or {},
         groupNotes = group and group.notes or {},
         benchmarkReferences = TBC_BENCHMARKS,
+        gearContext = gearContext,
         phaseDatabase = {
             version = P2_STRATEGY_DB.version,
             phase = P2_STRATEGY_DB.phase,
@@ -5030,6 +5222,14 @@ function GEAR_ENGINE.BuildRoleStatWeights(role, modeKey)
         end
     end
 
+    if modeKey == "pvp" then
+        weights.ITEM_MOD_RESILIENCE_RATING_SHORT = math.max(weights.ITEM_MOD_RESILIENCE_RATING_SHORT or 0, 2.25)
+        weights.ITEM_MOD_STAMINA_SHORT = math.max(weights.ITEM_MOD_STAMINA_SHORT or 0, 1.50)
+        if role and role.archetype == "caster" then
+            weights.ITEM_MOD_SPELL_PENETRATION_SHORT = math.max(weights.ITEM_MOD_SPELL_PENETRATION_SHORT or 0, 1.10)
+        end
+    end
+
     -- Benchmark boosts scale weights the role already declares; a cap gap does
     -- not invent a weight for a stat the role never scores.
     for index = 1, #(role and role.benchmarks or {}) do
@@ -5048,6 +5248,10 @@ function GEAR_ENGINE.BuildRoleStatWeights(role, modeKey)
                 elseif token == "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT" then
                     multiplier = 0.55
                 end
+            elseif role and role.contextKey == "pvp"
+                and benchmark.status == "meets_or_exceeds"
+                and (benchmark.key == "melee_special_hit" or benchmark.key == "ranged_hit" or benchmark.key == "spell_hit") then
+                multiplier = 0.15
             elseif benchmark.key == "avoidance_table"
                 and benchmark.status == "context_required"
                 and token == "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT" then
@@ -5181,6 +5385,13 @@ function GEAR_ENGINE.ItemRoleFit(item, role)
             end
             if signals.secondary[token] then
                 fit.secondarySignalCount = fit.secondarySignalCount + 1
+            end
+            if role and role.contextKey == "pvp" and token == "ITEM_MOD_RESILIENCE_RATING_SHORT" then
+                fit.secondarySignalCount = fit.secondarySignalCount + 1
+            end
+            if role and role.contextKey == "pvp" and role.archetype == "caster"
+                and token == "ITEM_MOD_SPELL_PENETRATION_SHORT" then
+                fit.primarySignalCount = fit.primarySignalCount + 1
             end
             if signals.conflict[token] then
                 fit.conflictSignalCount = fit.conflictSignalCount + 1
@@ -5866,6 +6077,9 @@ function GEAR_ENGINE.EquippedWeaponRoute(profile)
 end
 
 function GEAR_ENGINE.FindPhase2Preset(role, modeKey, profile)
+    if modeKey == "pvp" then
+        return nil
+    end
     local presets = {}
     local fallback
     local hasRequestedMode = false
@@ -6054,8 +6268,12 @@ end
 
 function GEAR_ENGINE.CompareItems(profile, currentItem, candidateItem, strategyBook, roleKey, weights, modeKey)
     strategyBook = strategyBook or BuildStrategyBook(profile, BuildChartStats({ candidateItem }))
-    local role = GEAR_ENGINE.FindStrategyRole(strategyBook, roleKey)
-    local mode = GEAR_ENGINE.FindStrategyMode(role, modeKey)
+    local gearContext = strategyBook.gearContext or GEAR_ENGINE.DetectGearContext(profile)
+    local baseRole = GEAR_ENGINE.FindStrategyRole(strategyBook, roleKey)
+    local requestedModeKey = modeKey or gearContext.recommendedMode
+    local mode = GEAR_ENGINE.FindStrategyMode(baseRole, requestedModeKey)
+    local role = GEAR_ENGINE.ContextualizeRole(baseRole, mode and mode.key)
+    mode = GEAR_ENGINE.FindStrategyMode(role, mode and mode.key)
     weights = weights or GEAR_ENGINE.BuildRoleStatWeights(role, mode and mode.key)
     local currentScore = currentItem and GEAR_ENGINE.ItemRoleScore(currentItem, role, weights) or 0
     local candidateScore, matchedStats = GEAR_ENGINE.ItemRoleScore(candidateItem, role, weights)
@@ -6073,6 +6291,16 @@ function GEAR_ENGINE.CompareItems(profile, currentItem, candidateItem, strategyB
     local roleFit = GEAR_ENGINE.ItemRoleFit(candidateItem, role)
     local effectDecision = GEAR_ENGINE.BuildEffectDecision(currentItem, candidateItem, role, mode and mode.key or "balanced")
     local setImpacts = GEAR_ENGINE.BuildSetImpacts(profile, currentItem, candidateItem, role, mode and mode.key)
+    local losesPvPResilience = false
+    if mode and mode.key == "pvp" then
+        for index = 1, #statLosses do
+            if GEAR_ENGINE.NormalizeStatToken(statLosses[index] and statLosses[index].token) == "ITEM_MOD_RESILIENCE_RATING_SHORT"
+                and (tonumber(statLosses[index].delta) or 0) < 0 then
+                losesPvPResilience = true
+                break
+            end
+        end
+    end
     local breaksActiveSetBonus = GEAR_ENGINE.HasSetImpact(setImpacts, "breaks_active_bonus")
     local gainsSetBonus = GEAR_ENGINE.HasSetImpact(setImpacts, "gains_bonus")
     local comparable = visibleComparable or effectDecision.canCompare or #setImpacts > 0
@@ -6085,6 +6313,7 @@ function GEAR_ENGINE.CompareItems(profile, currentItem, candidateItem, strategyB
         or (not loadoutCompatible and (loadoutReason == "shield_required" and "shield_required" or "loadout_mismatch"))
         or (not roleFit.suitable and "role_mismatch")
         or (not comparable and "unscorable")
+        or (losesPvPResilience and "tradeoff")
         or ((breaksActiveSetBonus or effectDecision.preferCurrent or effectDecision.contextTradeoff) and "tradeoff")
         or ((effectDecision.preferCandidate or gainsSetBonus) and "review")
         or GEAR_ENGINE.RecommendationVerdict(evidence, scoreGain, benchmarkImpacts, role.scoreModel)
@@ -6125,6 +6354,7 @@ function GEAR_ENGINE.CompareItems(profile, currentItem, candidateItem, strategyB
         setImpacts = setImpacts,
         breaksActiveSetBonus = breaksActiveSetBonus,
         gainsSetBonus = gainsSetBonus,
+        losesPvPResilience = losesPvPResilience,
         blockedByHardGate = blockedByHardGate,
         evidence = evidence,
         dataCompleteness = evidence,
@@ -6172,8 +6402,17 @@ end
 
 function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyBook, roleKey, modeKey)
     strategyBook = strategyBook or BuildStrategyBook(profile, BuildChartStats(candidateItems or {}))
-    local role = GEAR_ENGINE.FindStrategyRole(strategyBook, roleKey)
-    local mode = GEAR_ENGINE.FindStrategyMode(role, modeKey)
+    local detectedContext = strategyBook.gearContext or GEAR_ENGINE.DetectGearContext(profile)
+    local context = GEAR_ENGINE.CopyStrategyTable(detectedContext)
+    local baseRole = GEAR_ENGINE.FindStrategyRole(strategyBook, roleKey)
+    local automaticModeKey = not modeKey and detectedContext.recommendedMode or nil
+    local mode = GEAR_ENGINE.FindStrategyMode(baseRole, modeKey or automaticModeKey)
+    local role = GEAR_ENGINE.ContextualizeRole(baseRole, mode and mode.key)
+    mode = GEAR_ENGINE.FindStrategyMode(role, mode and mode.key)
+    context.modeKey = mode and mode.key or "balanced"
+    context.analysisKey = context.modeKey == "pvp" and "pvp" or "pve"
+    context.modeSource = modeKey and "manual" or (automaticModeKey and "auto" or "default")
+    context.autoSelected = context.modeSource == "auto"
     local weights = GEAR_ENGINE.BuildRoleStatWeights(role, mode and mode.key)
     local currentBySlot = {}
     local currentOptionsBySlot = {}
@@ -6357,7 +6596,7 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
     end
 
     return {
-        version = 19,
+        version = 20,
         generatedAt = Now(),
         roleKey = role.key,
         roleLabel = role.label,
@@ -6367,6 +6606,7 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
         scoreModel = role.scoreModel,
         modeKey = mode and mode.key or "balanced",
         modeLabels = mode and mode.labels,
+        context = context,
         availableModes = GEAR_ENGINE.AvailableStrategyModes(role),
         roleWeights = weights,
         talentMap = role.talentMap,
@@ -6989,6 +7229,16 @@ function GEAR_ENGINE.AppendGearRecommendationsJson(lines, indent, engine, comma)
     AppendIndented(lines, indent + 2, JsonField("mode_key", engine.modeKey, true))
     AppendIndented(lines, indent + 2, JsonField("mode_label_en", engine.modeLabels and engine.modeLabels.enUS, true))
     AppendIndented(lines, indent + 2, JsonField("mode_label_zh_cn", engine.modeLabels and engine.modeLabels.zhCN, true))
+    local context = engine.context or {}
+    AppendIndented(lines, indent + 2, "\"gear_context\": {")
+    AppendIndented(lines, indent + 4, JsonField("detected_key", context.key, true))
+    AppendIndented(lines, indent + 4, JsonField("analysis_key", context.analysisKey, true))
+    AppendIndented(lines, indent + 4, JsonField("mode_source", context.modeSource, true))
+    AppendIndented(lines, indent + 4, JsonField("auto_selected", context.autoSelected == true, true))
+    AppendIndented(lines, indent + 4, JsonField("equipped_resilience", context.equippedResilience, true))
+    AppendIndented(lines, indent + 4, JsonField("resilience_piece_count", context.resiliencePieceCount, true))
+    AppendIndented(lines, indent + 4, JsonField("equipped_gear_count", context.equippedGearCount, false))
+    AppendIndented(lines, indent + 2, "},")
     AppendIndented(lines, indent + 2, JsonField("equipped_count", engine.equippedCount, true))
     AppendIndented(lines, indent + 2, JsonField("candidate_count", engine.candidateCount, true))
     AppendIndented(lines, indent + 2, JsonField("role_rejected_count", engine.roleRejectedCount or 0, true))
@@ -7134,6 +7384,16 @@ function GEAR_ENGINE.AvailableModesText(engine, locale)
 end
 
 function GEAR_ENGINE.Phase2EvidenceLabel(engine, locale)
+    if engine and engine.modeKey == "pvp" then
+        local promptLocale = PromptLocale(locale or ClientLocale())
+        if promptLocale == "enUS" then
+            return "Blizzard resilience mechanics + Wowhead TBC PvP guides"
+        end
+        if promptLocale == "zhTW" then
+            return "Blizzard 韌性機制 + Wowhead TBC PvP 攻略"
+        end
+        return "Blizzard 韧性机制 + Wowhead TBC PvP 攻略"
+    end
     local evidence = engine and engine.phase2 and (engine.phase2.routeEvidence or engine.phase2.evidence) or "guide"
     local promptLocale = PromptLocale(locale or ClientLocale())
     if promptLocale == "enUS" then
@@ -7165,7 +7425,8 @@ function GEAR_ENGINE.Phase2CapText(engine, locale)
         local status = localized and localized.statuses and localized.statuses[cap.status] or cap.status
         local observed = GEAR_ENGINE.BenchmarkObservedText(cap, locale)
         local target = type(cap.target) == "number" and CompactNumber(cap.target, 2) or "?"
-        values[#values + 1] = tostring(label) .. " " .. observed .. "/" .. target .. tostring(cap.unit or "") .. " (" .. tostring(status or "unknown") .. ")"
+        local unit = localized and localized.units and localized.units[cap.unit] or cap.unit
+        values[#values + 1] = tostring(label) .. " " .. observed .. "/" .. target .. tostring(unit or "") .. " (" .. tostring(status or "unknown") .. ")"
     end
     return #values > 0 and table.concat(values, "; ") or GEAR_ENGINE.ReportTerms(locale).none
 end
@@ -7173,6 +7434,9 @@ end
 function GEAR_ENGINE.Phase2PresetText(engine, locale, maxMissing)
     local progress = engine and engine.phase2 and engine.phase2.presetProgress
     if not progress or not progress.available then
+        if engine and engine.modeKey == "pvp" then
+            return GEAR_ENGINE.ReportTerms(locale).no_pvp_preset
+        end
         return GEAR_ENGINE.ReportTerms(locale).no_preset
     end
 
@@ -7520,6 +7784,7 @@ function GEAR_ENGINE.AppendGearRecommendationsMarkdown(lines, engine, locale)
     lines[#lines + 1] = ""
     lines[#lines + 1] = "- " .. terms.role .. ": " .. tostring(GEAR_ENGINE.GearRoleLabel(engine, locale)) .. " (" .. terms.confidence .. " " .. tostring(engine.roleConfidence or 0) .. ")"
     lines[#lines + 1] = "- " .. terms.mode .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.Phase2ModeLabel(engine, locale))
+    lines[#lines + 1] = "- " .. terms.gear_context .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.GearContextText(engine.context, locale))
     lines[#lines + 1] = "- " .. terms.available_modes .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.AvailableModesText(engine, locale))
     lines[#lines + 1] = "- " .. terms.caps .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.Phase2CapText(engine, locale))
     lines[#lines + 1] = "- " .. terms.set_goal .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.Phase2Goal(engine, locale))
@@ -7586,6 +7851,7 @@ function GEAR_ENGINE.AppendGearRecommendationsText(lines, engine, locale)
     lines[#lines + 1] = terms.gear_recommendations
     lines[#lines + 1] = terms.role .. ": " .. tostring(GEAR_ENGINE.GearRoleLabel(engine, locale)) .. "; " .. terms.confidence .. " " .. tostring(engine.roleConfidence or 0)
     lines[#lines + 1] = terms.mode .. ": " .. GEAR_ENGINE.Phase2ModeLabel(engine, locale)
+    lines[#lines + 1] = terms.gear_context .. ": " .. GEAR_ENGINE.GearContextText(engine.context, locale)
     lines[#lines + 1] = terms.available_modes .. ": " .. GEAR_ENGINE.AvailableModesText(engine, locale)
     lines[#lines + 1] = terms.caps .. ": " .. GEAR_ENGINE.Phase2CapText(engine, locale)
     lines[#lines + 1] = terms.set_goal .. ": " .. GEAR_ENGINE.Phase2Goal(engine, locale)
@@ -7715,6 +7981,9 @@ function GEAR_ENGINE.RoleUsesHitModel(role)
 end
 
 local function AnalysisBenchmarkLabel(benchmark, locale)
+    if benchmark and benchmark.kind == "pvp_cap" and benchmark.labels then
+        return GEAR_ENGINE.LocalizedDataLabel(benchmark.labels, locale, benchmark.label or benchmark.key)
+    end
     return AnalysisLookup(locale, "benchmarks", benchmark and benchmark.key, benchmark and (benchmark.label or benchmark.key) or "Benchmark")
 end
 
@@ -7892,7 +8161,7 @@ function GEAR_ENGINE.BuildRoleAnalysisLines(role, locale)
         LForLocale(locale, "analysis_models", AnalysisModelLabels(role.models, locale)),
     }
 
-    if role.archetype == "tank" then
+    if #(role.modes or {}) > 1 then
         lines[#lines + 1] = LForLocale(locale, "analysis_modes", GEAR_ENGINE.AvailableModesText({
             availableModes = GEAR_ENGINE.AvailableStrategyModes(role),
         }, locale))
@@ -7982,7 +8251,13 @@ function GEAR_ENGINE.BuildStatsAnalysisSections(profile, chartStats, strategyBoo
             AnalysisValue(spell.manaRegenCasting, nil, locale)),
     })
 
-    local contextLines = {}
+    local analysisContext = GEAR_ENGINE.CopyStrategyTable(strategyBook.gearContext or GEAR_ENGINE.DetectGearContext(profile))
+    analysisContext.modeKey = analysisContext.recommendedMode or "balanced"
+    analysisContext.analysisKey = analysisContext.modeKey == "pvp" and "pvp" or "pve"
+    analysisContext.modeSource = analysisContext.recommendedMode and "auto" or "default"
+    local contextLines = {
+        GEAR_ENGINE.ReportTerms(locale).gear_context .. ": " .. GEAR_ENGINE.GearContextText(analysisContext, locale),
+    }
     AppendFirstAnalysisNotes(contextLines, locale, "analysis_race_note", AnalysisRaceNotes(race, locale))
     AppendFirstAnalysisNotes(contextLines, locale, "analysis_group_note", AnalysisGroupNotes(group, locale))
     if #contextLines > 0 then
@@ -7997,7 +8272,7 @@ function GEAR_ENGINE.BuildStatsAnalysisSections(profile, chartStats, strategyBoo
     end
 
     for roleIndex = 1, math.min(#roles, 3) do
-        local role = roles[roleIndex]
+        local role = GEAR_ENGINE.ContextualizeRole(roles[roleIndex], analysisContext.modeKey)
         sections[#sections + 1] = GEAR_ENGINE.AnalysisSection("role_" .. tostring(roleIndex),
             LForLocale(locale, "analysis_role", AnalysisRoleLabel(role, locale), AnalysisValue(role.confidence, nil, locale), AnalysisValue(role.talentPoints, nil, locale)),
             GEAR_ENGINE.AnalysisRoleIcon(profile, role), GEAR_ENGINE.BuildRoleAnalysisLines(role, locale), roleIndex == 1 and "role_primary" or "role_secondary")
@@ -8892,6 +9167,10 @@ function Addon:BuildTextExport(scope, profile, items, categories, buckets, filte
     return table.concat(lines, "\n")
 end
 
+function Addon:RequestedStrategyModeKey()
+    return self.strategyModeManuallySelected and self.selectedStrategyModeKey or nil
+end
+
 function Addon:BuildExport(scope, format, filter)
     scope = scope or "all"
     format = NormalizeExportFormat(format or self.exportFormat or "ai")
@@ -8976,7 +9255,7 @@ function Addon:BuildExport(scope, format, filter)
 
     local chartStats = BuildChartStats(items)
     local strategyBook = BuildStrategyBook(profile, chartStats)
-    local gearEngine = GEAR_ENGINE.BuildGearRecommendations(profile, items, strategyBook, self.selectedAdviceRoleKey, self.selectedStrategyModeKey)
+    local gearEngine = GEAR_ENGINE.BuildGearRecommendations(profile, items, strategyBook, self.selectedAdviceRoleKey, self:RequestedStrategyModeKey())
 
     local lines = {
         "AI_READY_WOW_TBC_INVENTORY_EXPORT v1",
@@ -9388,7 +9667,7 @@ function Addon:LayoutGearAdvice()
         return 0
     end
 
-    local offset = 124
+    local offset = 148
     local summaryText = frame.adviceSummary.GetText and frame.adviceSummary:GetText() or ""
     local summaryHeight = math.max(92, GEAR_ENGINE.AnalysisTextHeight(frame.adviceSummary, summaryText, 34, 58))
     frame.adviceSummary:ClearAllPoints()
@@ -9522,6 +9801,7 @@ function Addon:RefreshGearAdvice(profile, engine)
     self:RefreshAdviceRoleButtons(engine, locale)
     self:RefreshAdviceModeButtons(engine, locale)
     self.exportFrame.adviceSummary:SetText(LForLocale(locale, "advice_summary", roleLabel, engine.equippedCount or 0, engine.candidateCount or 0, engine.roleRejectedCount or 0, #(engine.upgrades or {}))
+        .. "\n" .. GEAR_ENGINE.ReportTerms(locale).gear_context .. ": " .. GEAR_ENGINE.GearContextText(engine.context, locale)
         .. "\n" .. LForLocale(locale, "advice_verdicts", GEAR_ENGINE.VerdictSummary(engine, locale))
         .. "\n" .. LForLocale(locale, "advice_talent_map", GEAR_ENGINE.TalentMapSummary(engine.talentMap, locale, 4))
         .. "\n" .. GEAR_ENGINE.ReportTerms(locale).active_sets .. ": " .. GEAR_ENGINE.ActiveSetsText(engine, locale, 2)
@@ -9851,7 +10131,8 @@ function Addon:RefreshPhase2Strategy(profile, engine)
         tostring(phase2.databaseVersion or "?"),
         tostring(phase2.patch or "?")))
     self.exportFrame.phase2Details:SetText(
-        LForLocale(locale, "phase2_set_goal", GEAR_ENGINE.Phase2Goal(engine, locale))
+        GEAR_ENGINE.ReportTerms(locale).gear_context .. ": " .. GEAR_ENGINE.GearContextText(engine and engine.context, locale)
+        .. "\n" .. LForLocale(locale, "phase2_set_goal", GEAR_ENGINE.Phase2Goal(engine, locale))
         .. "\n" .. GEAR_ENGINE.ReportTerms(locale).active_sets .. ": " .. GEAR_ENGINE.ActiveSetsText(engine, locale, 3)
         .. "\n" .. LForLocale(locale, "phase2_caps", GEAR_ENGINE.Phase2CapText(engine, locale))
         .. "\n" .. LForLocale(locale, "phase2_preset", GEAR_ENGINE.Phase2PresetText(engine, locale, 0))
@@ -9894,7 +10175,7 @@ function Addon:RefreshPhase2Strategy(profile, engine)
         self.exportFrame.phase2TargetsContent:SetHeight(math.max(42, (#(progress.missing or {}) * 44) + 8))
     end
     if self.exportFrame.phase2Content.SetHeight then
-        self.exportFrame.phase2Content:SetHeight(math.max(442, (#(progress.missing or {}) * 44) + 310) + (prioritiesLines * 14) + 44)
+        self.exportFrame.phase2Content:SetHeight(math.max(490, (#(progress.missing or {}) * 44) + 358) + (prioritiesLines * 14) + 44)
     end
     return #(progress.missing or {})
 end
@@ -9929,7 +10210,7 @@ function Addon:RefreshExport(scope, format, filter)
     local profile = self:GetProfile()
     local chartStats = BuildChartStats(items)
     local strategyBook = BuildStrategyBook(profile, chartStats)
-    local gearEngine = GEAR_ENGINE.BuildGearRecommendations(profile, items, strategyBook, self.selectedAdviceRoleKey, self.selectedStrategyModeKey)
+    local gearEngine = GEAR_ENGINE.BuildGearRecommendations(profile, items, strategyBook, self.selectedAdviceRoleKey, self:RequestedStrategyModeKey())
     self.selectedAdviceRoleKey = gearEngine.roleKey
     self.selectedStrategyModeKey = gearEngine.modeKey
     local overviewRoleCount = 0
@@ -10271,13 +10552,16 @@ function Addon:CreateExportFrame()
     adviceModeLabel:SetText(L("phase2_mode_hint"))
 
     local adviceModeButtons = {}
-    for index = 1, 3 do
+    for index = 1, 4 do
         local modeButton = CreateFrame("Button", nil, adviceContent, "UIPanelButtonTemplate")
-        SetFrameSize(modeButton, 150, 22)
-        modeButton:SetPoint("TOPLEFT", adviceContent, "TOPLEFT", 4 + ((index - 1) * 158), -92)
+        SetFrameSize(modeButton, 232, 22)
+        local column = (index - 1) % 2
+        local row = math.floor((index - 1) / 2)
+        modeButton:SetPoint("TOPLEFT", adviceContent, "TOPLEFT", 4 + (column * 238), -92 - (row * 24))
         modeButton:SetScript("OnClick", function(self)
             if self.modeKey then
                 Addon.selectedStrategyModeKey = self.modeKey
+                Addon.strategyModeManuallySelected = true
                 Addon.selectedAdviceIndex = 1
                 Addon:RefreshExport()
             end
@@ -10287,7 +10571,7 @@ function Addon:CreateExportFrame()
     end
 
     local adviceSummary = adviceContent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    adviceSummary:SetPoint("TOPLEFT", 4, -124)
+    adviceSummary:SetPoint("TOPLEFT", 4, -148)
     adviceSummary:SetWidth(478)
     adviceSummary:SetHeight(92)
     adviceSummary:SetJustifyH("LEFT")
@@ -10486,13 +10770,16 @@ function Addon:CreateExportFrame()
     phase2ModeHint:SetText(L("phase2_mode_hint"))
 
     local phase2ModeButtons = {}
-    for index = 1, 3 do
+    for index = 1, 4 do
         local modeButton = CreateFrame("Button", nil, phase2Content, "UIPanelButtonTemplate")
-        SetFrameSize(modeButton, 150, 22)
-        modeButton:SetPoint("TOPLEFT", phase2Content, "TOPLEFT", 4 + ((index - 1) * 158), -68)
+        SetFrameSize(modeButton, 232, 22)
+        local column = (index - 1) % 2
+        local row = math.floor((index - 1) / 2)
+        modeButton:SetPoint("TOPLEFT", phase2Content, "TOPLEFT", 4 + (column * 238), -68 - (row * 24))
         modeButton:SetScript("OnClick", function(self)
             if self.modeKey then
                 Addon.selectedStrategyModeKey = self.modeKey
+                Addon.strategyModeManuallySelected = true
                 Addon.selectedAdviceIndex = 1
                 Addon:RefreshExport()
             end
@@ -10502,17 +10789,17 @@ function Addon:CreateExportFrame()
     end
 
     local phase2Details = phase2Content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    phase2Details:SetPoint("TOPLEFT", 4, -100)
+    phase2Details:SetPoint("TOPLEFT", 4, -124)
     phase2Details:SetPoint("RIGHT", phase2Content, "RIGHT", -8, 0)
     phase2Details:SetJustifyH("LEFT")
 
     local phase2TargetsTitle = phase2Content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    phase2TargetsTitle:SetPoint("TOPLEFT", 4, -240)
+    phase2TargetsTitle:SetPoint("TOPLEFT", 4, -288)
     phase2TargetsTitle:SetText(L("phase2_targets"))
 
     local phase2TargetsContent = CreateFrame("Frame", nil, phase2Content)
     SetFrameSize(phase2TargetsContent, 486, 42)
-    phase2TargetsContent:SetPoint("TOPLEFT", phase2Content, "TOPLEFT", 0, -280)
+    phase2TargetsContent:SetPoint("TOPLEFT", phase2Content, "TOPLEFT", 0, -328)
 
     local phase2TargetsEmpty = phase2TargetsContent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     phase2TargetsEmpty:SetPoint("TOPLEFT", 4, -4)
@@ -11031,6 +11318,9 @@ if _G.TBCGearExporterTestMode then
         BenchmarkObservedValue = BenchmarkObservedValue,
         BenchmarkStatus = BenchmarkStatus,
         BuildRoleBenchmarks = BuildRoleBenchmarks,
+        DetectGearContext = GEAR_ENGINE.DetectGearContext,
+        GearContextText = GEAR_ENGINE.GearContextText,
+        ContextualizeRole = GEAR_ENGINE.ContextualizeRole,
         StrategyClassRoles = StrategyClassRoles,
         BuildStrategyBook = BuildStrategyBook,
         RoleHighlightStat = GEAR_ENGINE.RoleHighlightStat,
