@@ -1159,7 +1159,7 @@ end)
 
 test("Phase 2 database covers every TBC class and PvE specialization", function()
     local db = assert(_G.TBCGearExporterP2DB)
-    assertEquals(db.version, 10)
+    assertEquals(db.version, 11)
     assertEquals(db.phase, 2)
     assertEquals(db.patch, "2.5.6")
     assertEquals(#db.sources, 4)
@@ -1512,7 +1512,7 @@ test("Boaky PvP gear auto-selects Arena analysis and protects resilience", funct
     assertTrue(medallionFit.suitable)
     assertEquals(medallionFit.reason, "role_signals_present")
     local engine = private.BuildGearRecommendations(profile, { corruptorLegs }, strategy, "demonology_warlock")
-    assertEquals(engine.version, 20)
+    assertEquals(engine.version, 21)
     assertEquals(engine.modeKey, "pvp")
     assertTrue(engine.context.autoSelected)
     assertEquals(engine.context.analysisKey, "pvp")
@@ -1764,7 +1764,7 @@ test("Yamede dual wield evaluates generic one-hand candidates against both weapo
     assertEquals(private.EquipmentSlotKey(spiteblade), "MAINHAND")
 
     local engine = private.BuildGearRecommendations(profile, { spiteblade }, strategy, role.key, "balanced")
-    assertEquals(engine.version, 20)
+    assertEquals(engine.version, 21)
     assertEquals(engine.candidateCount, 1)
     assertEquals(#engine.upgrades, 1)
     local upgrade = engine.upgrades[1]
@@ -1850,7 +1850,7 @@ test("Yamede candidate audit explains the three items that were not recommended"
     local strategy = private.BuildStrategyBook(profile, private.BuildChartStats(candidates))
     local role = private.FindStrategyRole(strategy, "beast_mastery")
     local engine = private.BuildGearRecommendations(profile, candidates, strategy, role.key, "balanced")
-    assertEquals(engine.version, 20)
+    assertEquals(engine.version, 21)
     assertEquals(engine.candidateCount, 4)
     assertEquals(#engine.upgrades, 1)
     assertEquals(engine.upgrades[1].candidate.itemID, 28729)
@@ -1952,7 +1952,7 @@ test("Yamede Survival talents adjust the hit cap and explain Expose Weakness", f
     assertEquals(private.BenchmarkObservedText(role.benchmarks[1], "zhCN"), "7.93 + 3 天赋 = 10.93")
 
     local engine = private.BuildGearRecommendations(profile, { spiteblade, dangerLegs }, strategy, role.key, "balanced")
-    assertEquals(engine.version, 20)
+    assertEquals(engine.version, 21)
     assertEquals(engine.gateRejectedCount, 0)
     assertEquals(#engine.upgrades, 2)
     assertContains(private.Phase2CapText(engine, "zhCN"), "7.93 + 3 天赋 = 10.93/9%")
@@ -3149,7 +3149,7 @@ test("talent strategy maps every selected talent and applies ranked key effects"
     local retribution = private.FindStrategyRole(strategy, "retribution_dps")
     local map = protection.talentMap
 
-    assertEquals(strategy.version, 7)
+    assertEquals(strategy.version, 8)
     assertEquals(strategy.roles[1].key, "protection_tank")
     assertEquals(map.selectedCount, 9)
     assertEquals(map.selectedPoints, 27)
@@ -3389,7 +3389,7 @@ test("item comparison switches role weights and rejects mismatched slots", funct
     assertEquals(private.FindStrategyRole(nil, "missing").key, "general_inventory")
 
     local damageEngine = private.BuildGearRecommendations(profile, { candidate }, strategy, "retribution_dps")
-    assertEquals(damageEngine.version, 20)
+    assertEquals(damageEngine.version, 21)
     assertEquals(damageEngine.roleKey, "retribution_dps")
     assertEquals(#damageEngine.availableRoles, 3)
     assertEquals(damageEngine.talentMap.effects[1].key, "crusade")
@@ -3470,7 +3470,7 @@ test("holy paladin role fit rejects physical crit bracers before upgrade scoring
     assertFalse(incidentalIntellectFit.suitable, "incidental intellect must not make physical gear healer-suitable")
 
     local engine = private.BuildGearRecommendations(profile, { physicalCandidate, healingCandidate }, strategy, "holy_healer")
-    assertEquals(engine.version, 20)
+    assertEquals(engine.version, 21)
     assertEquals(engine.candidateCount, 1)
     assertEquals(engine.roleRejectedCount, 1)
     assertEquals(engine.candidateEvaluations[1].status, "role_mismatch")
@@ -3670,7 +3670,7 @@ test("protection paladin strategy compares visible gains and losses without inve
     assertEquals(role.observed.gearStatHighlights[1].value, 20)
     assertFalse(role.observed.gearStatHighlights[1].value == 30, "candidate stamina must not leak into current gear highlights")
 
-    assertEquals(engine.version, 20)
+    assertEquals(engine.version, 21)
     assertEquals(#engine.upgrades, 1)
     assertEquals(engine.upgrades[1].evidence, "high")
     assertEquals(engine.upgrades[1].verdict, "estimate")
@@ -4141,6 +4141,150 @@ test("Strongge dual trinkets separate visible score from mode-specific effect va
     assertTrue(Addon.exportFrame.adviceContent.height >= layout.rowsTop + Addon.exportFrame.adviceRowsHeight + 16)
 end)
 
+test("Strongge threat mode rejects mitigation boots that lose threat stats", function()
+    local sourceRole = assert(_G.TBCGearExporterP2DB.GetRole("PALADIN", "protection_tank"))
+    local role = {}
+    for key, value in pairs(sourceRole) do role[key] = value end
+    role.confidence = 100
+    role.benchmarks = {
+        { key = "crit_immunity", label = "Combined crit immunity", status = "meets_or_exceeds", observed = 5.8, target = 5.6, unit = "%" },
+        { key = "avoidance_table", label = "Shield table", status = "context_required", observed = 50.96, target = 102.4, unit = "%" },
+        { key = "spell_hit", label = "Spell hit", status = "below", observed = 5.79, target = 16, unit = "%" },
+    }
+    local current = {
+        itemID = 29254, name = "正义旅途长靴", category = "Gear", equipSlot = "INVTYPE_FEET",
+        classID = 4, subClassID = 4, itemLevel = 110, quality = 4, slotKey = "FEET", source = "equipped",
+        stats = {
+            { token = "ITEM_MOD_STAMINA_SHORT", value = 34 },
+            { token = "ITEM_MOD_INTELLECT_SHORT", value = 26 },
+            { token = "RESISTANCE0_NAME", value = 955 },
+            { token = "ITEM_MOD_DEFENSE_SKILL_RATING", value = 23 },
+            { token = "ITEM_MOD_SPELL_POWER", value = 27 },
+        },
+    }
+    local candidate = {
+        itemID = 32267, name = "复原之靴", category = "Gear", equipSlot = "INVTYPE_FEET",
+        classID = 4, subClassID = 4, itemLevel = 128, quality = 4, slotKey = "FEET", source = "bags",
+        stats = {
+            { token = "ITEM_MOD_STAMINA_SHORT", value = 51 },
+            { token = "EMPTY_SOCKET_RED", value = 1 },
+            { token = "EMPTY_SOCKET_YELLOW", value = 1 },
+            { token = "RESISTANCE0_NAME", value = 1105 },
+            { token = "ITEM_MOD_BLOCK_RATING", value = 25 },
+            { token = "ITEM_MOD_DEFENSE_SKILL_RATING", value = 25 },
+        },
+    }
+    local profile = {
+        player = "Strongge", classEnglish = "PALADIN", locale = "zhCN",
+        equipped = { items = { current } },
+    }
+    local strategy = { roles = { role } }
+
+    local threat = private.BuildGearRecommendations(profile, { candidate }, strategy, role.key, "threat")
+    assertEquals(#threat.upgrades, 0)
+    assertEquals(threat.modeRejectedCount, 1)
+    assertEquals(threat.candidateEvaluations[1].status, "mode_mismatch")
+    local comparison = threat.candidateEvaluations[1].comparison
+    assertTrue(comparison.scoreGain > 2)
+    assertTrue(comparison.rankingScoreGain < 0)
+    assertTrue(comparison.modeObjectiveMismatch)
+    assertEquals(comparison.modeObjective.key, "threat")
+    assertTrue(comparison.modeObjective.otherScoreGain > 0)
+    assertContains(private.ModeObjectiveText(comparison, "zhCN"), "仇恨输出")
+    assertContains(private.CandidateEvaluationReasonText(threat.candidateEvaluations[1], "zhCN"), "另一项坦克维度")
+    assertContains(private.NoUpgradeText(threat, "zhCN"), "当前目标")
+    assertEquals(private.GearModeObjectiveText(threat, "zhCN"), "仇恨输出")
+    for index = 1, #threat.priorityStats do
+        assertFalse(threat.priorityStats[index].token == "ITEM_MOD_STAMINA_SHORT")
+        assertFalse(threat.priorityStats[index].token == "ITEM_MOD_BLOCK_RATING_SHORT")
+    end
+
+    local mitigation = private.BuildGearRecommendations(profile, { candidate }, strategy, role.key, "mitigation")
+    assertEquals(#mitigation.upgrades, 1)
+    assertEquals(mitigation.upgrades[1].candidate.itemID, 32267)
+    assertEquals(mitigation.upgrades[1].modeObjective.key, "survival")
+    assertTrue(mitigation.upgrades[1].rankingScoreGain > 0)
+    assertContains(private.DecisionMetricText(mitigation.upgrades[1], "zhCN"), "生存 / 减伤")
+
+    local jsonLines = {}
+    private.AppendGearRecommendationsJson(jsonLines, 0, threat, false)
+    local json = table.concat(jsonLines, "\n")
+    assertContains(json, '"mode_rejected_count": 1')
+    assertContains(json, '"mode_objective_key": "threat"')
+    assertContains(json, '"mode_objective_label_zh_cn": "仇恨输出"')
+    assertContains(json, '"mode_objective": {')
+    assertContains(json, '"objective_mismatch": true')
+    assertContains(json, '"ranking_score_gain":')
+
+    resetRuntimeState(Addon)
+    Addon:CreateExportFrame()
+    assertEquals(Addon:RefreshGearAdvice(profile, threat), 0)
+    assertContains(Addon.exportFrame.adviceOther.text, "复原之靴")
+    assertContains(Addon.exportFrame.adviceOther.text, "仇恨输出")
+    assertContains(Addon.exportFrame.adviceCaveat.text, "模式目标: 仇恨输出")
+    assertEquals(Addon.exportFrame.compareDetails.text, "")
+end)
+
+test("all tank roles declare separate mitigation and threat objectives", function()
+    local roles = {
+        _G.TBCGearExporterP2DB.GetRole("DRUID", "bear_tank"),
+        _G.TBCGearExporterP2DB.GetRole("WARRIOR", "warrior_protection"),
+        _G.TBCGearExporterP2DB.GetRole("PALADIN", "protection_tank"),
+    }
+    for index = 1, #roles do
+        local mitigation = private.FindStrategyMode(roles[index], "mitigation")
+        local threat = private.FindStrategyMode(roles[index], "threat")
+        assertEquals(mitigation.objective.key, "survival")
+        assertEquals(threat.objective.key, "threat")
+        assertTrue(#mitigation.objective.statTokens >= 8)
+        assertTrue(#threat.objective.statTokens >= 5)
+    end
+end)
+
+test("protection warrior objective ranking separates threat gear from mitigation gear", function()
+    local sourceRole = assert(_G.TBCGearExporterP2DB.GetRole("WARRIOR", "warrior_protection"))
+    local role = {}
+    for key, value in pairs(sourceRole) do role[key] = value end
+    role.confidence = 100
+    role.benchmarks = {
+        { key = "crit_immunity", label = "Combined crit immunity", status = "meets_or_exceeds", observed = 7, target = 5.6, unit = "%" },
+        { key = "avoidance_table", label = "Shield table", status = "context_required", observed = 60, target = 102.4, unit = "%" },
+        { key = "melee_special_hit", label = "Melee hit", status = "below", observed = 2, target = 9, unit = "%" },
+        { key = "expertise_dodge", label = "Expertise", status = "below", observed = 1, target = 6.5, unit = "%" },
+    }
+    local current = {
+        itemID = 90001, name = "Survival Ring", category = "Gear", equipSlot = "INVTYPE_FINGER",
+        classID = 4, subClassID = 0, quality = 4, slotKey = "FINGER", source = "equipped",
+        stats = {
+            { token = "ITEM_MOD_STAMINA_SHORT", value = 30 },
+            { token = "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT", value = 20 },
+        },
+    }
+    local candidate = {
+        itemID = 90002, name = "Threat Ring", category = "Gear", equipSlot = "INVTYPE_FINGER",
+        classID = 4, subClassID = 0, quality = 4, slotKey = "FINGER", source = "bags",
+        stats = {
+            { token = "ITEM_MOD_STAMINA_SHORT", value = 10 },
+            { token = "ITEM_MOD_HIT_RATING_SHORT", value = 20 },
+            { token = "ITEM_MOD_EXPERTISE_RATING_SHORT", value = 20 },
+        },
+    }
+    local profile = { classEnglish = "WARRIOR", locale = "enUS", equipped = { items = { current } } }
+    local strategy = { roles = { role } }
+
+    local threat = private.BuildGearRecommendations(profile, { candidate }, strategy, role.key, "threat")
+    assertEquals(#threat.upgrades, 1)
+    assertEquals(threat.upgrades[1].modeObjective.key, "threat")
+    assertTrue(threat.upgrades[1].rankingScoreGain > 0)
+    assertTrue(threat.upgrades[1].modeObjectiveTradeoff)
+    assertEquals(threat.upgrades[1].verdict, "tradeoff")
+
+    local mitigation = private.BuildGearRecommendations(profile, { candidate }, strategy, role.key, "mitigation")
+    assertEquals(#mitigation.upgrades, 0)
+    assertEquals(mitigation.candidateEvaluations[1].status, "below_threshold")
+    assertTrue(mitigation.candidateEvaluations[1].comparison.modeObjective.scoreGain < 0)
+end)
+
 test("container item values cover missing API, table info, tuple info, and link fallback", function()
     local oldInfo = _G.GetContainerItemInfo
     local oldContainerInfo = _G.C_Container.GetContainerItemInfo
@@ -4428,7 +4572,7 @@ test("exports include categories, bank data, gear filters, stats, and empty mess
     assertContains(allExport, "\"loadout_rejected_count\":")
     assertContains(allExport, "\"unscorable_rejected_count\":")
     assertContains(allExport, "\"phase2_strategy\": {")
-    assertContains(allExport, "\"database_version\": 10")
+    assertContains(allExport, "\"database_version\": 11")
     assertContains(allExport, "\"phase\": 2")
     assertContains(allExport, "\"mode_key\": \"balanced\"")
     assertContains(allExport, "\"mode_label_zh_cn\": \"均衡\"")
@@ -5361,8 +5505,8 @@ test("Thatdruid report uses the talent-aware combined crit benchmark", function(
     }
     local strategy = private.BuildStrategyBook(profile, private.BuildChartStats({}))
     local bear = private.FindStrategyRole(strategy, "bear_tank")
-    assertEquals(strategy.version, 7)
-    assertEquals(strategy.phaseDatabase.version, 10)
+    assertEquals(strategy.version, 8)
+    assertEquals(strategy.phaseDatabase.version, 11)
     assertEquals(bear.observed.tank.critReduction, 5.03)
     assertEquals(bear.observed.tank.critImmunity.gap, 0.57)
     assertEquals(private.BenchmarkObservedValue("crit_immunity", bear.observed), 5.03)
@@ -5660,7 +5804,7 @@ test("known effects are role-gated and compare by the selected healing cycle", f
     assertTrue(private.BuildEffectDecision(nil, absolute, role, "holy_light").preferCandidate)
 
     local holyEngine = private.BuildGearRecommendations(profile, { absolute }, strategy, role.key, "holy_light")
-    assertEquals(holyEngine.version, 20)
+    assertEquals(holyEngine.version, 21)
     assertEquals(#holyEngine.upgrades, 1)
     assertEquals(holyEngine.upgrades[1].candidate.itemID, 30063)
     assertEquals(holyEngine.effectDecisionCount, 1)
@@ -5896,7 +6040,7 @@ test("guide route gaps and machine exports preserve evidence without inventing E
     local lines = {}
     private.AppendGearRecommendationsJson(lines, 0, engine, false)
     local json = table.concat(lines, "\n")
-    assertContains(json, "\"version\": 20")
+    assertContains(json, "\"version\": 21")
     assertContains(json, "\"effect_decision_count\": 1")
     assertContains(json, "\"route_gaps\": [")
     assertContains(json, "\"known_effect\": {")
@@ -5954,7 +6098,7 @@ test("hidden trinket effects are excluded instead of scored as upgrades", functi
     assertEquals(private.RecommendationVerdictLabel(comparison.verdict, "zhCN"), "效果无法量化")
 
     local engine = private.BuildGearRecommendations(profile, { shard }, { roles = { role } }, role.key)
-    assertEquals(engine.version, 20)
+    assertEquals(engine.version, 21)
     assertEquals(engine.unscorableRejectedCount, 1)
     assertEquals(engine.loadoutRejectedCount, 0)
     assertEquals(engine.candidateEvaluations[1].status, "unscorable")
