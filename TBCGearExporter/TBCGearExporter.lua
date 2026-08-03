@@ -1250,6 +1250,7 @@ local UI_STRINGS = {
         advice_no_scorable_upgrades = "No reliable upgrade is recommended; %d comparison(s) include unparsed use, proc, set, gem, or enchant effects.",
         advice_no_legal_upgrades = "No legal upgrade is recommended; %d candidate(s) conflict with the currently equipped weapon loadout.",
         advice_no_effect_upgrades = "No upgrade is recommended; %d candidate(s) have a weaker known effect for this strategy mode.",
+        advice_no_mode_upgrades = "No upgrade matches the selected objective; %d candidate(s) improve another tank dimension instead.",
         advice_empty_slot = "Fill empty slot",
         advice_replace = "Estimated +%s score; %s",
         advice_ilvl = "item level %s → %s",
@@ -1396,6 +1397,7 @@ local UI_STRINGS = {
         advice_no_scorable_upgrades = "没有可可靠推荐的升级；%d 项比较包含尚未解析的使用、触发、套装、宝石或附魔效果。",
         advice_no_legal_upgrades = "没有合法的升级建议；%d 件候选与当前武器组合冲突。",
         advice_no_effect_upgrades = "没有推荐升级；%d 件候选的已知效果不适合当前策略模式。",
+        advice_no_mode_upgrades = "没有符合当前目标的升级；%d 件候选提升的是另一项坦克维度。",
         advice_empty_slot = "填补空栏位",
         advice_replace = "预计评分 +%s；%s",
         advice_ilvl = "物品等级 %s → %s",
@@ -1542,6 +1544,7 @@ local UI_STRINGS = {
         advice_no_scorable_upgrades = "沒有可可靠推薦的升級；%d 項比較包含尚未解析的使用、觸發、套裝、寶石或附魔效果。",
         advice_no_legal_upgrades = "沒有合法的升級建議；%d 件候選與目前武器組合衝突。",
         advice_no_effect_upgrades = "沒有推薦升級；%d 件候選的已知效果不適合目前策略模式。",
+        advice_no_mode_upgrades = "沒有符合目前目標的升級；%d 件候選提升的是另一項坦克維度。",
         advice_empty_slot = "填補空欄位",
         advice_replace = "預估評分 +%s；%s",
         advice_ilvl = "物品等級 %s → %s",
@@ -1642,10 +1645,11 @@ GEAR_ENGINE.REPORT_TERMS = {
         priority_stats = "Priority stats", benchmark_gaps = "Key benchmark checks", route_priorities = "Guide route gaps", caveat = "Limit",
         other_candidates = "Other Candidate Decisions", candidate_recommended = "selected recommendation", candidate_lower_ranked = "another candidate ranked higher for this slot",
         candidate_benchmark_gate = "blocked by an unmet benchmark", candidate_below_threshold = "visible score did not clear the +2 recommendation threshold",
+        candidate_mode_mismatch = "improves another tank dimension but not the selected objective",
         candidate_role_mismatch = "stats do not fit the selected role", candidate_class_mismatch = "not compatible with this class",
         candidate_unscorable = "visible data or hidden effects cannot be scored reliably", candidate_effect_inferior = "equipped known effect is preferred in this mode",
         candidate_loadout_mismatch = "conflicts with the equipped weapon layout", candidate_shield_required = "removing the shield would break this tank role's block model", candidate_unsupported_slot = "unsupported equipment slot",
-        effect_choice = "Effect choice", set_impact = "Set impact",
+        effect_choice = "Effect choice", set_impact = "Set impact", mode_objective = "Mode objective", outside_objective = "Other dimensions",
         score_model = "Score model", score_reason = "Why", item_data = "Item data completeness",
         model_phase_ep = "source-backed static P2 EP", model_cross_phase_shared_ep = "cross-phase/shared EP estimate", model_ordered_stat_heuristic = "ordered-stat heuristic", model_pvp_context_heuristic = "PvP context heuristic",
         model_source = "source context", formula_net = "net", formula_no_delta = "no weighted visible-stat change", unscored_changes = "Not scored",
@@ -1689,10 +1693,11 @@ GEAR_ENGINE.REPORT_TERMS = {
         priority_stats = "优先属性", benchmark_gaps = "关键基准检查", route_priorities = "攻略路线缺口", caveat = "分析限制",
         other_candidates = "其他候选结论", candidate_recommended = "已选为建议", candidate_lower_ranked = "同栏位有排名更高的候选",
         candidate_benchmark_gate = "被尚未达标的属性门槛拦截", candidate_below_threshold = "可见属性评分未达到 +2 推荐阈值",
+        candidate_mode_mismatch = "提升的是另一项坦克维度，不符合当前模式目标",
         candidate_role_mismatch = "属性不适合当前职责", candidate_class_mismatch = "当前职业无法使用",
         candidate_unscorable = "可见数据或隐藏效果不足以可靠评分", candidate_effect_inferior = "当前模式更适合已装备物品的已知效果",
         candidate_loadout_mismatch = "与当前武器组合冲突", candidate_shield_required = "移除盾牌会破坏该坦克职责的格挡模型", candidate_unsupported_slot = "不支持的装备栏位",
-        effect_choice = "效果选择", set_impact = "套装影响",
+        effect_choice = "效果选择", set_impact = "套装影响", mode_objective = "模式目标", outside_objective = "其他维度",
         score_model = "评分模型", score_reason = "原因", item_data = "物品数据完整度",
         model_phase_ep = "有明确来源的 P2 静态 EP", model_cross_phase_shared_ep = "跨阶段 / 共用 EP 估算", model_ordered_stat_heuristic = "属性顺序启发式", model_pvp_context_heuristic = "PvP 场景启发式",
         model_source = "来源环境", formula_net = "净值", formula_no_delta = "没有加权可见属性变化", unscored_changes = "未计分",
@@ -1736,10 +1741,11 @@ GEAR_ENGINE.REPORT_TERMS = {
         priority_stats = "優先屬性", benchmark_gaps = "關鍵基準檢查", route_priorities = "攻略路線缺口", caveat = "分析限制",
         other_candidates = "其他候選結論", candidate_recommended = "已選為建議", candidate_lower_ranked = "同欄位有排名更高的候選",
         candidate_benchmark_gate = "被尚未達標的屬性門檻攔截", candidate_below_threshold = "可見屬性評分未達到 +2 推薦門檻",
+        candidate_mode_mismatch = "提升的是另一項坦克維度，不符合目前模式目標",
         candidate_role_mismatch = "屬性不適合目前職責", candidate_class_mismatch = "目前職業無法使用",
         candidate_unscorable = "可見資料或隱藏效果不足以可靠評分", candidate_effect_inferior = "目前模式更適合已裝備物品的已知效果",
         candidate_loadout_mismatch = "與目前武器組合衝突", candidate_shield_required = "移除盾牌會破壞該坦克職責的格擋模型", candidate_unsupported_slot = "不支援的裝備欄位",
-        effect_choice = "效果選擇", set_impact = "套裝影響",
+        effect_choice = "效果選擇", set_impact = "套裝影響", mode_objective = "模式目標", outside_objective = "其他維度",
         score_model = "評分模型", score_reason = "原因", item_data = "物品資料完整度",
         model_phase_ep = "有明確來源的 P2 靜態 EP", model_cross_phase_shared_ep = "跨階段 / 共用 EP 估算", model_ordered_stat_heuristic = "屬性順序啟發式", model_pvp_context_heuristic = "PvP 場景啟發式",
         model_source = "來源環境", formula_net = "淨值", formula_no_delta = "沒有加權可見屬性變化", unscored_changes = "未計分",
@@ -5023,7 +5029,7 @@ local function BuildStrategyBook(profile, chartStats)
     end)
 
     return {
-        version = 7,
+        version = 8,
         generatedAt = Now(),
         classToken = classToken,
         raceToken = race and race.english or "UNKNOWN",
@@ -5199,7 +5205,7 @@ function GEAR_ENGINE.AvailableStrategyModes(role)
     local modes = {}
     for index = 1, #(role and role.modes or {}) do
         local mode = role.modes[index]
-        modes[#modes + 1] = { key = mode.key, labels = mode.labels, focus = mode.focus or {} }
+        modes[#modes + 1] = { key = mode.key, labels = mode.labels, focus = mode.focus or {}, objective = mode.objective }
     end
     if #modes == 0 then
         modes[1] = { key = "balanced", labels = { enUS = "Balanced", zhCN = "均衡", zhTW = "均衡" }, focus = {} }
@@ -5305,6 +5311,46 @@ function GEAR_ENGINE.BuildRoleStatWeights(role, modeKey)
     end
 
     return weights
+end
+
+GEAR_ENGINE.MODE_OBJECTIVE_THRESHOLD = 2
+
+function GEAR_ENGINE.BuildModeObjectiveBreakdown(scoreComponents, mode)
+    local objective = mode and mode.objective
+    if not objective or not objective.key then
+        return nil
+    end
+
+    local objectiveTokens = {}
+    for index = 1, #(objective.statTokens or {}) do
+        objectiveTokens[GEAR_ENGINE.NormalizeStatToken(objective.statTokens[index])] = true
+    end
+
+    local objectiveComponents = {}
+    local objectiveTotal = 0
+    local visibleTotal = 0
+    for index = 1, #(scoreComponents or {}) do
+        local component = scoreComponents[index]
+        local contribution = tonumber(component and component.contribution) or 0
+        visibleTotal = visibleTotal + contribution
+        if objectiveTokens[GEAR_ENGINE.NormalizeStatToken(component and component.token)] then
+            objectiveComponents[#objectiveComponents + 1] = component
+            objectiveTotal = objectiveTotal + contribution
+        end
+    end
+
+    objectiveTotal = RoundedStatNumber(objectiveTotal)
+    visibleTotal = RoundedStatNumber(visibleTotal)
+    return {
+        key = objective.key,
+        labels = objective.labels,
+        statTokens = objective.statTokens or {},
+        components = objectiveComponents,
+        scoreGain = objectiveTotal,
+        otherScoreGain = RoundedStatNumber(visibleTotal - objectiveTotal),
+        visibleScoreGain = visibleTotal,
+        threshold = GEAR_ENGINE.MODE_OBJECTIVE_THRESHOLD,
+    }
 end
 
 function GEAR_ENGINE.StatAppliesToRoleSlot(role, token, item)
@@ -5922,6 +5968,10 @@ function GEAR_ENGINE.NoUpgradeText(engine, locale)
     if rejected > 0 then
         return LForLocale(locale or ClientLocale(), "advice_no_safe_upgrades", rejected)
     end
+    rejected = tonumber(engine and engine.modeRejectedCount) or 0
+    if rejected > 0 then
+        return LForLocale(locale or ClientLocale(), "advice_no_mode_upgrades", rejected)
+    end
     rejected = tonumber(engine and engine.unscorableRejectedCount) or 0
     if rejected > 0 then
         return LForLocale(locale or ClientLocale(), "advice_no_scorable_upgrades", rejected)
@@ -5987,12 +6037,13 @@ function GEAR_ENGINE.CandidateCompatibleWithClass(profile, item)
     return true
 end
 
-function GEAR_ENGINE.PriorityStats(role, weights)
+function GEAR_ENGINE.PriorityStats(role, weights, mode)
     local priorities = {}
     local seen = {}
+    local statTokens = mode and mode.objective and mode.objective.statTokens or role and role.statTokens or {}
 
-    for index = 1, #(role and role.statTokens or {}) do
-        local token = role.statTokens[index]
+    for index = 1, #statTokens do
+        local token = GEAR_ENGINE.NormalizeStatToken(statTokens[index])
         if not seen[token] then
             seen[token] = true
             priorities[#priorities + 1] = {
@@ -6222,6 +6273,7 @@ function GEAR_ENGINE.BuildPhase2Strategy(profile, candidateItems, role, modeKey)
         archetype = role and role.archetype,
         modeKey = mode and mode.key or "balanced",
         modeLabels = mode and mode.labels,
+        modeObjective = mode and mode.objective,
         modeFocus = mode and mode.focus or {},
         availableModes = GEAR_ENGINE.AvailableStrategyModes(role),
         caps = GEAR_ENGINE.BuildPhase2CapStatuses(role),
@@ -6303,6 +6355,16 @@ function GEAR_ENGINE.CompareItems(profile, currentItem, candidateItem, strategyB
     end
     local breaksActiveSetBonus = GEAR_ENGINE.HasSetImpact(setImpacts, "breaks_active_bonus")
     local gainsSetBonus = GEAR_ENGINE.HasSetImpact(setImpacts, "gains_bonus")
+    local modeObjective = GEAR_ENGINE.BuildModeObjectiveBreakdown(scoreComponents, mode)
+    local rankingScoreGain = modeObjective and modeObjective.scoreGain or scoreGain
+    local hasContextDecision = effectDecision.preferCandidate or effectDecision.preferCurrent
+        or effectDecision.contextTradeoff or gainsSetBonus or breaksActiveSetBonus
+    local modeObjectiveMismatch = modeObjective and not hasContextDecision
+        and scoreGain >= GEAR_ENGINE.MODE_OBJECTIVE_THRESHOLD
+        and rankingScoreGain < GEAR_ENGINE.MODE_OBJECTIVE_THRESHOLD or false
+    local modeObjectiveTradeoff = modeObjective and not modeObjectiveMismatch and not hasContextDecision
+        and rankingScoreGain >= GEAR_ENGINE.MODE_OBJECTIVE_THRESHOLD
+        and modeObjective.otherScoreGain <= -GEAR_ENGINE.MODE_OBJECTIVE_THRESHOLD or false
     local comparable = visibleComparable or effectDecision.canCompare or #setImpacts > 0
     if effectDecision.canCompare and evidence == "low" then
         evidence = "medium"
@@ -6314,9 +6376,10 @@ function GEAR_ENGINE.CompareItems(profile, currentItem, candidateItem, strategyB
         or (not roleFit.suitable and "role_mismatch")
         or (not comparable and "unscorable")
         or (losesPvPResilience and "tradeoff")
+        or ((modeObjectiveMismatch or modeObjectiveTradeoff) and "tradeoff")
         or ((breaksActiveSetBonus or effectDecision.preferCurrent or effectDecision.contextTradeoff) and "tradeoff")
         or ((effectDecision.preferCandidate or gainsSetBonus) and "review")
-        or GEAR_ENGINE.RecommendationVerdict(evidence, scoreGain, benchmarkImpacts, role.scoreModel)
+        or GEAR_ENGINE.RecommendationVerdict(evidence, rankingScoreGain, benchmarkImpacts, role.scoreModel)
     local blockedByHardGate = GEAR_ENGINE.RecommendationWorsensUnmetBenchmark(benchmarkImpacts)
     local roundedScoreGain = RoundedStatNumber(scoreGain)
     local scoreResidual = RoundedStatNumber(roundedScoreGain - visibleScoreTotal)
@@ -6330,12 +6393,17 @@ function GEAR_ENGINE.CompareItems(profile, currentItem, candidateItem, strategyB
         decisionKind = effectDecision.preferCandidate and "effect_choice"
             or (effectDecision.preferCurrent and "effect_tradeoff")
             or (effectDecision.contextTradeoff and "effect_context")
+            or ((modeObjectiveMismatch or modeObjectiveTradeoff) and "mode_tradeoff")
             or (gainsSetBonus and "set_threshold" or "visible_stats"),
         current = currentItem,
         candidate = candidateItem,
         currentScore = currentScore,
         candidateScore = candidateScore,
         scoreGain = roundedScoreGain,
+        rankingScoreGain = RoundedStatNumber(rankingScoreGain),
+        modeObjective = modeObjective,
+        modeObjectiveMismatch = modeObjectiveMismatch,
+        modeObjectiveTradeoff = modeObjectiveTradeoff,
         scoreBreakdown = {
             kind = "linear_visible_stat_delta",
             components = scoreComponents,
@@ -6371,7 +6439,8 @@ function GEAR_ENGINE.CompareItems(profile, currentItem, candidateItem, strategyB
 end
 
 function GEAR_ENGINE.RecommendationSelectionPriority(recommendation)
-    local priority = tonumber(recommendation and recommendation.scoreGain) or 0
+    local priority = tonumber(recommendation and recommendation.rankingScoreGain)
+        or tonumber(recommendation and recommendation.scoreGain) or 0
     local decision = recommendation and recommendation.effectDecision
     if decision and decision.canCompare and type(decision.affinityDelta) == "number" then
         priority = priority + (decision.affinityDelta * 10000)
@@ -6439,6 +6508,7 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
     local loadoutRejectedCount = 0
     local unscorableRejectedCount = 0
     local effectRejectedCount = 0
+    local modeRejectedCount = 0
     local belowThresholdCount = 0
     local candidateEvaluations = {}
     for index = 1, #(candidateItems or {}) do
@@ -6462,10 +6532,12 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
                     local rejectedByLoadout = false
                     local rejectedAsUnscorable = false
                     local rejectedByEffect = false
+                    local rejectedByMode = false
                     local gateComparison
                     local loadoutComparison
                     local unscorableComparison
                     local effectComparison
+                    local modeComparison
                     local candidateSlots = GEAR_ENGINE.CandidateSlotKeys(profile, item)
                     for slotIndex = 1, #candidateSlots do
                         local comparisonSlot = candidateSlots[slotIndex]
@@ -6488,7 +6560,10 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
                             elseif recommendation.effectDecision.preferCurrent then
                                 rejectedByEffect = true
                                 effectComparison = effectComparison or recommendation
-                            elseif (recommendation.scoreGain >= 2 and #recommendation.matchedStats > 0)
+                            elseif recommendation.modeObjectiveMismatch then
+                                rejectedByMode = true
+                                modeComparison = modeComparison or recommendation
+                            elseif ((recommendation.rankingScoreGain or recommendation.scoreGain) >= 2 and #recommendation.matchedStats > 0)
                                 or recommendation.effectDecision.preferCandidate
                                 or recommendation.effectDecision.contextTradeoff
                                 or recommendation.gainsSetBonus then
@@ -6522,6 +6597,10 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
                         evaluation.comparison = effectComparison or representativeComparison
                         evaluation.status = "effect_inferior"
                         effectRejectedCount = effectRejectedCount + 1
+                    elseif rejectedByMode then
+                        evaluation.comparison = modeComparison or representativeComparison
+                        evaluation.status = "mode_mismatch"
+                        modeRejectedCount = modeRejectedCount + 1
                     elseif rejectedByLoadout then
                         evaluation.comparison = loadoutComparison or representativeComparison
                         evaluation.status = loadoutComparison and loadoutComparison.loadoutReason == "shield_required"
@@ -6596,7 +6675,7 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
     end
 
     return {
-        version = 20,
+        version = 21,
         generatedAt = Now(),
         roleKey = role.key,
         roleLabel = role.label,
@@ -6606,6 +6685,7 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
         scoreModel = role.scoreModel,
         modeKey = mode and mode.key or "balanced",
         modeLabels = mode and mode.labels,
+        modeObjective = mode and mode.objective,
         context = context,
         availableModes = GEAR_ENGINE.AvailableStrategyModes(role),
         roleWeights = weights,
@@ -6618,9 +6698,10 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
         loadoutRejectedCount = loadoutRejectedCount,
         unscorableRejectedCount = unscorableRejectedCount,
         effectRejectedCount = effectRejectedCount,
+        modeRejectedCount = modeRejectedCount,
         belowThresholdCount = belowThresholdCount,
         candidateEvaluations = candidateEvaluations,
-        priorityStats = GEAR_ENGINE.PriorityStats(role, weights),
+        priorityStats = GEAR_ENGINE.PriorityStats(role, weights, mode),
         benchmarkGaps = benchmarkGaps,
         activeSets = activeSets,
         routeGaps = routeGaps,
@@ -6866,10 +6947,15 @@ local function AppendStrategyBookJson(lines, indent, strategyBook, comma)
         AppendIndented(lines, indent + 6, "\"modes\": [")
         for modeIndex = 1, #(role.modes or {}) do
             local mode = role.modes[modeIndex]
-            AppendIndented(lines, indent + 8, "{ " .. JsonField("key", mode.key, true)
-                .. " " .. JsonField("label_en", mode.labels and mode.labels.enUS, true)
-                .. " " .. JsonField("label_zh_cn", mode.labels and mode.labels.zhCN, false)
-                .. " }" .. (modeIndex < #(role.modes or {}) and "," or ""))
+            AppendIndented(lines, indent + 8, "{")
+            AppendIndented(lines, indent + 10, JsonField("key", mode.key, true))
+            AppendIndented(lines, indent + 10, JsonField("label_en", mode.labels and mode.labels.enUS, true))
+            AppendIndented(lines, indent + 10, JsonField("label_zh_cn", mode.labels and mode.labels.zhCN, true))
+            AppendIndented(lines, indent + 10, JsonField("objective_key", mode.objective and mode.objective.key, true))
+            AppendIndented(lines, indent + 10, JsonField("objective_label_en", mode.objective and mode.objective.labels and mode.objective.labels.enUS, true))
+            AppendIndented(lines, indent + 10, JsonField("objective_label_zh_cn", mode.objective and mode.objective.labels and mode.objective.labels.zhCN, true))
+            AppendJsonStringArray(lines, indent + 10, "objective_stat_tokens", mode.objective and mode.objective.statTokens or {}, false)
+            AppendIndented(lines, indent + 8, "}" .. (modeIndex < #(role.modes or {}) and "," or ""))
         end
         AppendIndented(lines, indent + 6, "],")
         AppendIndented(lines, indent + 6, "\"caps\": [")
@@ -6982,6 +7068,10 @@ function GEAR_ENGINE.AppendPhase2StrategyJson(lines, indent, phase2, comma)
     AppendIndented(lines, indent + 2, JsonField("mode_key", phase2.modeKey, true))
     AppendIndented(lines, indent + 2, JsonField("mode_label_en", phase2.modeLabels and phase2.modeLabels.enUS, true))
     AppendIndented(lines, indent + 2, JsonField("mode_label_zh_cn", phase2.modeLabels and phase2.modeLabels.zhCN, true))
+    AppendIndented(lines, indent + 2, JsonField("mode_objective_key", phase2.modeObjective and phase2.modeObjective.key, true))
+    AppendIndented(lines, indent + 2, JsonField("mode_objective_label_en", phase2.modeObjective and phase2.modeObjective.labels and phase2.modeObjective.labels.enUS, true))
+    AppendIndented(lines, indent + 2, JsonField("mode_objective_label_zh_cn", phase2.modeObjective and phase2.modeObjective.labels and phase2.modeObjective.labels.zhCN, true))
+    AppendJsonStringArray(lines, indent + 2, "mode_objective_stat_tokens", phase2.modeObjective and phase2.modeObjective.statTokens or {}, true)
     AppendIndented(lines, indent + 2, JsonField("set_goal", phase2.setGoal, true))
     AppendIndented(lines, indent + 2, JsonField("set_goal_zh_cn", phase2.setGoalLabels and phase2.setGoalLabels.zhCN, true))
     AppendIndented(lines, indent + 2, JsonField("talent_string", phase2.talentString, true))
@@ -7171,6 +7261,32 @@ function GEAR_ENGINE.AppendScoreBreakdownJson(lines, indent, breakdown, comma)
     AppendIndented(lines, indent, "}" .. (comma and "," or ""))
 end
 
+function GEAR_ENGINE.AppendModeObjectiveJson(lines, indent, comparison, comma)
+    local objective = comparison and comparison.modeObjective
+    if not objective then
+        AppendIndented(lines, indent, "\"mode_objective\": null" .. (comma and "," or ""))
+        return
+    end
+    AppendIndented(lines, indent, "\"mode_objective\": {")
+    AppendIndented(lines, indent + 2, JsonField("key", objective.key, true))
+    AppendIndented(lines, indent + 2, JsonField("label_en", objective.labels and objective.labels.enUS, true))
+    AppendIndented(lines, indent + 2, JsonField("label_zh_cn", objective.labels and objective.labels.zhCN, true))
+    AppendIndented(lines, indent + 2, JsonField("score_gain", objective.scoreGain, true))
+    AppendIndented(lines, indent + 2, JsonField("other_score_gain", objective.otherScoreGain, true))
+    AppendIndented(lines, indent + 2, JsonField("visible_score_gain", objective.visibleScoreGain, true))
+    AppendIndented(lines, indent + 2, JsonField("threshold", objective.threshold, true))
+    AppendIndented(lines, indent + 2, JsonField("objective_mismatch", comparison.modeObjectiveMismatch == true, true))
+    AppendIndented(lines, indent + 2, JsonField("cross_dimension_tradeoff", comparison.modeObjectiveTradeoff == true, true))
+    AppendJsonObjectArray(lines, indent + 2, "components", objective.components, {
+        { name = "token", value = "token" },
+        { name = "label", value = "label" },
+        { name = "delta", value = "delta" },
+        { name = "weight", value = "weight" },
+        { name = "contribution", value = "contribution" },
+    }, false)
+    AppendIndented(lines, indent, "}" .. (comma and "," or ""))
+end
+
 function GEAR_ENGINE.AppendCandidateEvaluationsJson(lines, indent, evaluations, comma)
     AppendIndented(lines, indent, "\"candidate_evaluations\": [")
     for index = 1, #(evaluations or {}) do
@@ -7180,6 +7296,7 @@ function GEAR_ENGINE.AppendCandidateEvaluationsJson(lines, indent, evaluations, 
         AppendIndented(lines, indent + 4, JsonField("status", evaluation and evaluation.status, true))
         AppendIndented(lines, indent + 4, JsonField("slot_key", comparison and comparison.slotKey or evaluation and evaluation.slotKey, true))
         AppendIndented(lines, indent + 4, JsonField("score_gain", comparison and comparison.scoreGain, true))
+        AppendIndented(lines, indent + 4, JsonField("ranking_score_gain", comparison and comparison.rankingScoreGain, true))
         AppendIndented(lines, indent + 4, JsonField("verdict", comparison and comparison.verdict, true))
         AppendIndented(lines, indent + 4, JsonField("decision_kind", comparison and comparison.decisionKind, true))
         GEAR_ENGINE.AppendGearItemJson(lines, indent + 4, "candidate", evaluation and evaluation.candidate, comparison and comparison.candidateScore, true)
@@ -7187,8 +7304,10 @@ function GEAR_ENGINE.AppendCandidateEvaluationsJson(lines, indent, evaluations, 
         GEAR_ENGINE.AppendEffectDecisionJson(lines, indent + 4, comparison and comparison.effectDecision, true)
         if comparison then
             GEAR_ENGINE.AppendScoreBreakdownJson(lines, indent + 4, comparison.scoreBreakdown, true)
+            GEAR_ENGINE.AppendModeObjectiveJson(lines, indent + 4, comparison, true)
         else
             AppendIndented(lines, indent + 4, "\"score_breakdown\": null,")
+            AppendIndented(lines, indent + 4, "\"mode_objective\": null,")
         end
         AppendJsonObjectArray(lines, indent + 4, "benchmark_impacts", comparison and comparison.benchmarkImpacts or {}, {
             { name = "key", value = "key" },
@@ -7229,6 +7348,10 @@ function GEAR_ENGINE.AppendGearRecommendationsJson(lines, indent, engine, comma)
     AppendIndented(lines, indent + 2, JsonField("mode_key", engine.modeKey, true))
     AppendIndented(lines, indent + 2, JsonField("mode_label_en", engine.modeLabels and engine.modeLabels.enUS, true))
     AppendIndented(lines, indent + 2, JsonField("mode_label_zh_cn", engine.modeLabels and engine.modeLabels.zhCN, true))
+    AppendIndented(lines, indent + 2, JsonField("mode_objective_key", engine.modeObjective and engine.modeObjective.key, true))
+    AppendIndented(lines, indent + 2, JsonField("mode_objective_label_en", engine.modeObjective and engine.modeObjective.labels and engine.modeObjective.labels.enUS, true))
+    AppendIndented(lines, indent + 2, JsonField("mode_objective_label_zh_cn", engine.modeObjective and engine.modeObjective.labels and engine.modeObjective.labels.zhCN, true))
+    AppendJsonStringArray(lines, indent + 2, "mode_objective_stat_tokens", engine.modeObjective and engine.modeObjective.statTokens or {}, true)
     local context = engine.context or {}
     AppendIndented(lines, indent + 2, "\"gear_context\": {")
     AppendIndented(lines, indent + 4, JsonField("detected_key", context.key, true))
@@ -7246,6 +7369,7 @@ function GEAR_ENGINE.AppendGearRecommendationsJson(lines, indent, engine, comma)
     AppendIndented(lines, indent + 2, JsonField("loadout_rejected_count", engine.loadoutRejectedCount or 0, true))
     AppendIndented(lines, indent + 2, JsonField("unscorable_rejected_count", engine.unscorableRejectedCount or 0, true))
     AppendIndented(lines, indent + 2, JsonField("effect_rejected_count", engine.effectRejectedCount or 0, true))
+    AppendIndented(lines, indent + 2, JsonField("mode_rejected_count", engine.modeRejectedCount or 0, true))
     AppendIndented(lines, indent + 2, JsonField("below_threshold_count", engine.belowThresholdCount or 0, true))
     AppendIndented(lines, indent + 2, JsonField("effect_decision_count", engine.effectDecisionCount or 0, true))
     AppendIndented(lines, indent + 2, JsonField("context_tradeoff_count", engine.contextTradeoffCount or 0, true))
@@ -7303,11 +7427,13 @@ function GEAR_ENGINE.AppendGearRecommendationsJson(lines, indent, engine, comma)
         AppendIndented(lines, indent + 4, "{")
         AppendIndented(lines, indent + 6, JsonField("slot_key", upgrade.slotKey, true))
         AppendIndented(lines, indent + 6, JsonField("score_gain", upgrade.scoreGain, true))
+        AppendIndented(lines, indent + 6, JsonField("ranking_score_gain", upgrade.rankingScoreGain, true))
         AppendIndented(lines, indent + 6, JsonField("data_completeness", upgrade.dataCompleteness or upgrade.evidence, true))
         AppendIndented(lines, indent + 6, JsonField("evidence", upgrade.evidence, true))
         AppendIndented(lines, indent + 6, JsonField("verdict", upgrade.verdict, true))
         AppendIndented(lines, indent + 6, JsonField("decision_kind", upgrade.decisionKind, true))
         GEAR_ENGINE.AppendScoreBreakdownJson(lines, indent + 6, upgrade.scoreBreakdown, true)
+        GEAR_ENGINE.AppendModeObjectiveJson(lines, indent + 6, upgrade, true)
         GEAR_ENGINE.AppendGearItemJson(lines, indent + 6, "current", upgrade.current, upgrade.currentScore, true)
         GEAR_ENGINE.AppendGearItemJson(lines, indent + 6, "candidate", upgrade.candidate, upgrade.candidateScore, true)
         GEAR_ENGINE.AppendEffectDecisionJson(lines, indent + 6, upgrade.effectDecision, true)
@@ -7372,6 +7498,11 @@ end
 
 function GEAR_ENGINE.Phase2ModeLabel(engine, locale)
     return GEAR_ENGINE.LocalizedDataLabel(engine and engine.phase2 and engine.phase2.modeLabels, locale, engine and engine.modeKey or "balanced")
+end
+
+function GEAR_ENGINE.GearModeObjectiveText(engine, locale)
+    local objective = engine and engine.modeObjective
+    return objective and GEAR_ENGINE.LocalizedDataLabel(objective.labels, locale, objective.key) or nil
 end
 
 function GEAR_ENGINE.AvailableModesText(engine, locale)
@@ -7638,6 +7769,19 @@ function GEAR_ENGINE.ScoreBreakdownText(upgrade, locale, maxComponents)
     return table.concat(parts, "; ") .. "; " .. terms.formula_net .. " " .. GEAR_ENGINE.SignedCompactNumber(total, 2)
 end
 
+function GEAR_ENGINE.ModeObjectiveText(comparison, locale)
+    local objective = comparison and comparison.modeObjective
+    if not objective then
+        return nil
+    end
+    local terms = GEAR_ENGINE.ReportTerms(locale)
+    local label = GEAR_ENGINE.LocalizedDataLabel(objective.labels, locale, objective.key)
+    return terms.mode_objective .. " " .. tostring(label) .. " "
+        .. GEAR_ENGINE.SignedCompactNumber(objective.scoreGain, 2)
+        .. " · " .. terms.outside_objective .. " "
+        .. GEAR_ENGINE.SignedCompactNumber(objective.otherScoreGain, 2)
+end
+
 function GEAR_ENGINE.UnscoredChangesText(upgrade, locale, maxChanges)
     local terms = GEAR_ENGINE.ReportTerms(locale)
     local changes = upgrade and upgrade.scoreBreakdown and upgrade.scoreBreakdown.unscoredChanges or {}
@@ -7679,7 +7823,12 @@ end
 
 function GEAR_ENGINE.ComparisonEvidenceText(comparison, locale, maxComponents)
     local terms = GEAR_ENGINE.ReportTerms(locale)
-    local parts = { GEAR_ENGINE.ScoreBreakdownText(comparison, locale, maxComponents or 2) }
+    local parts = {}
+    local objectiveText = GEAR_ENGINE.ModeObjectiveText(comparison, locale)
+    if objectiveText then
+        parts[#parts + 1] = objectiveText
+    end
+    parts[#parts + 1] = GEAR_ENGINE.ScoreBreakdownText(comparison, locale, maxComponents or 2)
     if #(comparison and comparison.scoreBreakdown and comparison.scoreBreakdown.unscoredChanges or {}) > 0 then
         parts[#parts + 1] = terms.unscored_changes .. ": " .. GEAR_ENGINE.UnscoredChangesText(comparison, locale, 2)
     end
@@ -7700,6 +7849,10 @@ function GEAR_ENGINE.RecommendationReasonText(upgrade, locale, maxComponents)
     if upgrade and upgrade.decisionKind == "set_threshold" then
         return terms.set_impact .. ": " .. GEAR_ENGINE.SetImpactText(upgrade, locale)
     end
+    local objectiveText = GEAR_ENGINE.ModeObjectiveText(upgrade, locale)
+    if objectiveText then
+        return objectiveText .. " · " .. GEAR_ENGINE.ScoreBreakdownText(upgrade, locale, maxComponents)
+    end
     return GEAR_ENGINE.ScoreBreakdownText(upgrade, locale, maxComponents)
 end
 
@@ -7711,6 +7864,7 @@ function GEAR_ENGINE.CandidateEvaluationReasonText(evaluation, locale, maxCompon
         recommended = terms.candidate_recommended,
         lower_ranked_same_slot = terms.candidate_lower_ranked,
         benchmark_gate = terms.candidate_benchmark_gate,
+        mode_mismatch = terms.candidate_mode_mismatch,
         below_threshold = terms.candidate_below_threshold,
         role_mismatch = terms.candidate_role_mismatch,
         class_mismatch = terms.candidate_class_mismatch,
@@ -7730,6 +7884,10 @@ function GEAR_ENGINE.CandidateEvaluationReasonText(evaluation, locale, maxCompon
     end
     if status == "effect_inferior" and comparison then
         return reason .. ": " .. GEAR_ENGINE.EffectDecisionText(comparison, locale)
+    end
+    if status == "mode_mismatch" and comparison then
+        return reason .. ": " .. tostring(GEAR_ENGINE.ModeObjectiveText(comparison, locale))
+            .. " · " .. GEAR_ENGINE.ScoreBreakdownText(comparison, locale, maxComponents or 2)
     end
     if status == "recommended" and comparison then
         return reason .. " · " .. GEAR_ENGINE.ComparisonEvidenceText(comparison, locale, maxComponents or 2)
@@ -7761,7 +7919,11 @@ function GEAR_ENGINE.DecisionMetricText(upgrade, locale)
     if upgrade and upgrade.decisionKind == "effect_context" then
         return LForLocale(locale or ClientLocale(), "advice_scenario_tradeoff")
     end
-    return "+" .. CompactNumber(upgrade and upgrade.scoreGain or 0, 2)
+    if upgrade and upgrade.modeObjective then
+        local label = GEAR_ENGINE.LocalizedDataLabel(upgrade.modeObjective.labels, locale, upgrade.modeObjective.key)
+        return tostring(label) .. " " .. GEAR_ENGINE.SignedCompactNumber(upgrade.rankingScoreGain, 2)
+    end
+    return GEAR_ENGINE.SignedCompactNumber(upgrade and upgrade.scoreGain or 0, 2)
 end
 
 function GEAR_ENGINE.DecisionMetricColor(upgrade)
@@ -7784,6 +7946,9 @@ function GEAR_ENGINE.AppendGearRecommendationsMarkdown(lines, engine, locale)
     lines[#lines + 1] = ""
     lines[#lines + 1] = "- " .. terms.role .. ": " .. tostring(GEAR_ENGINE.GearRoleLabel(engine, locale)) .. " (" .. terms.confidence .. " " .. tostring(engine.roleConfidence or 0) .. ")"
     lines[#lines + 1] = "- " .. terms.mode .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.Phase2ModeLabel(engine, locale))
+    if GEAR_ENGINE.GearModeObjectiveText(engine, locale) then
+        lines[#lines + 1] = "- " .. terms.mode_objective .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.GearModeObjectiveText(engine, locale))
+    end
     lines[#lines + 1] = "- " .. terms.gear_context .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.GearContextText(engine.context, locale))
     lines[#lines + 1] = "- " .. terms.available_modes .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.AvailableModesText(engine, locale))
     lines[#lines + 1] = "- " .. terms.caps .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.Phase2CapText(engine, locale))
@@ -7851,6 +8016,9 @@ function GEAR_ENGINE.AppendGearRecommendationsText(lines, engine, locale)
     lines[#lines + 1] = terms.gear_recommendations
     lines[#lines + 1] = terms.role .. ": " .. tostring(GEAR_ENGINE.GearRoleLabel(engine, locale)) .. "; " .. terms.confidence .. " " .. tostring(engine.roleConfidence or 0)
     lines[#lines + 1] = terms.mode .. ": " .. GEAR_ENGINE.Phase2ModeLabel(engine, locale)
+    if GEAR_ENGINE.GearModeObjectiveText(engine, locale) then
+        lines[#lines + 1] = terms.mode_objective .. ": " .. GEAR_ENGINE.GearModeObjectiveText(engine, locale)
+    end
     lines[#lines + 1] = terms.gear_context .. ": " .. GEAR_ENGINE.GearContextText(engine.context, locale)
     lines[#lines + 1] = terms.available_modes .. ": " .. GEAR_ENGINE.AvailableModesText(engine, locale)
     lines[#lines + 1] = terms.caps .. ": " .. GEAR_ENGINE.Phase2CapText(engine, locale)
@@ -9807,7 +9975,9 @@ function Addon:RefreshGearAdvice(profile, engine)
         .. "\n" .. GEAR_ENGINE.ReportTerms(locale).active_sets .. ": " .. GEAR_ENGINE.ActiveSetsText(engine, locale, 2)
         .. "\n" .. LForLocale(locale, "advice_priorities", GEAR_ENGINE.GearPriorityText(engine, locale))
         .. "\n" .. LForLocale(locale, "advice_routes", GEAR_ENGINE.RouteGapsText(engine, locale, 3)))
+    local objectiveText = GEAR_ENGINE.GearModeObjectiveText(engine, locale)
     self.exportFrame.adviceCaveat:SetText(GEAR_ENGINE.ReportTerms(locale).score_model .. ": " .. GEAR_ENGINE.ScoreModelText(engine.scoreModel, locale)
+        .. (objectiveText and ("\n" .. GEAR_ENGINE.ReportTerms(locale).mode_objective .. ": " .. objectiveText) or "")
         .. "\n" .. (engine.caveat or LForLocale(locale, "advice_caveat")))
 
     local rows = self.exportFrame.adviceRows or {}
@@ -11341,6 +11511,7 @@ if _G.TBCGearExporterTestMode then
         FindStrategyMode = GEAR_ENGINE.FindStrategyMode,
         AvailableStrategyModes = GEAR_ENGINE.AvailableStrategyModes,
         BuildRoleStatWeights = GEAR_ENGINE.BuildRoleStatWeights,
+        BuildModeObjectiveBreakdown = GEAR_ENGINE.BuildModeObjectiveBreakdown,
         StatAppliesToRoleSlot = GEAR_ENGINE.StatAppliesToRoleSlot,
         ItemRoleScore = GEAR_ENGINE.ItemRoleScore,
         ItemRoleFit = GEAR_ENGINE.ItemRoleFit,
@@ -11386,6 +11557,7 @@ if _G.TBCGearExporterTestMode then
         AppendActiveSetsJson = GEAR_ENGINE.AppendActiveSetsJson,
         AppendRouteGapsJson = GEAR_ENGINE.AppendRouteGapsJson,
         AppendScoreBreakdownJson = GEAR_ENGINE.AppendScoreBreakdownJson,
+        AppendModeObjectiveJson = GEAR_ENGINE.AppendModeObjectiveJson,
         AppendCandidateEvaluationsJson = GEAR_ENGINE.AppendCandidateEvaluationsJson,
         AppendGearRecommendationsJson = GEAR_ENGINE.AppendGearRecommendationsJson,
         AppendGearRecommendationsMarkdown = GEAR_ENGINE.AppendGearRecommendationsMarkdown,
@@ -11394,6 +11566,7 @@ if _G.TBCGearExporterTestMode then
         TalentMapSummary = GEAR_ENGINE.TalentMapSummary,
         GearRoleLabel = GEAR_ENGINE.GearRoleLabel,
         Phase2ModeLabel = GEAR_ENGINE.Phase2ModeLabel,
+        GearModeObjectiveText = GEAR_ENGINE.GearModeObjectiveText,
         AvailableModesText = GEAR_ENGINE.AvailableModesText,
         Phase2EvidenceLabel = GEAR_ENGINE.Phase2EvidenceLabel,
         BenchmarkObservedText = GEAR_ENGINE.BenchmarkObservedText,
@@ -11408,6 +11581,7 @@ if _G.TBCGearExporterTestMode then
         SetImpactText = GEAR_ENGINE.SetImpactText,
         SignedCompactNumber = GEAR_ENGINE.SignedCompactNumber,
         ScoreBreakdownText = GEAR_ENGINE.ScoreBreakdownText,
+        ModeObjectiveText = GEAR_ENGINE.ModeObjectiveText,
         UnscoredChangesText = GEAR_ENGINE.UnscoredChangesText,
         TalentContextImpactsText = GEAR_ENGINE.TalentContextImpactsText,
         ComparisonEvidenceText = GEAR_ENGINE.ComparisonEvidenceText,

@@ -4,6 +4,16 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+## [0.5.9] - 2026-08-03
+
+- Split every tank's specialized recommendation path into an explicit survival/mitigation objective and a role-specific threat objective instead of ranking both views by one blended tank total.
+- Give Feral Bear, Protection Warrior, and Protection Paladin separate auditable threat-stat sets while retaining required benchmark gates and the existing Balanced and PvP views.
+- Reject candidates from a specialized list when their positive blended score comes entirely from the other tank dimension; they remain visible in the candidate audit with a localized mode-mismatch reason.
+- Rank specialized tank candidates by the selected objective score, mark objective gains that sacrifice the other dimension as tradeoffs, and keep sourced effect/set decisions independent from numeric stat axes.
+- Export the selected objective, objective stat tokens, objective score, other-dimension score, ranking score, mismatch flag, and cross-dimension tradeoff flag to AI/JSON/Markdown/text reports.
+- Fix the reported Strongge case: Restoration Boots no longer appear as a threat upgrade over Boots of the Righteous Path after losing 27 spell power and 26 intellect; they remain a mitigation candidate.
+- Upgrade the strategy database to version 11, strategy-book schema to version 8, and recommendation engine to version 21; all 125 tests pass with 99.03% executable-line coverage.
+
 ## [0.5.8] - 2026-08-03
 
 - Add a shared PvP / Arena strategy mode to all 28 class-role models instead of forcing PvP equipment through the boss-level PvE evaluator.
