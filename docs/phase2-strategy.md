@@ -1,6 +1,6 @@
 # Phase 2 Strategy Database
 
-TBC Gear Exporter v0.5.4 includes Phase 2 / Tier 5 strategy database version 8 and recommendation engine version 17, used by the in-game P2 Guide, explainable candidate ranking, full candidate audits, and AI/JSON exports.
+TBC Gear Exporter v0.5.5 includes Phase 2 / Tier 5 strategy database version 9 and recommendation engine version 18, used by the in-game P2 Guide, explainable candidate ranking, full candidate audits, and AI/JSON exports.
 
 ## Database Scale
 
@@ -77,11 +77,13 @@ Curated item effects are also mode-specific gates. If the equipped item's known 
 2. Defense skill contributes 0.04% critical-hit reduction per point above 350. At level 70, 2.3654 defense rating supplies one defense skill, about 59.1 defense rating supplies 1% critical-hit reduction, and 39.4231 resilience rating supplies 1%.
 3. A Feral bear with 3/3 Survival of the Fittest receives 3% from talents and therefore needs the remaining 2.6% from defense and resilience. This corresponds to 415 defense skill with no resilience, or about 103 resilience with no defense rating.
 4. Treat the 102.4% shield combat table as contextual. The standing paper doll does not include boss miss or temporary block effects such as Holy Shield or Shield Block.
-5. Item benchmark impacts convert ratings to their matching units: 15.77 physical hit rating per 1%, 12.62 spell hit rating per 1%, 3.94 expertise rating per expertise point, 18.9231 dodge rating per 1%, 23.6538 parry rating per 1%, and 7.8846 block rating per 1%.
+5. Item benchmark impacts convert ratings to their matching units: 15.77 physical hit rating per 1%, 12.62 spell hit rating per 1%, 3.94 expertise rating per expertise point, 18.9231 dodge rating per 1%, 23.6538 parry rating per 1%, and 7.8846 block rating per 1%. The paper-doll expertise value the client reports is expertise points; the engine converts it at 0.25% dodge reduction per point before comparing against the 6.5% expertise benchmark, so 26 expertise points equals the cap.
 6. Once the combined critical-hit reduction target is already met, excess resilience is heavily devalued; defense keeps partial value because it still contributes avoidance. A swap that reduces buffer but remains above target is labeled separately from one that actually falls below target.
 7. Feral Bear Balanced and Mitigation include dodge rating. Strength and critical strike remain lower-priority threat signals and become more important in Threat / farm.
 8. After gates, use Mitigation for progression/effective health, Balanced for general encounters, or Threat for farm and damage-limited pulls.
 9. Resistance presets are encounter sets, never default boss sets.
+10. Known tank trinkets are separated by decision dimension. Figurine of the Colossus is block-driven multi-target sustain, Icon of the Silver Crescent is spell-threat burst, Scarab of Displacement is a defense/loadout tool, and Moroes' Lucky Pocket Watch is an avoidance cooldown. Equal Balanced affinity across different dimensions is a scenario tradeoff, not an upgrade verdict.
+11. Ring and trinket candidates are compared against both equipped items. Mitigation and Threat / farm ranking uses the full curated affinity delta before the visible-stat estimate, so preserving one specialized trinket does not prevent replacing the other.
 
 ## Healer Rules
 
@@ -104,10 +106,11 @@ Curated item effects are also mode-specific gates. If the equipped item's known 
 ## Sources And Reproducibility
 
 - [WoWSims TBC](https://github.com/wowsims/tbc-new), pinned to commit `3fc6a414979d62186f75d51ab6f6dd5d44f35b9c`, supplies the adapted P2/T5 item-ID presets and reference talent strings where available.
-- [Pinned WoWSims Balance source](https://github.com/wowsims/tbc-new/blob/3fc6a414979d62186f75d51ab6f6dd5d44f35b9c/ui/druid/balance/presets.ts), [Arcane source](https://github.com/wowsims/tbc-new/blob/3fc6a414979d62186f75d51ab6f6dd5d44f35b9c/ui/mage/dps/presets.ts), and [Retribution source](https://github.com/wowsims/tbc-new/blob/3fc6a414979d62186f75d51ab6f6dd5d44f35b9c/ui/paladin/retribution/presets.ts) supply the exact P2 static EP tables retained by database version 8.
+- [Pinned WoWSims Balance source](https://github.com/wowsims/tbc-new/blob/3fc6a414979d62186f75d51ab6f6dd5d44f35b9c/ui/druid/balance/presets.ts), [Arcane source](https://github.com/wowsims/tbc-new/blob/3fc6a414979d62186f75d51ab6f6dd5d44f35b9c/ui/mage/dps/presets.ts), and [Retribution source](https://github.com/wowsims/tbc-new/blob/3fc6a414979d62186f75d51ab6f6dd5d44f35b9c/ui/paladin/retribution/presets.ts) supply the exact P2 static EP tables retained by database version 9.
 - [Pinned WoWSims Hunter source](https://github.com/wowsims/tbc-new/blob/3fc6a414979d62186f75d51ab6f6dd5d44f35b9c/ui/hunter/dps/presets.ts) identifies the reused Hunter values as P1 BM/SV EP presets.
-- [Pinned WoWSims TBC combat-rating constants](https://github.com/wowsims/tbc/blob/9e7504dca2e5253fb9ddff566c66c00e11679376/sim/core/constants.go) supply the level-70 rating conversions retained by database version 8.
+- [Pinned WoWSims TBC combat-rating constants](https://github.com/wowsims/tbc/blob/9e7504dca2e5253fb9ddff566c66c00e11679376/sim/core/constants.go) supply the level-70 rating conversions retained by database version 9.
 - [Wowhead Phase 2 specialization guide index](https://www.wowhead.com/tbc/news/best-in-slot-guides-for-every-class-specialization-updated-for-phase-2-tbc-381617) supplies role-specific acquisition, alternative, set-bonus, and healer context.
+- [Wowhead Protection Paladin Phase 2 gear guide](https://www.wowhead.com/tbc/guide/classes/paladin/tank-bis-gear-pve-phase-2) and the linked [Figurine of the Colossus](https://www.wowhead.com/tbc/item=27529), [Icon of the Silver Crescent](https://www.wowhead.com/tbc/item=29370), and [Scarab of Displacement](https://www.wowhead.com/tbc/item=30629) records supply the survivability, threat, defense/loadout, and activation scenarios used by the context-aware trinket rules.
 - [Wowhead Holy Paladin Phase 2 gear guide](https://www.wowhead.com/tbc/guide/classes/paladin/holy/healer-bis-gear-pve-phase-2), [the Tier 5 set overview](https://www.wowhead.com/tbc/guide/tier-5-set-overview-burning-crusade-classic), and linked item/set pages in the database supply the spell-cycle routes, Tier 5 thresholds, and 14 curated effect records.
 - [Wowhead Hunter stat priority](https://www.wowhead.com/tbc/guide/classes/hunter/dps-stat-priority-attributes-pve) supplies the TBC agility, hit, crit, and ranged attack-power context used to interpret the simulator weights.
 - [Wowhead Hunter talent guide](https://www.wowhead.com/tbc/guide/classes/hunter/dps-talent-builds-pve) and [Expose Weakness spell record](https://www.wowhead.com/tbc/spell=34503/expose-weakness) supply the 3% Surefooted hit, 15% Lightning Reflexes Agility, and 25%-of-Agility Expose Weakness mechanics.
