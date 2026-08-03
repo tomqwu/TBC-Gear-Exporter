@@ -599,7 +599,7 @@ GEAR_ENGINE.BENCHMARK_STAT_TOKENS = {
     -- Generic hit rating is physical-only in TBC; it never reduces spell miss.
     spell_hit = { "ITEM_MOD_HIT_SPELL_RATING_SHORT" },
     expertise_dodge = { "ITEM_MOD_EXPERTISE_RATING_SHORT" },
-    avoidance_table = { "ITEM_MOD_DODGE_RATING_SHORT", "ITEM_MOD_PARRY_RATING_SHORT", "ITEM_MOD_BLOCK_RATING_SHORT" },
+    avoidance_table = { "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT", "ITEM_MOD_DODGE_RATING_SHORT", "ITEM_MOD_PARRY_RATING_SHORT", "ITEM_MOD_BLOCK_RATING_SHORT" },
 }
 
 GEAR_ENGINE.ROLE_STAT_ALIASES = {
@@ -1288,6 +1288,9 @@ local UI_STRINGS = {
         overview_roles_title = "Top role lenses",
         overview_role = "%s - confidence %s, talent points %s, models %s",
         analysis_title = "Stats Analysis",
+        analysis_character_section = "Character & talents",
+        analysis_live_section = "Live character sheet",
+        analysis_context_section = "Race & group context",
         analysis_unknown = "unknown",
         analysis_character = "Character: %s (%s), race %s, %s size %s",
         analysis_talents = "Talents: %s",
@@ -1431,6 +1434,9 @@ local UI_STRINGS = {
         overview_roles_title = "主要职责视角",
         overview_role = "%s - 置信度 %s，天赋点 %s，模型 %s",
         analysis_title = "属性分析",
+        analysis_character_section = "角色与天赋",
+        analysis_live_section = "实时角色属性",
+        analysis_context_section = "种族与队伍环境",
         analysis_unknown = "未知",
         analysis_character = "角色：%s（%s），种族 %s，%s 人数 %s",
         analysis_talents = "天赋：%s",
@@ -1574,6 +1580,9 @@ local UI_STRINGS = {
         overview_roles_title = "主要職責視角",
         overview_role = "%s - 信心 %s，天賦點 %s，模型 %s",
         analysis_title = "屬性分析",
+        analysis_character_section = "角色與天賦",
+        analysis_live_section = "即時角色屬性",
+        analysis_context_section = "種族與隊伍環境",
         analysis_unknown = "未知",
         analysis_character = "角色：%s（%s），種族 %s，%s 人數 %s",
         analysis_talents = "天賦：%s",
@@ -5032,12 +5041,20 @@ function GEAR_ENGINE.BuildRoleStatWeights(role, modeKey)
             local token = tokens[tokenIndex]
             local base = weights[token]
             local multiplier = boost
-            if benchmark.key == "crit_immunity" and benchmark.status == "meets_or_exceeds" then
+            if (benchmark.key == "crit_immunity" or benchmark.key == "defense_crit_immunity")
+                and benchmark.status == "meets_or_exceeds" then
                 if token == "ITEM_MOD_RESILIENCE_RATING_SHORT" then
                     multiplier = 0.10
                 elseif token == "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT" then
                     multiplier = 0.55
                 end
+            elseif benchmark.key == "avoidance_table"
+                and benchmark.status == "context_required"
+                and token == "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT" then
+                -- Crit-immunity handling already gives capped defense its
+                -- marginal value. The contextual shield-table check should
+                -- explain that value, not boost it a second time.
+                multiplier = 1
             end
             weights[token] = base and base * multiplier or base
         end
@@ -5580,6 +5597,12 @@ function GEAR_ENGINE.BenchmarkDeltaValue(benchmarkKey, token, value)
         return value / (rating.expertisePerQuarterPercent * 4)
     end
     if benchmarkKey == "avoidance_table" then
+        if token == "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT" then
+            -- Each defense skill adds 0.04% dodge, parry, block, and attacker
+            -- miss. This benchmark's observed subtotal intentionally excludes
+            -- miss, so project only the three visible paper-doll components.
+            return (value / rating.defensePerSkill) * 0.12
+        end
         if token == "ITEM_MOD_DODGE_RATING_SHORT" then
             return value / rating.dodgePerPercent
         end
@@ -5665,11 +5688,11 @@ function GEAR_ENGINE.RecommendationVerdict(evidence, scoreGain, impacts, scoreMo
             return "tradeoff"
         end
     end
-    if not scoreModel or not scoreModel.supportsDefinitiveVerdicts then
-        return "estimate"
-    end
     if (tonumber(scoreGain) or 0) < 8 then
         return "minor"
+    end
+    if not scoreModel or not scoreModel.supportsDefinitiveVerdicts then
+        return "estimate"
     end
     return "upgrade"
 end
@@ -6334,7 +6357,7 @@ function GEAR_ENGINE.BuildGearRecommendations(profile, candidateItems, strategyB
     end
 
     return {
-        version = 18,
+        version = 19,
         generatedAt = Now(),
         roleKey = role.key,
         roleLabel = role.label,
@@ -7828,7 +7851,88 @@ local function FormatAnalysisStats(stats, locale)
     return table.concat(parts, ", ")
 end
 
-local function BuildStatsAnalysisText(profile, chartStats, strategyBook)
+GEAR_ENGINE.ANALYSIS_SECTION_ICONS = {
+    character = "Interface\\Icons\\INV_Misc_Book_09",
+    live = "Interface\\Icons\\Spell_Holy_DevotionAura",
+    context = "Interface\\Icons\\INV_Misc_GroupNeedMore",
+    tank = "Interface\\Icons\\Ability_Warrior_DefensiveStance",
+    healer = "Interface\\Icons\\Spell_Holy_HolyBolt",
+    melee = "Interface\\Icons\\Ability_MeleeDamage",
+    ranged = "Interface\\Icons\\Ability_Hunter_CriticalShot",
+    caster = "Interface\\Icons\\Spell_Fire_FireBolt02",
+}
+
+function GEAR_ENGINE.AnalysisRoleIcon(profile, role)
+    local tabs = profile and profile.talents and profile.talents.tabs or {}
+    for index = 1, #(role and role.talentTabs or {}) do
+        local tab = tabs[role.talentTabs[index]]
+        if tab and tab.icon then
+            return tab.icon
+        end
+    end
+    return GEAR_ENGINE.ANALYSIS_SECTION_ICONS[role and role.archetype] or "Interface\\Icons\\INV_Misc_QuestionMark"
+end
+
+function GEAR_ENGINE.AnalysisSection(key, title, icon, lines, kind)
+    return {
+        key = key,
+        title = title,
+        icon = icon,
+        lines = lines,
+        text = table.concat(lines or {}, "\n"),
+        kind = kind or key,
+    }
+end
+
+function GEAR_ENGINE.BuildRoleAnalysisLines(role, locale)
+    local observed = role.observed or {}
+    local tank = observed.tank or {}
+    local lines = {
+        LForLocale(locale, "advice_talent_map", GEAR_ENGINE.TalentMapSummary(role.talentMap, locale, 5)),
+        LForLocale(locale, "analysis_models", AnalysisModelLabels(role.models, locale)),
+    }
+
+    if role.archetype == "tank" then
+        lines[#lines + 1] = LForLocale(locale, "analysis_modes", GEAR_ENGINE.AvailableModesText({
+            availableModes = GEAR_ENGINE.AvailableStrategyModes(role),
+        }, locale))
+    end
+    if GEAR_ENGINE.RoleUsesHitModel(role) then
+        lines[#lines + 1] = GEAR_ENGINE.RoleHitCritText(role, observed, locale)
+    end
+    if GEAR_ENGINE.RoleHasModel(role, "tank_mitigation") then
+        local critImmunity = tank.critImmunity or {}
+        lines[#lines + 1] = LForLocale(locale, "analysis_role_tank",
+            AnalysisValue(critImmunity.total, nil, locale),
+            AnalysisValue(critImmunity.target, nil, locale),
+            AnalysisValue(tank.defense, nil, locale),
+            AnalysisValue(tank.armor, nil, locale),
+            AnalysisValue(tank.knownAvoidanceBlock, "%", locale))
+        lines[#lines + 1] = LForLocale(locale, "analysis_crit_immunity_breakdown",
+            AnalysisValue(critImmunity.talentReduction, nil, locale),
+            AnalysisValue(critImmunity.defenseReduction, nil, locale),
+            AnalysisValue(critImmunity.resilienceReduction, nil, locale),
+            AnalysisValue(critImmunity.resilienceRating, nil, locale),
+            AnalysisValue(critImmunity.gap, nil, locale))
+    end
+
+    for benchmarkIndex = 1, math.min(#(role.benchmarks or {}), 4) do
+        local benchmark = role.benchmarks[benchmarkIndex]
+        lines[#lines + 1] = LForLocale(locale, "analysis_benchmark",
+            AnalysisBenchmarkLabel(benchmark, locale),
+            AnalysisBenchmarkStatus(benchmark and benchmark.status, locale),
+            GEAR_ENGINE.BenchmarkObservedText(benchmark, locale),
+            AnalysisValue(benchmark and benchmark.target, nil, locale),
+            AnalysisBenchmarkUnit(benchmark and benchmark.unit, locale))
+    end
+
+    if observed.gearStatHighlights and #observed.gearStatHighlights > 0 then
+        lines[#lines + 1] = LForLocale(locale, "analysis_highlights", FormatAnalysisStats(observed.gearStatHighlights, locale))
+    end
+    return lines
+end
+
+function GEAR_ENGINE.BuildStatsAnalysisSections(profile, chartStats, strategyBook)
     profile = profile or {}
     local locale = AnalysisLocale(profile.locale or ClientLocale())
     local characterStats = profile.characterStats or BuildCharacterStatsSnapshot()
@@ -7842,9 +7946,8 @@ local function BuildStatsAnalysisText(profile, chartStats, strategyBook)
     local attackPower = characterStats.attackPower or {}
     local defense = characterStats.defense or {}
     local armor = characterStats.armor or {}
-    local lines = {
-        LForLocale(locale, "analysis_title"),
-        "",
+    local sections = {}
+    sections[#sections + 1] = GEAR_ENGINE.AnalysisSection("character", LForLocale(locale, "analysis_character_section"), GEAR_ENGINE.ANALYSIS_SECTION_ICONS.character, {
         LForLocale(locale, "analysis_character",
             tostring(profile.player or "Unknown Player"),
             AnalysisClassName(profile, locale),
@@ -7853,6 +7956,8 @@ local function BuildStatsAnalysisText(profile, chartStats, strategyBook)
             tostring(group.size or 1)),
         LForLocale(locale, "analysis_talents", TalentSummaryText(profile.talents, locale)),
         LForLocale(locale, "analysis_talent_points", TalentTreePointsText(profile.talents, locale), TalentSelectedPointsText(profile.talents, locale, 8)),
+    })
+    sections[#sections + 1] = GEAR_ENGINE.AnalysisSection("live", LForLocale(locale, "analysis_live_section"), GEAR_ENGINE.ANALYSIS_SECTION_ICONS.live, {
         LForLocale(locale, "analysis_defense",
             AnalysisValue(defense.effective, nil, locale),
             AnalysisValue(armor.effective, nil, locale),
@@ -7875,67 +7980,50 @@ local function BuildStatsAnalysisText(profile, chartStats, strategyBook)
             AnalysisValue(BestSpellValue(spell.spellDamage, "bonus"), nil, locale),
             AnalysisValue(spell.healing, nil, locale),
             AnalysisValue(spell.manaRegenCasting, nil, locale)),
-    }
+    })
 
-    AppendFirstAnalysisNotes(lines, locale, "analysis_race_note", AnalysisRaceNotes(race, locale))
-    AppendFirstAnalysisNotes(lines, locale, "analysis_group_note", AnalysisGroupNotes(group, locale))
-
-    lines[#lines + 1] = ""
-    lines[#lines + 1] = LForLocale(locale, "analysis_roles_title")
+    local contextLines = {}
+    AppendFirstAnalysisNotes(contextLines, locale, "analysis_race_note", AnalysisRaceNotes(race, locale))
+    AppendFirstAnalysisNotes(contextLines, locale, "analysis_group_note", AnalysisGroupNotes(group, locale))
+    if #contextLines > 0 then
+        sections[#sections + 1] = GEAR_ENGINE.AnalysisSection("context", LForLocale(locale, "analysis_context_section"), GEAR_ENGINE.ANALYSIS_SECTION_ICONS.context, contextLines)
+    end
 
     local roles = strategyBook.roles or {}
     if #roles == 0 then
-        lines[#lines + 1] = LForLocale(locale, "analysis_no_roles")
+        sections[#sections + 1] = GEAR_ENGINE.AnalysisSection("roles", LForLocale(locale, "analysis_roles_title"), GEAR_ENGINE.ANALYSIS_SECTION_ICONS.character, {
+            LForLocale(locale, "analysis_no_roles"),
+        }, "roles_empty")
     end
 
     for roleIndex = 1, math.min(#roles, 3) do
         local role = roles[roleIndex]
-        local observed = role.observed or {}
-        local tank = observed.tank or {}
-        lines[#lines + 1] = ""
-        lines[#lines + 1] = LForLocale(locale, "analysis_role", AnalysisRoleLabel(role, locale), AnalysisValue(role.confidence, nil, locale), AnalysisValue(role.talentPoints, nil, locale))
-        lines[#lines + 1] = LForLocale(locale, "advice_talent_map", GEAR_ENGINE.TalentMapSummary(role.talentMap, locale, 5))
-        lines[#lines + 1] = LForLocale(locale, "analysis_models", AnalysisModelLabels(role.models, locale))
-        if role.archetype == "tank" then
-            lines[#lines + 1] = LForLocale(locale, "analysis_modes", GEAR_ENGINE.AvailableModesText({
-                availableModes = GEAR_ENGINE.AvailableStrategyModes(role),
-            }, locale))
-        end
-        if GEAR_ENGINE.RoleUsesHitModel(role) then
-            lines[#lines + 1] = GEAR_ENGINE.RoleHitCritText(role, observed, locale)
-        end
-        if GEAR_ENGINE.RoleHasModel(role, "tank_mitigation") then
-            local critImmunity = tank.critImmunity or {}
-            lines[#lines + 1] = LForLocale(locale, "analysis_role_tank",
-                AnalysisValue(critImmunity.total, nil, locale),
-                AnalysisValue(critImmunity.target, nil, locale),
-                AnalysisValue(tank.defense, nil, locale),
-                AnalysisValue(tank.armor, nil, locale),
-                AnalysisValue(tank.knownAvoidanceBlock, "%", locale))
-            lines[#lines + 1] = LForLocale(locale, "analysis_crit_immunity_breakdown",
-                AnalysisValue(critImmunity.talentReduction, nil, locale),
-                AnalysisValue(critImmunity.defenseReduction, nil, locale),
-                AnalysisValue(critImmunity.resilienceReduction, nil, locale),
-                AnalysisValue(critImmunity.resilienceRating, nil, locale),
-                AnalysisValue(critImmunity.gap, nil, locale))
-        end
-
-        for benchmarkIndex = 1, math.min(#(role.benchmarks or {}), 4) do
-            local benchmark = role.benchmarks[benchmarkIndex]
-            lines[#lines + 1] = LForLocale(locale, "analysis_benchmark",
-                AnalysisBenchmarkLabel(benchmark, locale),
-                AnalysisBenchmarkStatus(benchmark and benchmark.status, locale),
-                GEAR_ENGINE.BenchmarkObservedText(benchmark, locale),
-                AnalysisValue(benchmark and benchmark.target, nil, locale),
-                AnalysisBenchmarkUnit(benchmark and benchmark.unit, locale))
-        end
-
-        if observed.gearStatHighlights and #observed.gearStatHighlights > 0 then
-            lines[#lines + 1] = LForLocale(locale, "analysis_highlights", FormatAnalysisStats(observed.gearStatHighlights, locale))
-        end
+        sections[#sections + 1] = GEAR_ENGINE.AnalysisSection("role_" .. tostring(roleIndex),
+            LForLocale(locale, "analysis_role", AnalysisRoleLabel(role, locale), AnalysisValue(role.confidence, nil, locale), AnalysisValue(role.talentPoints, nil, locale)),
+            GEAR_ENGINE.AnalysisRoleIcon(profile, role), GEAR_ENGINE.BuildRoleAnalysisLines(role, locale), roleIndex == 1 and "role_primary" or "role_secondary")
     end
 
-    return table.concat(lines, "\n"), #roles
+    return sections, #roles, locale
+end
+
+local function BuildStatsAnalysisText(profile, chartStats, strategyBook)
+    local sections, roleCount, locale = GEAR_ENGINE.BuildStatsAnalysisSections(profile, chartStats, strategyBook)
+    local lines = { LForLocale(locale, "analysis_title") }
+    local roleHeadingAdded = false
+    for index = 1, #sections do
+        local section = sections[index]
+        if (section.kind == "role_primary" or section.kind == "role_secondary") and not roleHeadingAdded then
+            lines[#lines + 1] = ""
+            lines[#lines + 1] = LForLocale(locale, "analysis_roles_title")
+            roleHeadingAdded = true
+        end
+        lines[#lines + 1] = ""
+        lines[#lines + 1] = section.title
+        for lineIndex = 1, #(section.lines or {}) do
+            lines[#lines + 1] = section.lines[lineIndex]
+        end
+    end
+    return table.concat(lines, "\n"), roleCount
 end
 
 function Addon.CompactCountList(entries, labeler, maxCount, locale)
@@ -9523,18 +9611,79 @@ function Addon:RefreshOverview(profile, chartStats, strategyBook, items)
     return roleCount or 0
 end
 
+function GEAR_ENGINE.Utf8DisplayLength(value)
+    local text = tostring(value or "")
+    local length = 0
+    for index = 1, #text do
+        local byte = text:byte(index)
+        if byte < 128 or byte >= 192 then
+            length = length + 1
+        end
+    end
+    return length
+end
+
+function GEAR_ENGINE.EstimateAnalysisTextLines(value)
+    local text = tostring(value or "")
+    local lines = 0
+    for line in (text .. "\n"):gmatch("(.-)\n") do
+        local displayLength = GEAR_ENGINE.Utf8DisplayLength(line)
+        local hasWideCharacters = #line > displayLength
+        local charactersPerLine = hasWideCharacters and 34 or 58
+        lines = lines + math.max(1, math.ceil(displayLength / charactersPerLine))
+    end
+    return math.max(1, lines)
+end
+
+function GEAR_ENGINE.AnalysisTextHeight(fontString, text)
+    local measured = fontString and fontString.GetStringHeight and fontString:GetStringHeight()
+    if type(measured) == "number" and measured > 0 then
+        return math.ceil(measured) + 2
+    end
+    return (GEAR_ENGINE.EstimateAnalysisTextLines(text) * 15) + 2
+end
+
 function Addon:RefreshStatsAnalysis(profile, chartStats, strategyBook)
     if not self.exportFrame or not self.exportFrame.analysisText then
         return 0
     end
 
     local text, roleCount = BuildStatsAnalysisText(profile, chartStats, strategyBook)
+    local sections = GEAR_ENGINE.BuildStatsAnalysisSections(profile, chartStats, strategyBook)
     self.exportFrame.analysisText:SetText(text)
     self.exportFrame.analysisRoleCount = roleCount
 
     if self.exportFrame.analysisContent and self.exportFrame.analysisContent.SetHeight then
-        local _, breaks = tostring(text or ""):gsub("\n", "\n")
-        self.exportFrame.analysisContent:SetHeight(math.max(300, ((breaks + 1) * 15) + 24))
+        local offset = 6
+        for index = 1, #(self.exportFrame.analysisPanels or {}) do
+            local panel = self.exportFrame.analysisPanels[index]
+            local section = sections[index]
+            if section then
+                panel:ClearAllPoints()
+                panel:SetPoint("TOPLEFT", self.exportFrame.analysisContent, "TOPLEFT", 2, -offset)
+                panel.icon:SetTexture(section.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
+                panel.title:SetText(section.title or "")
+                panel.body:SetText(section.text or "")
+                local bodyHeight = GEAR_ENGINE.AnalysisTextHeight(panel.body, section.text)
+                local panelHeight = math.max(58, bodyHeight + 38)
+                panel.body:SetHeight(bodyHeight)
+                panel:SetHeight(panelHeight)
+                if panel.SetBackdropBorderColor then
+                    if section.kind == "role_primary" then
+                        panel:SetBackdropBorderColor(0.82, 0.67, 0.20, 1)
+                    elseif section.kind == "role_secondary" then
+                        panel:SetBackdropBorderColor(0.25, 0.55, 0.78, 0.9)
+                    else
+                        panel:SetBackdropBorderColor(0.34, 0.38, 0.42, 0.9)
+                    end
+                end
+                panel:Show()
+                offset = offset + panelHeight + 8
+            else
+                panel:Hide()
+            end
+        end
+        self.exportFrame.analysisContent:SetHeight(math.max(300, offset + 4))
     end
 
     return roleCount or 0
@@ -10193,6 +10342,48 @@ function Addon:CreateExportFrame()
     analysisText:SetPoint("RIGHT", analysisContent, "RIGHT", -8, 0)
     analysisText:SetJustifyH("LEFT")
     analysisText:SetText(L("analysis_no_roles"))
+    analysisText:Hide()
+
+    local analysisPanels = {}
+    for index = 1, 6 do
+        local panel = CreateFrame("Frame", nil, analysisContent, BackdropTemplate())
+        SetFrameSize(panel, 486, 58)
+        panel:SetPoint("TOPLEFT", analysisContent, "TOPLEFT", 2, -6 - ((index - 1) * 66))
+        if panel.SetBackdrop then
+            panel:SetBackdrop({
+                bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
+                edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+                tile = true,
+                tileSize = 16,
+                edgeSize = 10,
+                insets = { left = 3, right = 3, top = 3, bottom = 3 },
+            })
+            panel:SetBackdropColor(0.025, 0.035, 0.045, 0.88)
+            panel:SetBackdropBorderColor(0.34, 0.38, 0.42, 0.9)
+        end
+
+        local icon = panel:CreateTexture(nil, "ARTWORK")
+        SetFrameSize(icon, 24, 24)
+        icon:SetPoint("TOPLEFT", 8, -8)
+        icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
+
+        local title = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        title:SetPoint("TOPLEFT", 40, -10)
+        title:SetPoint("RIGHT", panel, "RIGHT", -8, 0)
+        title:SetJustifyH("LEFT")
+
+        local body = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        body:SetPoint("TOPLEFT", 10, -36)
+        body:SetPoint("RIGHT", panel, "RIGHT", -10, 0)
+        body:SetJustifyH("LEFT")
+        body:SetJustifyV("TOP")
+
+        panel.icon = icon
+        panel.title = title
+        panel.body = body
+        panel:Hide()
+        analysisPanels[index] = panel
+    end
 
     local phase2Scroll = CreateFrame("ScrollFrame", "TBCGearExporterPhase2ScrollFrame", exportFrame, "UIPanelScrollFrameTemplate")
     phase2Scroll:SetPoint("TOPLEFT", 282, -96)
@@ -10331,6 +10522,7 @@ function Addon:CreateExportFrame()
     exportFrame.itemListContent = itemListContent
     exportFrame.analysisContent = analysisContent
     exportFrame.analysisText = analysisText
+    exportFrame.analysisPanels = analysisPanels
     exportFrame.phase2Content = phase2Content
     exportFrame.phase2Summary = phase2Summary
     exportFrame.phase2ModeButtons = phase2ModeButtons
@@ -10859,6 +11051,9 @@ if _G.TBCGearExporterTestMode then
         CoreStatsText = GEAR_ENGINE.CoreStatsText,
         RoleHitCritText = GEAR_ENGINE.RoleHitCritText,
         BuildStatsAnalysisText = BuildStatsAnalysisText,
+        BuildStatsAnalysisSections = GEAR_ENGINE.BuildStatsAnalysisSections,
+        Utf8DisplayLength = GEAR_ENGINE.Utf8DisplayLength,
+        EstimateAnalysisTextLines = GEAR_ENGINE.EstimateAnalysisTextLines,
         BuildOverviewText = Addon.BuildOverviewText,
         CompactCountList = Addon.CompactCountList,
         MarkdownEscape = Addon.MarkdownEscape,

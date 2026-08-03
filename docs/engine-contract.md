@@ -12,7 +12,7 @@ The database contains 28 role records, but a role record is not the same thing a
 | `cross_phase_shared_ep` | 3 | The pinned WoWSims P1 Hunter BM/SV table is reused as an estimate for BM, MM, and SV. It is neither P2-specific nor MM-calibrated. |
 | `ordered_stat_heuristic` | 22 | Weights are generated from the role's ordered stat list and generic unit scales. No simulator EP table calibrates the score. |
 
-No current model supports definitive upgrade verdicts. The addon may rank a visible-stat candidate, but labels it **Estimated candidate / 估算候选**. Low-data items remain manual checks, and swaps that risk a tracked cap remain tradeoffs or are rejected.
+No current model supports definitive upgrade verdicts. The addon may rank a visible-stat candidate, but labels larger heuristic results **Estimated candidate / 估算候选** and scores below 8 **Small improvement / 小幅提升**. Low-data items remain manual checks, and swaps that risk a tracked cap remain tradeoffs or are rejected.
 
 Separately, 18 roles have a WoWSims reference gear route and 10 use a class-guide route. Holy Paladin now has three class-guide presets for Mixed Healing, Flash of Light, and Holy Light. A reference set supplies target item IDs and collection progress. It does **not** prove that a bag or bank candidate was simulated.
 
@@ -57,7 +57,7 @@ The current comparison path is:
 2. Reject items whose visible stats or curated known effect conflicts with the selected role archetype.
 3. Normalize item-stat aliases exposed by the TBC Anniversary API.
 4. Apply the declared static EP table or ordered-stat heuristic to visible stats only.
-5. Apply tracked cap-gap, selected key-talent, and strategy-mode multipliers. All three multiplier layers scale only weights the role already declares — a generic hit/crit/haste multiplier falls through to the role's physical school-specific weights — and never invent a weight from generic unit scales. Generic hit/crit/haste ratings are physical-only stats in TBC: they never inherit spell-school weights and do not count toward the spell-hit benchmark. Preserve raw paper-doll values, detected talent bonuses, effective values, and role-specific targets separately; paper-doll expertise points are converted to percent (0.25% per point) before cap comparison.
+5. Apply tracked cap-gap, selected key-talent, and strategy-mode multipliers. All three multiplier layers scale only weights the role already declares — a generic hit/crit/haste multiplier falls through to the role's physical school-specific weights — and never invent a weight from generic unit scales. Generic hit/crit/haste ratings are physical-only stats in TBC: they never inherit spell-school weights and do not count toward the spell-hit benchmark. Preserve raw paper-doll values, detected talent bonuses, effective values, and role-specific targets separately; paper-doll expertise points are converted to percent (0.25% per point) before cap comparison. Defense rating projects into both combined critical-hit reduction and the visible dodge/parry/block subtotal. Once crit immunity is met, defense keeps partial avoidance value but is not boosted again by the contextual table check.
 6. Compare curated item effects categorically for the selected strategy mode; effect affinity is never added to EP. A candidate with an explicitly weaker known effect is excluded from that replacement path. Equal affinity across different decision dimensions is an `effect_context` scenario tradeoff, not a numeric upgrade. Ring and trinket candidates are evaluated against both equipped items, and same-slot candidates rank by the full affinity delta before visible score.
 7. Evaluate curated set thresholds in the current full equipped set, marking a broken bonus as a tradeoff and a newly completed threshold as a contextual decision.
 8. Reject swaps that worsen an unmet tracked gate.
@@ -66,7 +66,7 @@ The current comparison path is:
 
 Item level and quality do not add score. They are display and filtering fields, not performance stats. Empty sockets carry a fixed nominal placeholder weight (4 per socket) so a socketed item is not treated as statless; the placeholder appears in the score formula like any other component, while gem choices, socket bonuses, and enchants remain outside the evaluator. Exported stat weights keep four decimal places so each recorded `delta x weight` reproduces its recorded contribution.
 
-Database version 8 contains a deliberately bounded contextual layer: 14 source-linked item effects and all 17 Tier 5 class sets with localized 2/4-piece thresholds. Every one of the 28 class-role combinations has a Tier 5 definition. Set rules require both class and role ownership, and active set counts are evaluated against the full equipped loadout. These rules can choose between strategy-mode items and protect active bonuses, but they do not produce numeric EP.
+Database version 9 contains a deliberately bounded contextual layer: 14 source-linked item effects and all 17 Tier 5 class sets with localized 2/4-piece thresholds. Every one of the 28 class-role combinations has a Tier 5 definition. Set rules require both class and role ownership, and active set counts are evaluated against the full equipped loadout. These rules can choose between strategy-mode items and protect active bonuses, but they do not produce numeric EP.
 
 The engine does not currently model unlisted set bonuses or item effects, gems, enchants, socket bonuses, proc rates, weapon speed rules, school-specific spell coefficients, full rotations, encounter timelines, party buff uptime, pet uptime, healing assignments, or global whole-loadout interactions. It is not a combat simulator or a global loadout optimizer.
 
@@ -74,7 +74,7 @@ The engine does not currently model unlisted set bonuses or item effects, gems, 
 
 Every selected talent is exported with tree, rank, icon, and alignment when the client API supplies it. That is **representation coverage**.
 
-Only a curated subset has a calculation rule that modifies weights or a tracked formula. That is **model coverage**. Database version 8 reports both values separately; it does not count an exported but unmodeled talent as modeled.
+Only a curated subset has a calculation rule that modifies weights or a tracked formula. That is **model coverage**. Database version 9 reports both values separately; it does not count an exported but unmodeled talent as modeled.
 
 Talent benchmark bonuses are applied only when a role cap is expressed as a base target. A cap already labeled `talent_cap` or `raid_cap` is not adjusted a second time. Contextual conversions remain outside EP: for example, Expose Weakness reports attack power per physical attacker while active but does not pretend that raid value is the Hunter's simulated personal DPS.
 

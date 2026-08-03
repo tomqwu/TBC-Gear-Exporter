@@ -4,6 +4,16 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+## [0.5.6] - 2026-08-03
+
+- Treat defense rating consistently after either the combined-crit or defense-skill immunity benchmark is met, preserving partial avoidance value without applying the contextual shield-table boost twice.
+- Project defense-rating swaps into both tracked tank outcomes: critical-hit reduction and the visible dodge/parry/block subtotal. Each defense skill contributes 0.12% to that displayed subtotal, while attacker miss remains outside the paper-doll total.
+- Reclassify positive visible-stat scores below 8 as a localized small improvement instead of an estimated upgrade, across every class and role model; larger heuristic candidates remain estimates and cap risks remain tradeoffs.
+- Fix the Strongge Protection Paladin ring case: The Unyielding Defender is now a small `+2.73` candidate over Shermanar Great-Ring, with explicit `+0.05%` crit-immunity buffer and `+0.15%` visible avoidance/block impact.
+- Redesign Stats Analysis as up to six structured, icon-led panels for character/talents, live stats, race/group context, and the top three role models, with dynamic wrapping and localized titles instead of one unbroken text wall.
+- Keep the complete structured analysis text available to Markdown, text, AI Text, and JSON consumers while the in-game page uses the more readable panel presentation.
+- Upgrade the recommendation engine to version 19; all 120 tests pass with 99.03% executable-line coverage.
+
 ## [0.5.5] - 2026-08-02
 
 - Fix strategy-mode weight application: mode multipliers now scale only weights the selected role actually declares, and generic hit/crit/haste multipliers fall through to the role's school-specific weights instead of inventing a generic weight from unit scales.
