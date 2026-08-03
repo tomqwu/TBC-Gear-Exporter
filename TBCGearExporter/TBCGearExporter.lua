@@ -458,8 +458,8 @@ GEAR_ENGINE.TBC_RATING = {
     resiliencePerCritPercent = 39.4231,
 }
 
-GEAR_ENGINE.ADVICE_ROW_HEIGHT = 236
-GEAR_ENGINE.ADVICE_ROW_STEP = 240
+GEAR_ENGINE.ADVICE_ROW_MIN_HEIGHT = 104
+GEAR_ENGINE.ADVICE_ROW_GAP = 8
 
 GEAR_ENGINE.ROLE_FIT_SIGNALS = {
     healer = {
@@ -9144,6 +9144,7 @@ function Addon:SavedItemCounts()
 end
 
 function Addon:SetExportView(view)
+    local previousView = self.exportView
     if view == "text" then
         self.exportView = "text"
     elseif view == "analysis" then
@@ -9172,6 +9173,9 @@ function Addon:SetExportView(view)
 
     if self.exportFrame.adviceScroll then
         if self.exportView == "advice" then
+            if previousView ~= "advice" and self.exportFrame.adviceScroll.SetVerticalScroll then
+                self.exportFrame.adviceScroll:SetVerticalScroll(0)
+            end
             self.exportFrame.adviceScroll:Show()
         else
             self.exportFrame.adviceScroll:Hide()
@@ -9295,8 +9299,8 @@ end
 
 function Addon:CreateGearAdviceRow(parent, index)
     local row = CreateFrame("Frame", nil, parent)
-    SetFrameSize(row, 490, GEAR_ENGINE.ADVICE_ROW_HEIGHT)
-    row:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, -((index - 1) * GEAR_ENGINE.ADVICE_ROW_STEP))
+    SetFrameSize(row, 490, GEAR_ENGINE.ADVICE_ROW_MIN_HEIGHT)
+    row:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, -((index - 1) * (GEAR_ENGINE.ADVICE_ROW_MIN_HEIGHT + GEAR_ENGINE.ADVICE_ROW_GAP)))
 
     local slot = row:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     slot:SetPoint("TOPLEFT", 4, -10)
@@ -9331,9 +9335,9 @@ function Addon:CreateGearAdviceRow(parent, index)
     name:SetJustifyV("TOP")
 
     local reason = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    reason:SetPoint("TOPLEFT", candidateButton, "TOPRIGHT", 8, -24)
+    reason:SetPoint("TOPLEFT", row, "TOPLEFT", 78, -54)
     reason:SetPoint("RIGHT", row, "RIGHT", -8, 0)
-    reason:SetHeight(198)
+    reason:SetHeight(42)
     reason:SetJustifyH("LEFT")
     reason:SetJustifyV("TOP")
 
@@ -9378,6 +9382,68 @@ function Addon:CreateGearAdviceRow(parent, index)
     return row
 end
 
+function Addon:LayoutGearAdvice()
+    local frame = self.exportFrame
+    if not frame or not frame.adviceContent then
+        return 0
+    end
+
+    local offset = 124
+    local summaryText = frame.adviceSummary.GetText and frame.adviceSummary:GetText() or ""
+    local summaryHeight = math.max(92, GEAR_ENGINE.AnalysisTextHeight(frame.adviceSummary, summaryText, 34, 58))
+    frame.adviceSummary:ClearAllPoints()
+    frame.adviceSummary:SetPoint("TOPLEFT", frame.adviceContent, "TOPLEFT", 4, -offset)
+    frame.adviceSummary:SetHeight(summaryHeight)
+    offset = offset + summaryHeight + 8
+
+    local caveatText = frame.adviceCaveat.GetText and frame.adviceCaveat:GetText() or ""
+    local caveatHeight = math.max(48, GEAR_ENGINE.AnalysisTextHeight(frame.adviceCaveat, caveatText, 34, 58))
+    frame.adviceCaveat:ClearAllPoints()
+    frame.adviceCaveat:SetPoint("TOPLEFT", frame.adviceContent, "TOPLEFT", 4, -offset)
+    frame.adviceCaveat:SetHeight(caveatHeight)
+    offset = offset + caveatHeight + 10
+
+    local namesText = frame.compareNames.GetText and frame.compareNames:GetText() or ""
+    local namesHeight = math.max(18, GEAR_ENGINE.AnalysisTextHeight(frame.compareNames, namesText, 25, 44))
+    frame.compareNames:SetHeight(namesHeight)
+
+    local verdictTop = 29 + namesHeight
+    local verdictText = frame.compareVerdict.GetText and frame.compareVerdict:GetText() or ""
+    local verdictHeight = math.max(18, GEAR_ENGINE.AnalysisTextHeight(frame.compareVerdict, verdictText, 25, 44))
+    frame.compareVerdict:ClearAllPoints()
+    frame.compareVerdict:SetPoint("TOPLEFT", frame.comparePanel, "TOPLEFT", 120, -verdictTop)
+    frame.compareVerdict:SetPoint("RIGHT", frame.comparePanel, "RIGHT", -8, 0)
+    frame.compareVerdict:SetHeight(verdictHeight)
+
+    local detailsTop = math.max(98, verdictTop + verdictHeight + 8)
+    local detailsText = frame.compareDetails.GetText and frame.compareDetails:GetText() or ""
+    local detailsHeight = math.max(18, GEAR_ENGINE.AnalysisTextHeight(frame.compareDetails, detailsText, 34, 58))
+    frame.compareDetails:ClearAllPoints()
+    frame.compareDetails:SetPoint("TOPLEFT", frame.comparePanel, "TOPLEFT", 10, -detailsTop)
+    frame.compareDetails:SetPoint("RIGHT", frame.comparePanel, "RIGHT", -10, 0)
+    frame.compareDetails:SetHeight(detailsHeight)
+
+    local compareHeight = math.max(126, detailsTop + detailsHeight + 10)
+    frame.comparePanel:ClearAllPoints()
+    frame.comparePanel:SetPoint("TOPLEFT", frame.adviceContent, "TOPLEFT", 2, -offset)
+    frame.comparePanel:SetHeight(compareHeight)
+    offset = offset + compareHeight + 10
+
+    frame.adviceRowsContent:ClearAllPoints()
+    frame.adviceRowsContent:SetPoint("TOPLEFT", frame.adviceContent, "TOPLEFT", 0, -offset)
+    local rowsHeight = frame.adviceRowsHeight or 220
+    frame.adviceContent:SetHeight(math.max(876, offset + rowsHeight + 16))
+    frame.adviceLayout = {
+        summaryHeight = summaryHeight,
+        caveatHeight = caveatHeight,
+        compareHeight = compareHeight,
+        detailsTop = detailsTop,
+        rowsTop = offset,
+        contentHeight = math.max(876, offset + rowsHeight + 16),
+    }
+    return frame.adviceLayout.contentHeight
+end
+
 function Addon:RefreshAdviceRoleButtons(engine, locale)
     for index = 1, #(self.exportFrame and self.exportFrame.adviceRoleButtons or {}) do
         local button = self.exportFrame.adviceRoleButtons[index]
@@ -9408,6 +9474,7 @@ function Addon:RefreshGearComparison(profile, engine, index)
         self.exportFrame.compareNames:SetText(LForLocale(locale, "compare_select_hint"))
         self.exportFrame.compareVerdict:SetText("")
         self.exportFrame.compareDetails:SetText("")
+        self:LayoutGearAdvice()
         return nil
     end
 
@@ -9439,6 +9506,7 @@ function Addon:RefreshGearComparison(profile, engine, index)
         details[#details + 1] = LForLocale(locale, "advice_set_impact", GEAR_ENGINE.SetImpactText(upgrade, locale))
     end
     self.exportFrame.compareDetails:SetText(table.concat(details, "\n"))
+    self:LayoutGearAdvice()
     return upgrade
 end
 
@@ -9476,6 +9544,7 @@ function Addon:RefreshGearAdvice(profile, engine)
         self.exportFrame.adviceEmpty:Hide()
     end
 
+    local rowOffset = 0
     for index = 1, #upgrades do
         local upgrade = upgrades[index]
         local row = rows[index] or self:CreateGearAdviceRow(self.exportFrame.adviceRowsContent, index)
@@ -9503,7 +9572,16 @@ function Addon:RefreshGearAdvice(profile, engine)
         reasons[#reasons + 1] = LForLocale(locale, "advice_impact", GEAR_ENGINE.BenchmarkImpactText(upgrade.benchmarkImpacts, locale, 1))
             .. " · " .. LForLocale(locale, "advice_evidence", LForLocale(locale, "advice_evidence_" .. tostring(upgrade.dataCompleteness or upgrade.evidence or "low")))
         reasons[#reasons + 1] = LForLocale(locale, "advice_model", GEAR_ENGINE.ScoreModelContextText(upgrade.scoreModel, locale))
-        row.reason:SetText(table.concat(reasons, "\n"))
+        local reasonText = table.concat(reasons, "\n")
+        row.reason:SetText(reasonText)
+        local reasonHeight = math.max(42, GEAR_ENGINE.AnalysisTextHeight(row.reason, reasonText, 29, 49))
+        local rowHeight = math.max(GEAR_ENGINE.ADVICE_ROW_MIN_HEIGHT, reasonHeight + 64)
+        row.reason:SetHeight(reasonHeight)
+        row:ClearAllPoints()
+        row:SetPoint("TOPLEFT", self.exportFrame.adviceRowsContent, "TOPLEFT", 0, -rowOffset)
+        row:SetHeight(rowHeight)
+        row.layoutOffset = rowOffset
+        rowOffset = rowOffset + rowHeight + GEAR_ENGINE.ADVICE_ROW_GAP
         row:Show()
     end
 
@@ -9522,26 +9600,25 @@ function Addon:RefreshGearAdvice(profile, engine)
         if #otherCandidates > shown then
             lines[#lines + 1] = string.format(GEAR_ENGINE.ReportTerms(locale).more, #otherCandidates - shown)
         end
-        otherHeight = 24 + (shown * 96) + (#otherCandidates > shown and 18 or 0)
+        local otherText = table.concat(lines, "\n")
+        otherHeight = math.max(28, GEAR_ENGINE.AnalysisTextHeight(self.exportFrame.adviceOther, otherText, 34, 58) + 6)
         self.exportFrame.adviceOther:ClearAllPoints()
         self.exportFrame.adviceOther:SetPoint("TOPLEFT", self.exportFrame.adviceRowsContent, "TOPLEFT", 4,
-            -((#upgrades * GEAR_ENGINE.ADVICE_ROW_STEP) + (#upgrades == 0 and 42 or 8)))
+            -(rowOffset + (#upgrades == 0 and 42 or 8)))
         self.exportFrame.adviceOther:SetHeight(otherHeight)
-        self.exportFrame.adviceOther:SetText(table.concat(lines, "\n"))
+        self.exportFrame.adviceOther:SetText(otherText)
         self.exportFrame.adviceOther:Show()
+        rowOffset = rowOffset + (#upgrades == 0 and 42 or 8) + otherHeight
     elseif self.exportFrame.adviceOther then
         self.exportFrame.adviceOther:Hide()
     end
 
+    if self.exportFrame.adviceRowsContent.SetHeight then
+        self.exportFrame.adviceRowsHeight = math.max(220, rowOffset + 16)
+        self.exportFrame.adviceRowsContent:SetHeight(self.exportFrame.adviceRowsHeight)
+    end
     local selectedIndex = math.min(self.selectedAdviceIndex or 1, #upgrades)
     self:RefreshGearComparison(profile, engine, selectedIndex > 0 and selectedIndex or nil)
-
-    if self.exportFrame.adviceRowsContent.SetHeight then
-        self.exportFrame.adviceRowsContent:SetHeight(math.max(220, (#upgrades * GEAR_ENGINE.ADVICE_ROW_STEP) + otherHeight + 16))
-    end
-    if self.exportFrame.adviceContent.SetHeight then
-        self.exportFrame.adviceContent:SetHeight(math.max(876, (#upgrades * GEAR_ENGINE.ADVICE_ROW_STEP) + otherHeight + 640))
-    end
     return #upgrades
 end
 
@@ -9623,24 +9700,25 @@ function GEAR_ENGINE.Utf8DisplayLength(value)
     return length
 end
 
-function GEAR_ENGINE.EstimateAnalysisTextLines(value)
+function GEAR_ENGINE.EstimateAnalysisTextLines(value, wideCharactersPerLine, asciiCharactersPerLine)
     local text = tostring(value or "")
     local lines = 0
     for line in (text .. "\n"):gmatch("(.-)\n") do
         local displayLength = GEAR_ENGINE.Utf8DisplayLength(line)
         local hasWideCharacters = #line > displayLength
-        local charactersPerLine = hasWideCharacters and 34 or 58
+        local charactersPerLine = hasWideCharacters and (wideCharactersPerLine or 34) or (asciiCharactersPerLine or 58)
         lines = lines + math.max(1, math.ceil(displayLength / charactersPerLine))
     end
     return math.max(1, lines)
 end
 
-function GEAR_ENGINE.AnalysisTextHeight(fontString, text)
+function GEAR_ENGINE.AnalysisTextHeight(fontString, text, wideCharactersPerLine, asciiCharactersPerLine)
+    local estimated = (GEAR_ENGINE.EstimateAnalysisTextLines(text, wideCharactersPerLine, asciiCharactersPerLine) * 15) + 2
     local measured = fontString and fontString.GetStringHeight and fontString:GetStringHeight()
     if type(measured) == "number" and measured > 0 then
-        return math.ceil(measured) + 2
+        return math.max(math.ceil(measured) + 2, estimated)
     end
-    return (GEAR_ENGINE.EstimateAnalysisTextLines(text) * 15) + 2
+    return estimated
 end
 
 function Addon:RefreshStatsAnalysis(profile, chartStats, strategyBook)
@@ -10211,22 +10289,22 @@ function Addon:CreateExportFrame()
     local adviceSummary = adviceContent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     adviceSummary:SetPoint("TOPLEFT", 4, -124)
     adviceSummary:SetWidth(478)
-    adviceSummary:SetHeight(132)
+    adviceSummary:SetHeight(92)
     adviceSummary:SetJustifyH("LEFT")
     adviceSummary:SetJustifyV("TOP")
     adviceSummary:SetText(L("advice_title"))
 
     local adviceCaveat = adviceContent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    adviceCaveat:SetPoint("TOPLEFT", 4, -264)
+    adviceCaveat:SetPoint("TOPLEFT", 4, -224)
     adviceCaveat:SetWidth(478)
-    adviceCaveat:SetHeight(64)
+    adviceCaveat:SetHeight(48)
     adviceCaveat:SetJustifyH("LEFT")
     adviceCaveat:SetJustifyV("TOP")
     adviceCaveat:SetText(L("advice_caveat"))
 
     local comparePanel = CreateFrame("Frame", nil, adviceContent, BackdropTemplate())
-    SetFrameSize(comparePanel, 486, 286)
-    comparePanel:SetPoint("TOPLEFT", adviceContent, "TOPLEFT", 2, -336)
+    SetFrameSize(comparePanel, 486, 126)
+    comparePanel:SetPoint("TOPLEFT", adviceContent, "TOPLEFT", 2, -282)
     if comparePanel.SetBackdrop then
         comparePanel:SetBackdrop({
             bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
@@ -10271,6 +10349,7 @@ function Addon:CreateExportFrame()
     local compareNames = comparePanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     compareNames:SetPoint("TOPLEFT", 120, -27)
     compareNames:SetPoint("RIGHT", comparePanel, "RIGHT", -8, 0)
+    compareNames:SetHeight(18)
     compareNames:SetJustifyH("LEFT")
     compareNames:SetText(L("compare_select_hint"))
 
@@ -10280,9 +10359,9 @@ function Addon:CreateExportFrame()
     compareVerdict:SetJustifyH("LEFT")
 
     local compareDetails = comparePanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    compareDetails:SetPoint("TOPLEFT", 120, -66)
-    compareDetails:SetPoint("RIGHT", comparePanel, "RIGHT", -8, 0)
-    compareDetails:SetHeight(212)
+    compareDetails:SetPoint("TOPLEFT", 10, -98)
+    compareDetails:SetPoint("RIGHT", comparePanel, "RIGHT", -10, 0)
+    compareDetails:SetHeight(18)
     compareDetails:SetJustifyH("LEFT")
     compareDetails:SetJustifyV("TOP")
 
@@ -10301,7 +10380,7 @@ function Addon:CreateExportFrame()
 
     local adviceRowsContent = CreateFrame("Frame", nil, adviceContent)
     SetFrameSize(adviceRowsContent, 490, 220)
-    adviceRowsContent:SetPoint("TOPLEFT", adviceContent, "TOPLEFT", 0, -632)
+    adviceRowsContent:SetPoint("TOPLEFT", adviceContent, "TOPLEFT", 0, -418)
 
     local adviceEmpty = adviceRowsContent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     adviceEmpty:SetPoint("TOPLEFT", 4, -4)
@@ -10516,6 +10595,7 @@ function Addon:CreateExportFrame()
     exportFrame.compareVerdict = compareVerdict
     exportFrame.compareDetails = compareDetails
     exportFrame.adviceRowsContent = adviceRowsContent
+    exportFrame.adviceRowsHeight = 220
     exportFrame.adviceEmpty = adviceEmpty
     exportFrame.adviceOther = adviceOther
     exportFrame.adviceRows = {}
@@ -10535,6 +10615,7 @@ function Addon:CreateExportFrame()
     exportFrame.emptyItems = emptyItems
     exportFrame.itemRows = {}
     self.exportFrame = exportFrame
+    self:LayoutGearAdvice()
     self:SetExportView(self.exportView or "overview")
 end
 
