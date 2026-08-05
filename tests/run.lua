@@ -6260,6 +6260,9 @@ test("class weapon and relic proficiencies gate candidates", function()
     assertTrue(private.CandidateCompatibleWithClass(paladin, weapon(8, "INVTYPE_2HWEAPON")))
     assertFalse(private.CandidateCompatibleWithClass(hunter, weapon(4)))
     assertTrue(private.CandidateCompatibleWithClass(hunter, weapon(2, "INVTYPE_RANGED")))
+    assertFalse(private.CandidateCompatibleWithClass({ classEnglish = "ROGUE" }, weapon(0)))
+    assertTrue(private.CandidateCompatibleWithClass({ classEnglish = "ROGUE" }, weapon(15)))
+    assertTrue(private.CandidateCompatibleWithClass({ classEnglish = "SHAMAN" }, weapon(5, "INVTYPE_2HWEAPON")))
     assertTrue(private.CandidateCompatibleWithClass(priest, weapon(19, "INVTYPE_RANGEDRIGHT")))
     assertFalse(private.CandidateCompatibleWithClass(warrior, weapon(19, "INVTYPE_RANGEDRIGHT")))
     assertTrue(private.CandidateCompatibleWithClass({ classEnglish = "MONK" }, weapon(7)))
@@ -6440,6 +6443,39 @@ test("phase two guide lists stat priorities for every class and specialization",
 
     assertContains(Addon.exportFrame.phase2Priorities.text, "防护圣骑士")
     assertContains(Addon.exportFrame.phase2Priorities.text, "猎人")
+end)
+
+test("recommendations mark where an already-owned candidate is stored", function()
+    assertEquals(private.OwnedLocationText({ source = "bank" }, "zhCN"), "已拥有: 银行")
+    assertEquals(private.OwnedLocationText({ source = "bags" }, "enUS"), "Owned: Bags")
+    assertEquals(private.OwnedLocationText({ source = "equipped" }, "zhTW"), "已擁有: 目前裝備")
+    assertEquals(private.OwnedLocationText({ source = "vendor" }, "enUS"), nil)
+    assertEquals(private.OwnedLocationText(nil, "enUS"), nil)
+    assertContains(private.OwnedLocationText({ source = "bank", bagID = 1, slotID = 8 }, "zhCN"), "银行")
+
+    local db = assert(_G.TBCGearExporterP2DB)
+    local role = assert(db.GetRole("DRUID", "restoration_healer"))
+    local current = {
+        itemID = 8801, name = "Old Vestment", category = "Gear", equipSlot = "INVTYPE_CHEST",
+        classID = 4, subClassID = 2, itemLevel = 110, quality = 3, source = "equipped",
+        stats = { { token = "ITEM_MOD_SPELL_HEALING_DONE_SHORT", label = "Healing", value = 40 } },
+    }
+    local candidate = {
+        itemID = 8802, name = "Banked Vestment", category = "Gear", equipSlot = "INVTYPE_CHEST",
+        classID = 4, subClassID = 2, itemLevel = 120, quality = 4, source = "bank",
+        stats = { { token = "ITEM_MOD_SPELL_HEALING_DONE_SHORT", label = "Healing", value = 90 } },
+    }
+    local profile = { classEnglish = "DRUID", locale = "zhCN", equipped = { items = { current } }, characterStats = {} }
+    local engine = private.BuildGearRecommendations(profile, { candidate }, { roles = { role } }, role.key, "balanced")
+    assertEquals(#engine.upgrades, 1)
+
+    local markdown = {}
+    private.AppendGearRecommendationsMarkdown(markdown, engine, "zhCN")
+    assertContains(table.concat(markdown, "\n"), "已拥有: 银行")
+
+    local text = {}
+    private.AppendGearRecommendationsText(text, engine, "zhCN")
+    assertContains(table.concat(text, "\n"), "已拥有: 银行")
 end)
 
 local failures = {}

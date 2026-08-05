@@ -4,6 +4,10 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+- Mark every recommended candidate with where you already own it (bags, bank, or equipped, including the exact bag and slot when known) in Gear Advice rows, the selected comparison panel, Markdown, and plain text, so a recommendation never reads like an item you still have to farm.
+- Remove one-handed axes from the Rogue weapon proficiency gate; axe training arrives in Wrath, so a Rogue can no longer be recommended an axe they cannot equip.
+- Note that Shaman two-handed axes and maces stay allowed because the Enhancement talent grants them.
+
 ## [0.5.9] - 2026-08-03
 
 - Split every tank's specialized recommendation path into an explicit survival/mitigation objective and a role-specific threat objective instead of ranking both views by one blended tank total.
