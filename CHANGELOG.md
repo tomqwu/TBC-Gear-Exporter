@@ -4,6 +4,14 @@ All notable changes to TBC Gear Exporter are tracked here.
 
 ## [Unreleased]
 
+- Block any swap that pushes a currently met hard gate back below its target, in every strategy mode. Crit immunity is a survival gate, so no objective score can pay for becoming critically hittable again; such candidates now appear in the candidate audit as benchmark-gated instead of leading the recommendation list.
+- Fix the real Protection Paladin threat-mode case where seven of eight recommendations dropped combined critical-hit reduction from 5.83% to between 5.24% and 5.54% against the 5.6% gate while winning on the threat objective alone.
+- Carry the cap `kind` on every benchmark impact so consumers can tell a hard gate from a contextual target.
+
+- Mark every recommended candidate with where you already own it (bags, bank, or equipped, including the exact bag and slot when known) in Gear Advice rows, the selected comparison panel, Markdown, and plain text, so a recommendation never reads like an item you still have to farm.
+- Remove one-handed axes from the Rogue weapon proficiency gate; axe training arrives in Wrath, so a Rogue can no longer be recommended an axe they cannot equip.
+- Note that Shaman two-handed axes and maces stay allowed because the Enhancement talent grants them.
+
 ## [0.5.9] - 2026-08-03
 
 - Split every tank's specialized recommendation path into an explicit survival/mitigation objective and a role-specific threat objective instead of ranking both views by one blended tank total.

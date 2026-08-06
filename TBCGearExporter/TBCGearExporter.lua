@@ -408,8 +408,11 @@ GEAR_ENGINE.CLASS_WEAPON_SUBCLASSES = {
     WARRIOR = { [0] = true, [1] = true, [2] = true, [3] = true, [4] = true, [5] = true, [6] = true, [7] = true, [8] = true, [10] = true, [13] = true, [15] = true, [16] = true, [18] = true },
     PALADIN = { [0] = true, [1] = true, [4] = true, [5] = true, [6] = true, [7] = true, [8] = true },
     HUNTER = { [0] = true, [1] = true, [2] = true, [3] = true, [6] = true, [7] = true, [8] = true, [10] = true, [13] = true, [15] = true, [16] = true, [18] = true },
-    ROGUE = { [0] = true, [2] = true, [3] = true, [4] = true, [7] = true, [13] = true, [15] = true, [16] = true, [18] = true },
+    -- Rogues cannot train axes in TBC; that proficiency arrives in Wrath.
+    ROGUE = { [2] = true, [3] = true, [4] = true, [7] = true, [13] = true, [15] = true, [16] = true, [18] = true },
     PRIEST = { [4] = true, [10] = true, [15] = true, [19] = true },
+    -- Shaman 2H axes/maces (1/5) are granted by the Enhancement talent, not
+    -- base training; they stay allowed so talented shamans are not rejected.
     SHAMAN = { [0] = true, [1] = true, [4] = true, [5] = true, [10] = true, [13] = true, [15] = true },
     MAGE = { [7] = true, [10] = true, [15] = true, [19] = true },
     DRUID = { [4] = true, [5] = true, [10] = true, [13] = true, [15] = true },
@@ -1676,7 +1679,7 @@ GEAR_ENGINE.REPORT_TERMS = {
         slot_counts = "Equipment slot counts", stat_totals = "Stat totals", none = "none", never = "never",
         no_items = "No saved items are available. Scan bags, and scan again while the bank is open.",
         more = "+%d more", equipped_count = "%d equipped", candidate_count = "%d candidates", upgrade_count = "%d suggestions",
-        bags = "Bags", bank = "Bank", equipped = "Equipped", unknown = "Unknown", unknown_location = "Unknown location",
+        bags = "Bags", bank = "Bank", equipped = "Equipped", unknown = "Unknown", unknown_location = "Unknown location", owned = "Owned",
         backpack_slot = "Backpack slot %s", bag_slot = "Bag %s slot %s", bank_slot = "Bank slot %s", bank_bag_slot = "Bank bag %s slot %s",
         categories_map = { Equipped = "Current Equipment", Gear = "Gear", Consumables = "Consumables", ["Trade Goods"] = "Trade Goods", Gems = "Gems", Enhancements = "Enhancements", Recipes = "Recipes", Reagents = "Reagents", ["Quest Items"] = "Quest Items", Containers = "Containers", Keys = "Keys", Projectiles = "Projectiles", Currency = "Currency", Permanent = "Permanent", Miscellaneous = "Miscellaneous", Other = "Other" },
     },
@@ -1724,7 +1727,7 @@ GEAR_ENGINE.REPORT_TERMS = {
         slot_counts = "装备栏位统计", stat_totals = "属性合计", none = "无", never = "从未",
         no_items = "没有已保存物品。请扫描背包，并在银行打开时再次扫描。",
         more = "另 %d 项", equipped_count = "已装备 %d 件", candidate_count = "候选 %d 件", upgrade_count = "建议 %d 条",
-        bags = "背包", bank = "银行", equipped = "当前装备", unknown = "未知", unknown_location = "未知位置",
+        bags = "背包", bank = "银行", equipped = "当前装备", unknown = "未知", unknown_location = "未知位置", owned = "已拥有",
         backpack_slot = "背包第 %s 格", bag_slot = "%s 号背包第 %s 格", bank_slot = "银行第 %s 格", bank_bag_slot = "银行背包 %s 第 %s 格",
         categories_map = { Equipped = "当前装备", Gear = "装备", Consumables = "消耗品", ["Trade Goods"] = "材料", Gems = "宝石", Enhancements = "强化物品", Recipes = "配方", Reagents = "施法材料", ["Quest Items"] = "任务物品", Containers = "容器", Keys = "钥匙", Projectiles = "弹药", Currency = "货币", Permanent = "永久物品", Miscellaneous = "杂项", Other = "其他" },
     },
@@ -1772,7 +1775,7 @@ GEAR_ENGINE.REPORT_TERMS = {
         slot_counts = "裝備欄位統計", stat_totals = "屬性合計", none = "無", never = "從未",
         no_items = "沒有已儲存物品。請掃描背包，並在銀行開啟時再次掃描。",
         more = "另 %d 項", equipped_count = "已裝備 %d 件", candidate_count = "候選 %d 件", upgrade_count = "建議 %d 條",
-        bags = "背包", bank = "銀行", equipped = "目前裝備", unknown = "未知", unknown_location = "未知位置",
+        bags = "背包", bank = "銀行", equipped = "目前裝備", unknown = "未知", unknown_location = "未知位置", owned = "已擁有",
         backpack_slot = "背包第 %s 格", bag_slot = "%s 號背包第 %s 格", bank_slot = "銀行第 %s 格", bank_bag_slot = "銀行背包 %s 第 %s 格",
         categories_map = { Equipped = "目前裝備", Gear = "裝備", Consumables = "消耗品", ["Trade Goods"] = "材料", Gems = "寶石", Enhancements = "強化物品", Recipes = "配方", Reagents = "施法材料", ["Quest Items"] = "任務物品", Containers = "容器", Keys = "鑰匙", Projectiles = "彈藥", Currency = "貨幣", Permanent = "永久物品", Miscellaneous = "雜項", Other = "其他" },
     },
@@ -5922,6 +5925,7 @@ function GEAR_ENGINE.BuildBenchmarkImpacts(role, gains, losses)
                     key = benchmark.key,
                     label = benchmark.label,
                     status = benchmark.status,
+                    kind = benchmark.kind,
                     delta = RoundedStatNumber(delta),
                     unit = benchmark.unit,
                     effect = effect,
@@ -5957,6 +5961,23 @@ end
 function GEAR_ENGINE.RecommendationWorsensUnmetBenchmark(impacts)
     for index = 1, #(impacts or {}) do
         if impacts[index] and impacts[index].effect == "worsens_gap" then
+            return true
+        end
+    end
+    return false
+end
+
+-- A hard gate such as crit immunity protects the role in every strategy mode.
+-- Worsening an unmet gate blocks a candidate, and so does pushing a currently
+-- met hard gate back below its target: no objective score can pay for being
+-- critically hittable again.
+function GEAR_ENGINE.RecommendationBreaksHardGate(impacts)
+    if GEAR_ENGINE.RecommendationWorsensUnmetBenchmark(impacts) then
+        return true
+    end
+    for index = 1, #(impacts or {}) do
+        local impact = impacts[index]
+        if impact and impact.effect == "cap_risk" and impact.kind == "hard_gate" then
             return true
         end
     end
@@ -6380,7 +6401,7 @@ function GEAR_ENGINE.CompareItems(profile, currentItem, candidateItem, strategyB
         or ((breaksActiveSetBonus or effectDecision.preferCurrent or effectDecision.contextTradeoff) and "tradeoff")
         or ((effectDecision.preferCandidate or gainsSetBonus) and "review")
         or GEAR_ENGINE.RecommendationVerdict(evidence, rankingScoreGain, benchmarkImpacts, role.scoreModel)
-    local blockedByHardGate = GEAR_ENGINE.RecommendationWorsensUnmetBenchmark(benchmarkImpacts)
+    local blockedByHardGate = GEAR_ENGINE.RecommendationBreaksHardGate(benchmarkImpacts)
     local roundedScoreGain = RoundedStatNumber(scoreGain)
     local scoreResidual = RoundedStatNumber(roundedScoreGain - visibleScoreTotal)
     return {
@@ -7641,6 +7662,25 @@ function GEAR_ENGINE.AllClassStatPrioritiesText(locale)
     return table.concat(lines, "\n")
 end
 
+-- Every ranked candidate is already in the player's bags, bank, or equipped,
+-- so the report states where each one is instead of reading like a farm target.
+function GEAR_ENGINE.OwnedLocationText(item, locale)
+    local source = item and item.source
+    if source ~= "bags" and source ~= "bank" and source ~= "equipped" then
+        return nil
+    end
+
+    local terms = GEAR_ENGINE.ReportTerms(locale)
+    local sourceText = SourceLabel(source, locale)
+    if type(item.bagID) == "number" and type(item.slotID) == "number" then
+        local where = LocationLabel(source, item.bagID, item.slotID, locale)
+        if where and where ~= "" and where ~= terms.unknown_location and where ~= sourceText then
+            return terms.owned .. ": " .. sourceText .. " · " .. where
+        end
+    end
+    return terms.owned .. ": " .. sourceText
+end
+
 function GEAR_ENGINE.GearBenchmarkText(engine, locale)
     local values = {}
     local localized = ANALYSIS_LOCALIZATION[PromptLocale(locale or ClientLocale())]
@@ -7974,6 +8014,10 @@ function GEAR_ENGINE.AppendGearRecommendationsMarkdown(lines, engine, locale)
             .. " · " .. Addon.MarkdownEscape(GEAR_ENGINE.DecisionMetricText(upgrade, locale))
         lines[#lines + 1] = "- " .. terms.current .. ": " .. current
         lines[#lines + 1] = "- " .. terms.suggested .. ": " .. candidate
+        local ownedText = GEAR_ENGINE.OwnedLocationText(upgrade.candidate, locale)
+        if ownedText then
+            lines[#lines + 1] = "- " .. Addon.MarkdownEscape(ownedText)
+        end
         lines[#lines + 1] = "- " .. terms.score_reason .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.RecommendationReasonText(upgrade, locale))
         if #(upgrade.scoreBreakdown and upgrade.scoreBreakdown.unscoredChanges or {}) > 0 then
             lines[#lines + 1] = "- " .. terms.unscored_changes .. ": " .. Addon.MarkdownEscape(GEAR_ENGINE.UnscoredChangesText(upgrade, locale))
@@ -8041,6 +8085,10 @@ function GEAR_ENGINE.AppendGearRecommendationsText(lines, engine, locale)
             .. " · " .. terms.score .. " " .. GEAR_ENGINE.DecisionMetricText(upgrade, locale)
         lines[#lines + 1] = "   " .. terms.current .. ": " .. tostring(current)
         lines[#lines + 1] = "   " .. terms.suggested .. ": " .. tostring(upgrade.candidate and upgrade.candidate.name)
+        local ownedText = GEAR_ENGINE.OwnedLocationText(upgrade.candidate, locale)
+        if ownedText then
+            lines[#lines + 1] = "   " .. ownedText
+        end
         lines[#lines + 1] = "   " .. terms.score_reason .. ": " .. GEAR_ENGINE.RecommendationReasonText(upgrade, locale)
         if #(upgrade.scoreBreakdown and upgrade.scoreBreakdown.unscoredChanges or {}) > 0 then
             lines[#lines + 1] = "   " .. terms.unscored_changes .. ": " .. GEAR_ENGINE.UnscoredChangesText(upgrade, locale)
@@ -9937,6 +9985,10 @@ function Addon:RefreshGearComparison(profile, engine, index)
     local details = {
         LForLocale(locale, "advice_why", GEAR_ENGINE.RecommendationReasonText(upgrade, locale, 4)),
     }
+    local ownedText = GEAR_ENGINE.OwnedLocationText(upgrade.candidate, locale)
+    if ownedText then
+        details[#details + 1] = ownedText
+    end
     if #(upgrade.scoreBreakdown and upgrade.scoreBreakdown.unscoredChanges or {}) > 0 then
         details[#details + 1] = LForLocale(locale, "advice_unscored", GEAR_ENGINE.UnscoredChangesText(upgrade, locale, 4))
     end
@@ -10005,7 +10057,9 @@ function Addon:RefreshGearAdvice(profile, engine)
         row.candidateButton.upgradeIndex = index
         row.currentIcon:SetTexture(upgrade.current and upgrade.current.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
         row.candidateIcon:SetTexture(upgrade.candidate and upgrade.candidate.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
-        row.slot:SetText(GEAR_ENGINE.EquipmentSlotLabel(upgrade.slotKey, locale))
+        local rowOwnedText = GEAR_ENGINE.OwnedLocationText(upgrade.candidate, locale)
+        row.slot:SetText(GEAR_ENGINE.EquipmentSlotLabel(upgrade.slotKey, locale)
+            .. (rowOwnedText and "\n|cff40c040" .. rowOwnedText .. "|r" or ""))
         row.name:SetText(ItemColoredName(upgrade.candidate))
         row.gain:SetText(GEAR_ENGINE.DecisionMetricColor(upgrade) .. GEAR_ENGINE.DecisionMetricText(upgrade, locale) .. "|r\n"
             .. GEAR_ENGINE.RecommendationVerdictLabel(upgrade.verdict, locale))
@@ -11504,6 +11558,7 @@ if _G.TBCGearExporterTestMode then
         LoadoutCompatible = GEAR_ENGINE.LoadoutCompatible,
         IsShieldItem = GEAR_ENGINE.IsShieldItem,
         RoleRequiresShield = GEAR_ENGINE.RoleRequiresShield,
+        OwnedLocationText = GEAR_ENGINE.OwnedLocationText,
         AllClassStatPriorities = GEAR_ENGINE.AllClassStatPriorities,
         AllClassStatPrioritiesText = GEAR_ENGINE.AllClassStatPrioritiesText,
         MaximumWeight = GEAR_ENGINE.MaximumWeight,
@@ -11533,6 +11588,7 @@ if _G.TBCGearExporterTestMode then
         BuildBenchmarkImpacts = GEAR_ENGINE.BuildBenchmarkImpacts,
         RecommendationVerdict = GEAR_ENGINE.RecommendationVerdict,
         RecommendationWorsensUnmetBenchmark = GEAR_ENGINE.RecommendationWorsensUnmetBenchmark,
+        RecommendationBreaksHardGate = GEAR_ENGINE.RecommendationBreaksHardGate,
         NoUpgradeText = GEAR_ENGINE.NoUpgradeText,
         VerdictCounts = GEAR_ENGINE.VerdictCounts,
         CandidateCompatibleWithClass = GEAR_ENGINE.CandidateCompatibleWithClass,
