@@ -6478,6 +6478,68 @@ test("recommendations mark where an already-owned candidate is stored", function
     assertContains(table.concat(text, "\n"), "已拥有: 银行")
 end)
 
+test("threat mode cannot recommend a swap that breaks crit immunity", function()
+    assertFalse(private.RecommendationBreaksHardGate({}))
+    assertTrue(private.RecommendationBreaksHardGate({ { effect = "worsens_gap" } }))
+    assertTrue(private.RecommendationBreaksHardGate({ { effect = "cap_risk", kind = "hard_gate" } }))
+    assertFalse(private.RecommendationBreaksHardGate({ { effect = "cap_risk", kind = "context" } }))
+    assertFalse(private.RecommendationBreaksHardGate({ { effect = "cap_buffer_reduced", kind = "hard_gate" } }))
+
+    -- Strongge's real case: a healer ring wins the threat objective while
+    -- dropping combined crit reduction from 5.83% to 5.54% against a 5.6% gate.
+    local db = assert(_G.TBCGearExporterP2DB)
+    local role = assert(db.GetRole("PALADIN", "protection_tank"))
+    local tankRing = {
+        itemID = 30028, name = "提瑞斯法安宁指环", category = "Gear", equipSlot = "INVTYPE_FINGER",
+        classID = 4, subClassID = 0, itemLevel = 128, quality = 4, source = "equipped",
+        stats = {
+            { token = "ITEM_MOD_STAMINA_SHORT", label = "Stamina", value = 37 },
+            { token = "ITEM_MOD_BLOCK_RATING", label = "Block Rating", value = 24 },
+            { token = "ITEM_MOD_DEFENSE_SKILL_RATING", label = "Defense Rating", value = 17 },
+        },
+    }
+    local healerRing = {
+        itemID = 29920, name = "浴火凤凰之戒", category = "Gear", equipSlot = "INVTYPE_FINGER",
+        classID = 4, subClassID = 0, itemLevel = 128, quality = 4, source = "bags",
+        stats = {
+            { token = "ITEM_MOD_INTELLECT_SHORT", label = "Intellect", value = 24 },
+            { token = "ITEM_MOD_SPELL_HEALING_DONE", label = "Healing", value = 54 },
+            { token = "ITEM_MOD_POWER_REGEN0_SHORT", label = "Mana Regen", value = 9 },
+            { token = "ITEM_MOD_SPELL_DAMAGE_DONE", label = "Spell Damage", value = 18 },
+        },
+    }
+    local gatedRole = {}
+    for key, value in pairs(role) do
+        gatedRole[key] = value
+    end
+    gatedRole.benchmarks = {
+        {
+            key = "crit_immunity", label = "Combined critical-hit reduction",
+            status = "meets_or_exceeds", kind = "hard_gate",
+            observed = 5.83, effectiveObserved = 5.83, target = 5.6, unit = "%",
+        },
+    }
+    local profile = { classEnglish = "PALADIN", locale = "zhCN", equipped = { items = { tankRing } }, characterStats = {} }
+    local strategy = { roles = { gatedRole } }
+    role = gatedRole
+
+    local comparison = private.CompareItems(profile, tankRing, healerRing, strategy, role.key, nil, "threat")
+    local critImpact
+    for index = 1, #(comparison.benchmarkImpacts or {}) do
+        if comparison.benchmarkImpacts[index].key == "crit_immunity" then
+            critImpact = comparison.benchmarkImpacts[index]
+        end
+    end
+    assertEquals(critImpact and critImpact.effect, "cap_risk")
+    assertEquals(critImpact and critImpact.kind, "hard_gate")
+    assertTrue(comparison.blockedByHardGate)
+
+    local engine = private.BuildGearRecommendations(profile, { healerRing }, strategy, role.key, "threat")
+    assertEquals(#engine.upgrades, 0)
+    assertEquals(engine.gateRejectedCount, 1)
+    assertEquals(engine.candidateEvaluations[1].status, "benchmark_gate")
+end)
+
 local failures = {}
 
 for index = 1, #tests do

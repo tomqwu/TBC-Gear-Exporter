@@ -5925,6 +5925,7 @@ function GEAR_ENGINE.BuildBenchmarkImpacts(role, gains, losses)
                     key = benchmark.key,
                     label = benchmark.label,
                     status = benchmark.status,
+                    kind = benchmark.kind,
                     delta = RoundedStatNumber(delta),
                     unit = benchmark.unit,
                     effect = effect,
@@ -5960,6 +5961,23 @@ end
 function GEAR_ENGINE.RecommendationWorsensUnmetBenchmark(impacts)
     for index = 1, #(impacts or {}) do
         if impacts[index] and impacts[index].effect == "worsens_gap" then
+            return true
+        end
+    end
+    return false
+end
+
+-- A hard gate such as crit immunity protects the role in every strategy mode.
+-- Worsening an unmet gate blocks a candidate, and so does pushing a currently
+-- met hard gate back below its target: no objective score can pay for being
+-- critically hittable again.
+function GEAR_ENGINE.RecommendationBreaksHardGate(impacts)
+    if GEAR_ENGINE.RecommendationWorsensUnmetBenchmark(impacts) then
+        return true
+    end
+    for index = 1, #(impacts or {}) do
+        local impact = impacts[index]
+        if impact and impact.effect == "cap_risk" and impact.kind == "hard_gate" then
             return true
         end
     end
@@ -6383,7 +6401,7 @@ function GEAR_ENGINE.CompareItems(profile, currentItem, candidateItem, strategyB
         or ((breaksActiveSetBonus or effectDecision.preferCurrent or effectDecision.contextTradeoff) and "tradeoff")
         or ((effectDecision.preferCandidate or gainsSetBonus) and "review")
         or GEAR_ENGINE.RecommendationVerdict(evidence, rankingScoreGain, benchmarkImpacts, role.scoreModel)
-    local blockedByHardGate = GEAR_ENGINE.RecommendationWorsensUnmetBenchmark(benchmarkImpacts)
+    local blockedByHardGate = GEAR_ENGINE.RecommendationBreaksHardGate(benchmarkImpacts)
     local roundedScoreGain = RoundedStatNumber(scoreGain)
     local scoreResidual = RoundedStatNumber(roundedScoreGain - visibleScoreTotal)
     return {
@@ -11570,6 +11588,7 @@ if _G.TBCGearExporterTestMode then
         BuildBenchmarkImpacts = GEAR_ENGINE.BuildBenchmarkImpacts,
         RecommendationVerdict = GEAR_ENGINE.RecommendationVerdict,
         RecommendationWorsensUnmetBenchmark = GEAR_ENGINE.RecommendationWorsensUnmetBenchmark,
+        RecommendationBreaksHardGate = GEAR_ENGINE.RecommendationBreaksHardGate,
         NoUpgradeText = GEAR_ENGINE.NoUpgradeText,
         VerdictCounts = GEAR_ENGINE.VerdictCounts,
         CandidateCompatibleWithClass = GEAR_ENGINE.CandidateCompatibleWithClass,
